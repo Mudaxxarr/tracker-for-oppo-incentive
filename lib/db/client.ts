@@ -1,32 +1,27 @@
 import "server-only";
-import Database from "better-sqlite3";
-import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import path from "node:path";
-import fs from "node:fs";
+import { Pool } from "pg";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
 
-export type AppDb = BetterSQLite3Database<typeof schema>;
+export type AppDb = NodePgDatabase<typeof schema>;
 
 declare global {
   // eslint-disable-next-line no-var
   var __oppoDb: AppDb | undefined;
+  // eslint-disable-next-line no-var
+  var __oppoPool: Pool | undefined;
 }
 
-function resolveDbPath(): string {
-  const raw = process.env.DATABASE_URL ?? "./data/oppo-tracker.db";
-  return path.isAbsolute(raw) ? raw : path.resolve(process.cwd(), raw);
+function createPool(): Pool {
+  const url = process.env.POSTGRES_URL;
+  if (!url) throw new Error("POSTGRES_URL environment variable is required");
+  return new Pool({ connectionString: url, max: 10 });
 }
 
-function openDb(): AppDb {
-  const dbPath = resolveDbPath();
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const sqlite = new Database(dbPath);
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("foreign_keys = ON");
-  return drizzle(sqlite, { schema });
-}
+const pool: Pool = globalThis.__oppoPool ?? createPool();
+globalThis.__oppoPool = pool;
 
-export const db: AppDb = globalThis.__oppoDb ?? openDb();
+export const db: AppDb = globalThis.__oppoDb ?? drizzle(pool, { schema });
 globalThis.__oppoDb = db;
 
 export { schema };
