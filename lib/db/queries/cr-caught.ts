@@ -13,7 +13,7 @@ export interface CrCaughtRow {
   note: string | null;
 }
 
-export async function listCrCaught(dealerId: string): Promise<CrCaughtRow[]> {
+export async function listCrCaught(tenantId: string, dealerId: string): Promise<CrCaughtRow[]> {
   return db
     .select({
       id: schema.crCaught.id,
@@ -26,11 +26,12 @@ export async function listCrCaught(dealerId: string): Promise<CrCaughtRow[]> {
     })
     .from(schema.crCaught)
     .innerJoin(schema.models, eq(schema.models.id, schema.crCaught.modelId))
-    .where(eq(schema.crCaught.dealerId, dealerId))
+    .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)))
     .orderBy(desc(schema.crCaught.caughtDate));
 }
 
 export async function createCrCaught(input: {
+  tenantId: string;
   dealerId: string;
   modelId: string;
   quantity: number;
@@ -44,19 +45,18 @@ export async function createCrCaught(input: {
 }
 
 export async function getCrCaughtLoss(
+  tenantId: string,
   dealerId: string,
   from: string,
   to: string,
   basePct: number
 ): Promise<{ totalUnits: number; lostIncentive: number }> {
   const rows = await db
-    .select({
-      qty: schema.crCaught.quantity,
-      price: schema.crCaught.dealerPriceSnapshot,
-    })
+    .select({ qty: schema.crCaught.quantity, price: schema.crCaught.dealerPriceSnapshot })
     .from(schema.crCaught)
     .where(
       and(
+        eq(schema.crCaught.tenantId, tenantId),
         eq(schema.crCaught.dealerId, dealerId),
         gte(schema.crCaught.caughtDate, from),
         lte(schema.crCaught.caughtDate, to)
@@ -66,25 +66,32 @@ export async function getCrCaughtLoss(
   let lostIncentive = 0;
   for (const r of rows) {
     totalUnits += r.qty;
-    lostIncentive += r.qty * r.price * (basePct / 100) * 1.25; // base + 25% for bonus approx (5% total at 4%+1%)
+    lostIncentive += r.qty * r.price * (basePct / 100) * 1.25;
   }
   return { totalUnits, lostIncentive: Math.round(lostIncentive) };
 }
 
-export async function getCrCaughtForStockCalc(dealerId: string, modelId: string): Promise<number> {
+export async function getCrCaughtForStockCalc(tenantId: string, dealerId: string, modelId: string): Promise<number> {
   const [{ qty }] = await db
-    .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)`.as("qty") })
-    .from(schema.crCaught)
-    .where(and(eq(schema.crCaught.dealerId, dealerId), eq(schema.crCaught.modelId, modelId)));
-  return Number(qty);
-}
-
-export async function getCrCaughtAsOf(dealerId: string, modelId: string, asOf: string): Promise<number> {
-  const [{ qty }] = await db
-    .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)`.as("qty") })
+    .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
     .from(schema.crCaught)
     .where(
       and(
+        eq(schema.crCaught.tenantId, tenantId),
+        eq(schema.crCaught.dealerId, dealerId),
+        eq(schema.crCaught.modelId, modelId)
+      )
+    );
+  return Number(qty);
+}
+
+export async function getCrCaughtAsOf(tenantId: string, dealerId: string, modelId: string, asOf: string): Promise<number> {
+  const [{ qty }] = await db
+    .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
+    .from(schema.crCaught)
+    .where(
+      and(
+        eq(schema.crCaught.tenantId, tenantId),
         eq(schema.crCaught.dealerId, dealerId),
         eq(schema.crCaught.modelId, modelId),
         lte(schema.crCaught.caughtDate, asOf)

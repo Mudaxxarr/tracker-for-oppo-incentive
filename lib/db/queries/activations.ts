@@ -16,12 +16,16 @@ export interface ActivationRow {
 }
 
 export async function listActivations(filters: {
+  tenantId: string;
   dealerId: string;
   modelId?: string;
   from?: string;
   to?: string;
 }): Promise<ActivationRow[]> {
-  const where = [eq(schema.activations.dealerId, filters.dealerId)];
+  const where = [
+    eq(schema.activations.tenantId, filters.tenantId),
+    eq(schema.activations.dealerId, filters.dealerId),
+  ];
   if (filters.modelId) where.push(eq(schema.activations.modelId, filters.modelId));
   if (filters.from) where.push(gte(schema.activations.activationDate, filters.from));
   if (filters.to) where.push(lte(schema.activations.activationDate, filters.to));
@@ -45,39 +49,34 @@ export async function listActivations(filters: {
 }
 
 export async function createActivation(input: {
+  tenantId: string;
   dealerId: string;
   modelId: string;
   activationDate: string;
   imei: string | null;
   purchaseId: string | null;
   isCrossRegion: boolean;
-  /** When omitted, the engine snapshots the dealer price effective on activationDate. */
   dealerPriceOverride?: number;
 }): Promise<{ id: string; pricedAt: number; isCrossRegion: boolean }> {
   const id = randomUUID();
   let snapshot = input.dealerPriceOverride;
   if (snapshot == null) {
-    const price = await getPriceOnDate(input.modelId, input.activationDate);
-    if (!price) {
-      throw new Error("No dealer price defined for this model on or before the activation date");
-    }
+    const price = await getPriceOnDate(input.tenantId, input.modelId, input.activationDate);
+    if (!price) throw new Error("No dealer price defined for this model on or before the activation date");
     snapshot = price.dealerPrice;
   }
-  // Auto-flag isCrossRegion when linked to a CROSS_REGION_TRANSFER_IN purchase.
-  // The user-provided value is honored otherwise (e.g., for direct entries).
   let isCrossRegion = input.isCrossRegion;
   if (input.purchaseId) {
     const linked = await db
       .select()
       .from(schema.purchases)
-      .where(eq(schema.purchases.id, input.purchaseId))
+      .where(and(eq(schema.purchases.id, input.purchaseId), eq(schema.purchases.tenantId, input.tenantId)))
       .limit(1);
-    if (linked.length > 0 && linked[0].source === "CROSS_REGION_TRANSFER_IN") {
-      isCrossRegion = true;
-    }
+    if (linked.length > 0 && linked[0].source === "CROSS_REGION_TRANSFER_IN") isCrossRegion = true;
   }
   await db.insert(schema.activations).values({
     id,
+    tenantId: input.tenantId,
     dealerId: input.dealerId,
     modelId: input.modelId,
     activationDate: input.activationDate,
@@ -89,9 +88,14 @@ export async function createActivation(input: {
   return { id, pricedAt: snapshot, isCrossRegion };
 }
 
-export async function deleteActivation(id: string, dealerId: string): Promise<void> {
+export async function deleteActivation(id: string, dealerId: string, tenantId: string): Promise<void> {
   await db
     .delete(schema.activations)
-    .where(and(eq(schema.activations.id, id), eq(schema.activations.dealerId, dealerId)));
+    .where(
+      and(
+        eq(schema.activations.id, id),
+        eq(schema.activations.dealerId, dealerId),
+        eq(schema.activations.tenantId, tenantId)
+      )
+    );
 }
-
