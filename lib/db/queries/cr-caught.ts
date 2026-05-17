@@ -1,0 +1,94 @@
+import "server-only";
+import { db, schema } from "../client";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+
+export interface CrCaughtRow {
+  id: string;
+  modelId: string;
+  modelName: string;
+  quantity: number;
+  caughtDate: string;
+  dealerPriceSnapshot: number;
+  note: string | null;
+}
+
+export async function listCrCaught(dealerId: string): Promise<CrCaughtRow[]> {
+  return db
+    .select({
+      id: schema.crCaught.id,
+      modelId: schema.crCaught.modelId,
+      modelName: schema.models.name,
+      quantity: schema.crCaught.quantity,
+      caughtDate: schema.crCaught.caughtDate,
+      dealerPriceSnapshot: schema.crCaught.dealerPriceSnapshot,
+      note: schema.crCaught.note,
+    })
+    .from(schema.crCaught)
+    .innerJoin(schema.models, eq(schema.models.id, schema.crCaught.modelId))
+    .where(eq(schema.crCaught.dealerId, dealerId))
+    .orderBy(desc(schema.crCaught.caughtDate));
+}
+
+export async function createCrCaught(input: {
+  dealerId: string;
+  modelId: string;
+  quantity: number;
+  caughtDate: string;
+  dealerPriceSnapshot: number;
+  note: string | null;
+}): Promise<string> {
+  const id = randomUUID();
+  await db.insert(schema.crCaught).values({ id, ...input });
+  return id;
+}
+
+export async function getCrCaughtLoss(
+  dealerId: string,
+  from: string,
+  to: string,
+  basePct: number
+): Promise<{ totalUnits: number; lostIncentive: number }> {
+  const rows = await db
+    .select({
+      qty: schema.crCaught.quantity,
+      price: schema.crCaught.dealerPriceSnapshot,
+    })
+    .from(schema.crCaught)
+    .where(
+      and(
+        eq(schema.crCaught.dealerId, dealerId),
+        gte(schema.crCaught.caughtDate, from),
+        lte(schema.crCaught.caughtDate, to)
+      )
+    );
+  let totalUnits = 0;
+  let lostIncentive = 0;
+  for (const r of rows) {
+    totalUnits += r.qty;
+    lostIncentive += r.qty * r.price * (basePct / 100) * 1.25; // base + 25% for bonus approx (5% total at 4%+1%)
+  }
+  return { totalUnits, lostIncentive: Math.round(lostIncentive) };
+}
+
+export async function getCrCaughtForStockCalc(dealerId: string, modelId: string): Promise<number> {
+  const [{ qty }] = await db
+    .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)`.as("qty") })
+    .from(schema.crCaught)
+    .where(and(eq(schema.crCaught.dealerId, dealerId), eq(schema.crCaught.modelId, modelId)));
+  return Number(qty);
+}
+
+export async function getCrCaughtAsOf(dealerId: string, modelId: string, asOf: string): Promise<number> {
+  const [{ qty }] = await db
+    .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)`.as("qty") })
+    .from(schema.crCaught)
+    .where(
+      and(
+        eq(schema.crCaught.dealerId, dealerId),
+        eq(schema.crCaught.modelId, modelId),
+        lte(schema.crCaught.caughtDate, asOf)
+      )
+    );
+  return Number(qty);
+}

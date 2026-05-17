@@ -1,0 +1,222 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { isAuthenticated } from "@/lib/auth";
+import { getActiveDealerId } from "@/lib/dealer";
+import { createPurchase, deletePurchase } from "@/lib/db/queries/purchases";
+import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
+import { PURCHASE_SOURCE } from "@/lib/constants";
+import { logAudit } from "@/lib/audit";
+import { formatPKR } from "@/lib/format";
+
+const PurchaseSchema = z.object({
+  modelId: z.string().min(1, "Choose a model"),
+  quantity: z.coerce.number().int().positive("Quantity must be ≥ 1"),
+  unitDealerPrice: z.coerce.number().nonnegative(),
+  unitInvoicePrice: z.coerce.number().nonnegative(),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  source: z.enum([PURCHASE_SOURCE.REGULAR, PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN]),
+  referenceNote: z.string().max(500).optional().nullable(),
+  updateMasterPrice: z
+    .union([z.literal("on"), z.literal("true"), z.literal("")])
+    .optional(),
+});
+
+export type PurchaseFormState = {
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  ok?: boolean;
+};
+
+export async function createPurchaseAction(
+  _prev: PurchaseFormState,
+  formData: FormData
+): Promise<PurchaseFormState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID — create one in IDs first" };
+
+  const parsed = PurchaseSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    await logAudit({
+      action: "purchase.create",
+      status: "error",
+      summary: `Purchase rejected: ${parsed.error.issues[0].message}`,
+    });
+    return {
+      fieldErrors: Object.fromEntries(
+        parsed.error.issues.map((i) => [i.path.join(".") || "_", i.message])
+      ),
+    };
+  }
+  const data = parsed.data;
+  const updateMaster =
+    data.updateMasterPrice === "on" || data.updateMasterPrice === "true";
+
+  try {
+    const id = await createPurchase({
+      dealerId,
+      modelId: data.modelId,
+      quantity: data.quantity,
+      unitDealerPrice: data.unitDealerPrice,
+      unitInvoicePrice: data.unitInvoicePrice,
+      purchaseDate: data.purchaseDate,
+      source: data.source,
+      referenceNote: data.referenceNote ?? null,
+    });
+
+    if (updateMaster) {
+      const today = new Date().toISOString().slice(0, 10);
+      const current = await getPriceOnDate(data.modelId, today);
+      if (
+        !current ||
+        current.dealerPrice !== data.unitDealerPrice ||
+        current.invoicePrice !== data.unitInvoicePrice
+      ) {
+        await updateModelPrice({
+          modelId: data.modelId,
+          dealerPrice: data.unitDealerPrice,
+          invoicePrice: data.unitInvoicePrice,
+          effectiveFrom: today,
+        });
+        await logAudit({
+          action: "model.price_update",
+          entityType: "model",
+          entityId: data.modelId,
+          summary: `Updated master dealer price to ${formatPKR(data.unitDealerPrice)}`,
+          payload: { dealerPrice: data.unitDealerPrice, invoicePrice: data.unitInvoicePrice },
+        });
+      }
+    }
+
+    const m = await getModelById(data.modelId);
+    await logAudit({
+      action: "purchase.create",
+      entityType: "purchase",
+      entityId: id,
+      summary: `Purchased ${data.quantity} × ${m?.name ?? "?"} @ ${formatPKR(data.unitDealerPrice)} (${data.source})`,
+      payload: {
+        modelId: data.modelId,
+        quantity: data.quantity,
+        unitDealerPrice: data.unitDealerPrice,
+        source: data.source,
+        purchaseDate: data.purchaseDate,
+      },
+    });
+
+    revalidatePath("/purchases");
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to create purchase";
+    await logAudit({
+      action: "purchase.create",
+      status: "error",
+      summary: `Purchase create failed: ${msg}`,
+    });
+    return { error: msg };
+  }
+}
+
+export async function getPriceOnDateAction(
+  modelId: string,
+  date: string
+): Promise<{ dealerPrice: number; invoicePrice: number } | null> {
+  if (!(await isAuthenticated())) return null;
+  if (!modelId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return getPriceOnDate(modelId, date);
+}
+
+const BulkLineSchema = z.object({
+  modelId: z.string().min(1),
+  quantity: z.coerce.number().int().positive(),
+  unitDealerPrice: z.coerce.number().nonnegative(),
+  unitInvoicePrice: z.coerce.number().nonnegative(),
+});
+
+const BulkInvoiceSchema = z.object({
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  source: z.enum([PURCHASE_SOURCE.REGULAR, PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN]),
+  invoiceNumber: z.string().trim().min(1, "Invoice # required").max(120),
+  notes: z.string().max(500).optional().nullable(),
+  lines: z.array(BulkLineSchema).min(1, "Add at least one line"),
+});
+
+export type BulkInvoiceState = {
+  error?: string;
+  ok?: boolean;
+  inserted?: number;
+};
+
+export async function createBulkInvoiceAction(
+  _prev: BulkInvoiceState,
+  formData: FormData
+): Promise<BulkInvoiceState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(String(formData.get("payload") ?? ""));
+  } catch {
+    return { error: "Malformed bulk invoice payload" };
+  }
+  const parsed = BulkInvoiceSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message };
+  }
+  const { purchaseDate, source, invoiceNumber, notes, lines } = parsed.data;
+
+  // De-duplicate model rows by summing — so the same model can be entered twice safely
+  // — but we keep separate rows when prices differ so per-row pricing is preserved.
+  let inserted = 0;
+  try {
+    for (const line of lines) {
+      const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
+      await createPurchase({
+        dealerId,
+        modelId: line.modelId,
+        quantity: line.quantity,
+        unitDealerPrice: line.unitDealerPrice,
+        unitInvoicePrice: line.unitInvoicePrice,
+        purchaseDate,
+        source,
+        referenceNote: ref,
+      });
+      inserted += 1;
+    }
+    await logAudit({
+      action: "purchase.bulk_invoice",
+      summary: `Recorded invoice ${invoiceNumber}: ${inserted} line(s) on ${purchaseDate}`,
+      payload: { invoiceNumber, purchaseDate, source, lineCount: inserted },
+    });
+    revalidatePath("/purchases");
+    revalidatePath("/dashboard");
+    return { ok: true, inserted };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to record invoice";
+    await logAudit({
+      action: "purchase.bulk_invoice",
+      status: "error",
+      summary: `Bulk invoice failed: ${msg}`,
+    });
+    return { error: msg };
+  }
+}
+
+export async function deletePurchaseAction(id: string): Promise<void> {
+  if (!(await isAuthenticated())) return;
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return;
+  await deletePurchase(id, dealerId);
+  await logAudit({
+    action: "purchase.delete",
+    entityType: "purchase",
+    entityId: id,
+    summary: `Deleted purchase ${id.slice(0, 8)}`,
+  });
+  revalidatePath("/purchases");
+  revalidatePath("/dashboard");
+}

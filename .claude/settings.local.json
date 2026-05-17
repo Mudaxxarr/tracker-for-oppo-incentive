@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-Object -First 60)",
+      "PowerShell(app *)",
+      "PowerShell(npx eslint \"app/\\(app\\)/activations\" 2>&1 | Select-Object -First 80)",
+      "PowerShell(npx eslint \"app/\\(app\\)/activations/bulk-form.tsx\" 2>&1 | Select-Object -First 30)",
+      "PowerShell(npm run *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Admin\\\\Downloads\\\\Claude\\\\Oppo Ecosystem\\\\oppo-tracker\" -Recurse -Directory -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Bash(npx tsc *)",
+      "Bash(npx drizzle-kit *)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const Database = require\\('better-sqlite3'\\); const db = new Database\\('local.db'\\); const tables = db.prepare\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\).all\\(\\); console.log\\(tables.map\\(t => t.name\\)\\);\")",
+      "Bash(Get-ChildItem -Name \"*.db\" -Recurse)",
+      "Bash(node -e \"const Database = require\\('better-sqlite3'\\); const db = new Database\\('./data/oppo-tracker.db'\\); const tables = db.prepare\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\).all\\(\\); console.log\\(tables.map\\(t => t.name\\)\\);\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)"
+    ]
+  }
+}
