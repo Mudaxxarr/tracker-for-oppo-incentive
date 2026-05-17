@@ -24,3 +24,5 @@ export type InterIdStatus = (typeof INTER_ID_STATUS)[keyof typeof INTER_ID_STATU
 
 export const SESSION_COOKIE = "oppo_session";
 export const TEAM_SESSION_COOKIE = "oppo_team_session";
+export const DEALER_SESSION_COOKIE = "dealer_session";
+export const DEALER_ACTIVE_ID_COOKIE = "dealer_active_id";
