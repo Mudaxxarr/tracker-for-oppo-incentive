@@ -2,7 +2,7 @@
 
 import { db, schema } from "@/lib/db/client";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { isAnyAuthenticated } from "@/lib/auth";
 
 export interface ModelSaleRow {
@@ -29,6 +29,7 @@ export async function getModelSalesAction(
     .innerJoin(schema.models, eq(schema.models.id, schema.activations.modelId))
     .where(
       and(
+        eq(schema.activations.tenantId, OWNER_TENANT_ID),
         eq(schema.activations.dealerId, dealerId),
         gte(schema.activations.activationDate, from),
         lte(schema.activations.activationDate, to)

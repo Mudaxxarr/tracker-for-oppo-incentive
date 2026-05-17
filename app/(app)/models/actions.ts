@@ -12,6 +12,7 @@ import {
   updateModel,
   updatePriceEntry,
 } from "@/lib/db/queries/models";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
 
@@ -54,7 +55,7 @@ export async function createModelAction(
   if (obj.sku === "") delete (obj as Record<string, unknown>).sku;
   const parsed = CreateModelSchema.safeParse(obj);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const id = await createModel({
+  const id = await createModel(OWNER_TENANT_ID, {
     name: parsed.data.name,
     sku: parsed.data.sku ?? null,
     dealerPrice: parsed.data.dealerPrice,
@@ -111,7 +112,7 @@ export async function addPriceEntryAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const m = await getModelById(parsed.data.modelId);
   if (!m) return { error: "Model not found" };
-  const id = await addPriceEntry(parsed.data);
+  const id = await addPriceEntry(OWNER_TENANT_ID, parsed.data);
   await logAudit({
     action: "model.price_entry.add",
     entityType: "model",
@@ -141,7 +142,7 @@ export async function updatePriceEntryAction(input: {
     return { ok: false, error: "Invoice price must be ≥ 0" };
   const m = await getModelById(input.modelId);
   if (!m) return { ok: false, error: "Model not found" };
-  await updatePriceEntry(input);
+  await updatePriceEntry(OWNER_TENANT_ID, input);
   await logAudit({
     action: "model.price_entry.update",
     entityType: "model",
@@ -160,7 +161,7 @@ export async function deletePriceEntryAction(input: {
   priceId: string;
 }): Promise<{ ok: boolean; error?: string }> {
   if (!(await requireAuth())) return { ok: false, error: "Not authenticated" };
-  await deletePriceEntry(input);
+  await deletePriceEntry(OWNER_TENANT_ID, input);
   await logAudit({
     action: "model.price_entry.delete",
     entityType: "model",

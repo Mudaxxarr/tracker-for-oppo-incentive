@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
-import { setActiveDealerId } from "@/lib/dealer";
+import { setActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { createInterIdTransfer } from "@/lib/db/queries/transfers";
 import { getModelById } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
@@ -38,6 +38,7 @@ export async function createDealerIdAction(
   const id = randomUUID();
   await db.insert(schema.dealerIds).values({
     id,
+    tenantId: OWNER_TENANT_ID,
     name: parsed.data.name,
     note: parsed.data.note ?? null,
     isActive: true,
@@ -63,7 +64,8 @@ export async function deleteDealerIdAction(id: string): Promise<{ ok: boolean; e
     await db.transaction(async () => {
       const [{ n }] = await db
         .select({ n: sql<number>`COUNT(*)` })
-        .from(schema.dealerIds);
+        .from(schema.dealerIds)
+        .where(eq(schema.dealerIds.tenantId, OWNER_TENANT_ID));
       if (Number(n) <= 1) throw new Error("Cannot delete the last Dealer ID");
       const [target] = await db
         .select()
@@ -98,13 +100,14 @@ export async function createInterIdTransferAction(
   const { fromDealerId, toDealerId, modelId, quantity, transferDate } = parsed.data;
   if (fromDealerId === toDealerId) return { error: "Source and destination must be different" };
 
-  const stock = await getStockForModelAsOf(fromDealerId, modelId, transferDate);
+  const stock = await getStockForModelAsOf(OWNER_TENANT_ID, fromDealerId, modelId, transferDate);
   if (stock < quantity) {
     return { error: `Only ${stock} unit(s) available in source ID as of ${transferDate}` };
   }
 
   try {
     const id = await createInterIdTransfer({
+      tenantId: OWNER_TENANT_ID,
       fromDealerId: parsed.data.fromDealerId,
       toDealerId: parsed.data.toDealerId,
       modelId: parsed.data.modelId,

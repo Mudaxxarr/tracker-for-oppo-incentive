@@ -5,10 +5,13 @@ import { asc, eq } from "drizzle-orm";
 
 const ACTIVE_DEALER_COOKIE = "oppo_active_dealer";
 
+export const OWNER_TENANT_ID = "owner";
+
 export async function listDealerIds() {
   return db
     .select()
     .from(schema.dealerIds)
+    .where(eq(schema.dealerIds.tenantId, OWNER_TENANT_ID))
     .orderBy(asc(schema.dealerIds.name));
 }
 

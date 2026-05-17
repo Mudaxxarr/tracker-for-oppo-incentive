@@ -1,4 +1,4 @@
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
 import { listActivations } from "@/lib/db/queries/activations";
 import { listStockForDealer } from "@/lib/db/queries/purchases";
@@ -17,10 +17,11 @@ export default async function TeamActivationsPage({
 }) {
   const dealerId = await getActiveDealerId();
   const sp = await searchParams;
-  const allModels = await listModelsWithCurrentPrice();
-  const stock = dealerId ? await listStockForDealer(dealerId) : [];
+  const allModels = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
+  const stock = dealerId ? await listStockForDealer(OWNER_TENANT_ID, dealerId) : [];
   const activations = dealerId
     ? await listActivations({
+        tenantId: OWNER_TENANT_ID,
         dealerId,
         modelId: sp.modelId || undefined,
         from: sp.from || undefined,

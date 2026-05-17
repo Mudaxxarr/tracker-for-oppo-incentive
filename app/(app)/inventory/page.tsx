@@ -1,4 +1,4 @@
-import { getActiveDealerId, listDealerIds } from "@/lib/dealer";
+import { getActiveDealerId, listDealerIds, OWNER_TENANT_ID } from "@/lib/dealer";
 import { listInventoryForDealer } from "@/lib/db/queries/inventory";
 import { listPendingInbound } from "@/lib/db/queries/transfers";
 import { InventoryClient } from "./inventory-client";
@@ -6,9 +6,9 @@ import { InventoryClient } from "./inventory-client";
 export default async function InventoryPage() {
   const dealerId = await getActiveDealerId();
   const [rows, allDealers, pendingTransfers] = await Promise.all([
-    dealerId ? listInventoryForDealer(dealerId) : Promise.resolve([]),
+    dealerId ? listInventoryForDealer(OWNER_TENANT_ID, dealerId) : Promise.resolve([]),
     listDealerIds(),
-    dealerId ? listPendingInbound(dealerId) : Promise.resolve([]),
+    dealerId ? listPendingInbound(OWNER_TENANT_ID, dealerId) : Promise.resolve([]),
   ]);
 
   const otherDealers = allDealers

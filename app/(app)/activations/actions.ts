@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { db } from "@/lib/db/client";
 import {
   createActivation,
@@ -57,6 +57,7 @@ export async function createActivationAction(
   if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
 
   const parsed = ActivationSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -73,7 +74,7 @@ export async function createActivationAction(
     return { error: "IMEI can only be set when quantity is 1" };
   }
   try {
-    const stock = await getStockForModelAsOf(dealerId, data.modelId, data.activationDate);
+    const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
     if (qty > stock) {
       const m = await getModelById(data.modelId);
       return {
@@ -83,6 +84,7 @@ export async function createActivationAction(
     const isCR = data.isCrossRegion === "on" || data.isCrossRegion === "true";
     if (qty === 1) {
       const result = await createActivation({
+        tenantId,
         dealerId,
         modelId: data.modelId,
         activationDate: data.activationDate,
@@ -111,7 +113,7 @@ export async function createActivationAction(
       return { ok: true, pricedAt: result.pricedAt };
     }
 
-    const price = await getPriceOnDate(data.modelId, data.activationDate);
+    const price = await getPriceOnDate(tenantId, data.modelId, data.activationDate);
     if (!price) {
       return {
         error: "No dealer price defined for this model on or before the activation date",
@@ -121,6 +123,7 @@ export async function createActivationAction(
     await db.transaction(async () => {
       for (let i = 0; i < qty; i++) {
         await createActivation({
+          tenantId,
           dealerId,
           modelId: data.modelId,
           activationDate: data.activationDate,
@@ -166,6 +169,7 @@ export async function bulkCreateActivationsByDateAction(
   if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
 
   const rowsRaw = formData.get("rows");
   let rows: unknown = [];
@@ -221,14 +225,14 @@ export async function bulkCreateActivationsByDateAction(
   try {
     await db.transaction(async () => {
       for (const [modelId, r] of merged) {
-        const stock = await getStockForModelAsOf(dealerId, modelId, parsed.data.activationDate);
+        const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, parsed.data.activationDate);
         const model = await getModelById(modelId);
         if (r.quantity > stock) {
           throw new Error(
             `Only ${stock} ${model?.name ?? "unit(s)"} available as of ${parsed.data.activationDate} — cannot activate ${r.quantity}`,
           );
         }
-        const price = await getPriceOnDate(modelId, parsed.data.activationDate);
+        const price = await getPriceOnDate(tenantId, modelId, parsed.data.activationDate);
         if (!price) {
           throw new Error(
             `No dealer price defined for ${model?.name ?? "model"} on or before ${parsed.data.activationDate}`,
@@ -246,6 +250,7 @@ export async function bulkCreateActivationsByDateAction(
       for (const row of prepared) {
         for (let i = 0; i < row.quantity; i++) {
           await createActivation({
+            tenantId,
             dealerId,
             modelId: row.modelId,
             activationDate: parsed.data.activationDate,
@@ -295,7 +300,7 @@ export async function deleteActivationAction(id: string): Promise<void> {
   if (!(await isAuthenticated())) return;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return;
-  await deleteActivation(id, dealerId);
+  await deleteActivation(id, dealerId, OWNER_TENANT_ID);
   await logAudit({
     action: "activation.delete",
     entityType: "activation",
@@ -312,10 +317,11 @@ export async function bulkDeleteActivationsAction(
   if (!(await isAuthenticated())) return { deleted: 0 };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { deleted: 0 };
+  const tenantId = OWNER_TENANT_ID;
   let deleted = 0;
   await db.transaction(async () => {
     for (const id of ids) {
-      await deleteActivation(id, dealerId);
+      await deleteActivation(id, dealerId, tenantId);
       deleted++;
     }
   });

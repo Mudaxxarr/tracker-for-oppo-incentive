@@ -2,7 +2,7 @@
 
 import { db, schema } from "@/lib/db/client";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { isAuthenticated } from "@/lib/auth";
 
 export interface ModelQtyRow {
@@ -35,6 +35,7 @@ export async function getActivationSummaryAction(
     .innerJoin(schema.models, eq(schema.models.id, schema.activations.modelId))
     .where(
       and(
+        eq(schema.activations.tenantId, OWNER_TENANT_ID),
         eq(schema.activations.dealerId, dealerId),
         gte(schema.activations.activationDate, from),
         lte(schema.activations.activationDate, to)
@@ -66,6 +67,7 @@ export async function getDailyActivationsAction(
     .innerJoin(schema.models, eq(schema.models.id, schema.activations.modelId))
     .where(
       and(
+        eq(schema.activations.tenantId, OWNER_TENANT_ID),
         eq(schema.activations.dealerId, dealerId),
         gte(schema.activations.activationDate, from),
         lte(schema.activations.activationDate, to)

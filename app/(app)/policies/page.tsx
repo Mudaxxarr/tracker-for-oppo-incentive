@@ -1,4 +1,4 @@
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
 import {
   listActivationIncentivePolicies,
@@ -11,6 +11,7 @@ import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { PoliciesClient, type PolicyAchievements } from "./policies-client";
 
 async function computeAchievements(
+  tenantId: string,
   dealerId: string,
   tb: Awaited<ReturnType<typeof listTargetBonusPolicies>>,
   si: Awaited<ReturnType<typeof listStockInPolicies>>,
@@ -25,7 +26,7 @@ async function computeAchievements(
         activationDate: schema.activations.activationDate,
       })
       .from(schema.activations)
-      .where(eq(schema.activations.dealerId, dealerId)),
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId))),
     db
       .select({
         modelId: schema.purchases.modelId,
@@ -34,7 +35,7 @@ async function computeAchievements(
         source: schema.purchases.source,
       })
       .from(schema.purchases)
-      .where(eq(schema.purchases.dealerId, dealerId)),
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId))),
   ]);
 
   // Target bonus (1%) is gated on REGULAR purchase quantity only (not cross-region or inter-ID in).
@@ -88,7 +89,7 @@ async function computeAchievements(
 
 export default async function PoliciesPage() {
   const dealerId = await getActiveDealerId();
-  const models = await listModelsWithCurrentPrice();
+  const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
 
   if (!dealerId) {
     return (
@@ -105,13 +106,13 @@ export default async function PoliciesPage() {
   }
 
   const [tb, si, ai, di] = await Promise.all([
-    listTargetBonusPolicies(dealerId),
-    listStockInPolicies(dealerId),
-    listActivationIncentivePolicies(dealerId),
-    listDealerIncentivePolicies(dealerId),
+    listTargetBonusPolicies(OWNER_TENANT_ID, dealerId),
+    listStockInPolicies(OWNER_TENANT_ID, dealerId),
+    listActivationIncentivePolicies(OWNER_TENANT_ID, dealerId),
+    listDealerIncentivePolicies(OWNER_TENANT_ID, dealerId),
   ]);
 
-  const achievements = await computeAchievements(dealerId, tb, si, ai, di);
+  const achievements = await computeAchievements(OWNER_TENANT_ID, dealerId, tb, si, ai, di);
 
   return (
     <PoliciesClient

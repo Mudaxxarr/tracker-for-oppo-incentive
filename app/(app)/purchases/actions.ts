@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { createPurchase, deletePurchase } from "@/lib/db/queries/purchases";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
 import { PURCHASE_SOURCE } from "@/lib/constants";
@@ -36,6 +36,7 @@ export async function createPurchaseAction(
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID — create one in IDs first" };
+  const tenantId = OWNER_TENANT_ID;
 
   const parsed = PurchaseSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -56,6 +57,7 @@ export async function createPurchaseAction(
 
   try {
     const id = await createPurchase({
+      tenantId,
       dealerId,
       modelId: data.modelId,
       quantity: data.quantity,
@@ -68,13 +70,13 @@ export async function createPurchaseAction(
 
     if (updateMaster) {
       const today = new Date().toISOString().slice(0, 10);
-      const current = await getPriceOnDate(data.modelId, today);
+      const current = await getPriceOnDate(tenantId, data.modelId, today);
       if (
         !current ||
         current.dealerPrice !== data.unitDealerPrice ||
         current.invoicePrice !== data.unitInvoicePrice
       ) {
-        await updateModelPrice({
+        await updateModelPrice(tenantId, {
           modelId: data.modelId,
           dealerPrice: data.unitDealerPrice,
           invoicePrice: data.unitInvoicePrice,
@@ -125,7 +127,7 @@ export async function getPriceOnDateAction(
 ): Promise<{ dealerPrice: number; invoicePrice: number } | null> {
   if (!(await isAuthenticated())) return null;
   if (!modelId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  return getPriceOnDate(modelId, date);
+  return getPriceOnDate(OWNER_TENANT_ID, modelId, date);
 }
 
 const BulkLineSchema = z.object({
@@ -156,6 +158,7 @@ export async function createBulkInvoiceAction(
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
 
   let payload: unknown;
   try {
@@ -176,6 +179,7 @@ export async function createBulkInvoiceAction(
     for (const line of lines) {
       const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
       await createPurchase({
+        tenantId,
         dealerId,
         modelId: line.modelId,
         quantity: line.quantity,
@@ -210,7 +214,7 @@ export async function deletePurchaseAction(id: string): Promise<void> {
   if (!(await isAuthenticated())) return;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return;
-  await deletePurchase(id, dealerId);
+  await deletePurchase(id, dealerId, OWNER_TENANT_ID);
   await logAudit({
     action: "purchase.delete",
     entityType: "purchase",

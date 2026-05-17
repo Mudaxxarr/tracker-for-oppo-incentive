@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { getModelById } from "@/lib/db/queries/models";
 import * as Q from "@/lib/db/queries/policies";
 import { logAudit } from "@/lib/audit";
@@ -51,7 +51,7 @@ async function ctx() {
   if (!(await isAuthenticated())) return null;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return null;
-  return { dealerId };
+  return { dealerId, tenantId: OWNER_TENANT_ID };
 }
 
 export async function createTargetBonusAction(
@@ -64,7 +64,7 @@ export async function createTargetBonusAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (parsed.data.periodEnd < parsed.data.periodStart)
     return { error: "End date must be on/after start date" };
-  const id = await Q.createTargetBonusPolicy({ dealerId: c.dealerId, ...parsed.data });
+  const id = await Q.createTargetBonusPolicy({ tenantId: c.tenantId, dealerId: c.dealerId, ...parsed.data });
   await logAudit({
     action: "policy.target_bonus.create",
     entityType: "target_bonus_policy",
@@ -88,6 +88,7 @@ export async function createStockInAction(
   if (parsed.data.periodEnd < parsed.data.periodStart)
     return { error: "End date must be on/after start date" };
   const id = await Q.createStockInPolicy({
+    tenantId: c.tenantId,
     dealerId: c.dealerId,
     modelId: parsed.data.modelId,
     periodStart: parsed.data.periodStart,
@@ -121,6 +122,7 @@ export async function createActivationIncentiveAction(
   if (parsed.data.periodEnd < parsed.data.periodStart)
     return { error: "End date must be on/after start date" };
   const id = await Q.createActivationIncentivePolicy({
+    tenantId: c.tenantId,
     dealerId: c.dealerId,
     modelId: parsed.data.modelId,
     periodStart: parsed.data.periodStart,
@@ -155,6 +157,7 @@ export async function createDealerIncentiveAction(
     return { error: "End date must be on/after start date" };
   const modelName = parsed.data.modelId ? (await getModelById(parsed.data.modelId))?.name : null;
   const id = await Q.createDealerIncentivePolicy({
+    tenantId: c.tenantId,
     dealerId: c.dealerId,
     modelId: parsed.data.modelId ?? null,
     periodStart: parsed.data.periodStart,
@@ -180,7 +183,7 @@ export async function updateTargetBonusAction(_prev: PolicyFormState, fd: FormDa
   const id = fd.get("id") as string;
   const parsed = TargetBonusSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  await Q.updateTargetBonusPolicy(id, c.dealerId, parsed.data);
+  await Q.updateTargetBonusPolicy(id, c.tenantId, c.dealerId, parsed.data);
   revalidatePath("/policies"); revalidatePath("/dashboard");
   return { ok: true };
 }
@@ -191,7 +194,7 @@ export async function updateStockInAction(_prev: PolicyFormState, fd: FormData):
   const id = fd.get("id") as string;
   const parsed = StockInSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  await Q.updateStockInPolicy(id, c.dealerId, { periodStart: parsed.data.periodStart, periodEnd: parsed.data.periodEnd, perUnitAmount: parsed.data.perUnitAmount, minQty: parsed.data.minQty ?? null });
+  await Q.updateStockInPolicy(id, c.tenantId, c.dealerId, { periodStart: parsed.data.periodStart, periodEnd: parsed.data.periodEnd, perUnitAmount: parsed.data.perUnitAmount, minQty: parsed.data.minQty ?? null });
   revalidatePath("/policies"); revalidatePath("/dashboard");
   return { ok: true };
 }
@@ -202,7 +205,7 @@ export async function updateActivationIncentiveAction(_prev: PolicyFormState, fd
   const id = fd.get("id") as string;
   const parsed = ActivationIncentiveSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  await Q.updateActivationIncentivePolicy(id, c.dealerId, { periodStart: parsed.data.periodStart, periodEnd: parsed.data.periodEnd, perUnitAmount: parsed.data.perUnitAmount, targetQty: parsed.data.targetQty ?? null });
+  await Q.updateActivationIncentivePolicy(id, c.tenantId, c.dealerId, { periodStart: parsed.data.periodStart, periodEnd: parsed.data.periodEnd, perUnitAmount: parsed.data.perUnitAmount, targetQty: parsed.data.targetQty ?? null });
   revalidatePath("/policies"); revalidatePath("/dashboard");
   return { ok: true };
 }
@@ -213,7 +216,7 @@ export async function updateDealerIncentiveAction(_prev: PolicyFormState, fd: Fo
   const id = fd.get("id") as string;
   const parsed = DealerIncentiveSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  await Q.updateDealerIncentivePolicy(id, c.dealerId, { periodStart: parsed.data.periodStart, periodEnd: parsed.data.periodEnd, targetTotalActivations: parsed.data.targetTotalActivations, perUnitAmount: parsed.data.perUnitAmount });
+  await Q.updateDealerIncentivePolicy(id, c.tenantId, c.dealerId, { periodStart: parsed.data.periodStart, periodEnd: parsed.data.periodEnd, targetTotalActivations: parsed.data.targetTotalActivations, perUnitAmount: parsed.data.perUnitAmount });
   revalidatePath("/policies"); revalidatePath("/dashboard");
   return { ok: true };
 }
@@ -226,16 +229,16 @@ export async function deletePolicyAction(
   if (!c) return;
   switch (type) {
     case "target-bonus":
-      await Q.deleteTargetBonusPolicy(id, c.dealerId);
+      await Q.deleteTargetBonusPolicy(id, c.tenantId, c.dealerId);
       break;
     case "stock-in":
-      await Q.deleteStockInPolicy(id, c.dealerId);
+      await Q.deleteStockInPolicy(id, c.tenantId, c.dealerId);
       break;
     case "activation-incentive":
-      await Q.deleteActivationIncentivePolicy(id, c.dealerId);
+      await Q.deleteActivationIncentivePolicy(id, c.tenantId, c.dealerId);
       break;
     case "dealer-incentive":
-      await Q.deleteDealerIncentivePolicy(id, c.dealerId);
+      await Q.deleteDealerIncentivePolicy(id, c.tenantId, c.dealerId);
       break;
   }
   await logAudit({

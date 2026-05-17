@@ -1,5 +1,6 @@
 import "server-only";
 import { db, schema } from "@/lib/db/client";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { and, eq, gte, lte, or, type SQL } from "drizzle-orm";
 import { calculateIncentives, type EngineInput, type IncentiveReport } from "./index";
 import { getConstants } from "@/lib/settings";
@@ -24,6 +25,8 @@ export async function buildIncentiveReport(input: {
   const constants = await getConstants();
   const basePct = input.baseIncentivePercent ?? constants.basePercent;
 
+  const tenantId = OWNER_TENANT_ID;
+
   const [
     models,
     targetBonusPolicies,
@@ -35,19 +38,19 @@ export async function buildIncentiveReport(input: {
     db
       .select()
       .from(schema.targetBonusPolicies)
-      .where(eq(schema.targetBonusPolicies.dealerId, dealerId)),
+      .where(and(eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId))),
     db
       .select()
       .from(schema.stockInPolicies)
-      .where(eq(schema.stockInPolicies.dealerId, dealerId)),
+      .where(and(eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId))),
     db
       .select()
       .from(schema.activationIncentivePolicies)
-      .where(eq(schema.activationIncentivePolicies.dealerId, dealerId)),
+      .where(and(eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId))),
     db
       .select()
       .from(schema.dealerIncentivePolicies)
-      .where(eq(schema.dealerIncentivePolicies.dealerId, dealerId)),
+      .where(and(eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId))),
   ]);
 
   // Compute the full window (union) of report + all policy windows.
@@ -68,6 +71,7 @@ export async function buildIncentiveReport(input: {
       .from(schema.activations)
       .where(
         and(
+          eq(schema.activations.tenantId, tenantId),
           eq(schema.activations.dealerId, dealerId),
           gte(schema.activations.activationDate, minStart),
           lte(schema.activations.activationDate, maxEnd)
@@ -78,6 +82,7 @@ export async function buildIncentiveReport(input: {
       .from(schema.purchases)
       .where(
         and(
+          eq(schema.purchases.tenantId, tenantId),
           eq(schema.purchases.dealerId, dealerId),
           gte(schema.purchases.purchaseDate, minStart),
           lte(schema.purchases.purchaseDate, maxEnd)
@@ -88,6 +93,7 @@ export async function buildIncentiveReport(input: {
       .from(schema.interIdTransfers)
       .where(
         and(
+          eq(schema.interIdTransfers.tenantId, tenantId),
           eq(schema.interIdTransfers.fromDealerId, dealerId),
           gte(schema.interIdTransfers.transferDate, minStart),
           lte(schema.interIdTransfers.transferDate, maxEnd)

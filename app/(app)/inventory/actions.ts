@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
-import { getActiveDealerId, listDealerIds } from "@/lib/dealer";
+import { getActiveDealerId, listDealerIds, OWNER_TENANT_ID } from "@/lib/dealer";
 import { createActivation } from "@/lib/db/queries/activations";
 import {
   createInterIdTransfer,
@@ -33,6 +33,7 @@ export async function quickActivateAction(
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
 
   const parsed = QuickActivateSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -40,13 +41,14 @@ export async function quickActivateAction(
   const { modelId, activationDate, quantity } = parsed.data;
 
   // Validate against stock available on the activation date, not current stock.
-  const stock = await getStockForModelAsOf(dealerId, modelId, activationDate);
+  const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, activationDate);
   if (stock < quantity) {
     return { error: `Only ${stock} unit(s) available as of ${activationDate}` };
   }
 
   for (let i = 0; i < quantity; i++) {
     await createActivation({
+      tenantId,
       dealerId,
       modelId,
       activationDate,
@@ -85,6 +87,7 @@ export async function quickMoveAction(
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
 
   const parsed = QuickMoveSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -94,7 +97,7 @@ export async function quickMoveAction(
   if (toDealerId === dealerId) return { error: "Source and destination must be different" };
 
   // Validate against stock available on the transfer date (not just current stock).
-  const stockAsOf = await getStockForModelAsOf(dealerId, modelId, transferDate);
+  const stockAsOf = await getStockForModelAsOf(tenantId, dealerId, modelId, transferDate);
   if (stockAsOf < quantity) {
     return {
       error: `Only ${stockAsOf} unit(s) available as of ${transferDate}`,
@@ -103,6 +106,7 @@ export async function quickMoveAction(
 
   try {
     const id = await createInterIdTransfer({
+      tenantId,
       fromDealerId: dealerId,
       toDealerId,
       modelId,
@@ -145,7 +149,7 @@ export async function acceptTransferAction(
   const id = fd.get("transferId") as string;
   if (!id) return { error: "Missing transfer ID" };
 
-  const result = await acceptInterIdTransfer(id, dealerId);
+  const result = await acceptInterIdTransfer(OWNER_TENANT_ID, id, dealerId);
   if (!result.ok) return { error: result.message ?? "Failed to accept" };
 
   await logAudit({
@@ -173,7 +177,7 @@ export async function rejectTransferAction(
   const id = fd.get("transferId") as string;
   if (!id) return { error: "Missing transfer ID" };
 
-  const result = await rejectInterIdTransfer(id, dealerId);
+  const result = await rejectInterIdTransfer(OWNER_TENANT_ID, id, dealerId);
   if (!result.ok) return { error: result.message ?? "Failed to reject" };
 
   await logAudit({
@@ -195,7 +199,7 @@ export async function getStockAsOfAction(modelId: string, date: string): Promise
   if (!(await isAuthenticated())) return 0;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return 0;
-  return getStockForModelAsOf(dealerId, modelId, date);
+  return getStockForModelAsOf(OWNER_TENANT_ID, dealerId, modelId, date);
 }
 
 // ---- CR Caught ----
@@ -214,18 +218,19 @@ export async function crCaughtAction(
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
 
   const parsed = CrCaughtSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { modelId, quantity, caughtDate, note } = parsed.data;
 
-  const stock = await getStockForModelAsOf(dealerId, modelId, caughtDate);
+  const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, caughtDate);
   if (stock < quantity) return { error: `Only ${stock} unit(s) available as of ${caughtDate}` };
 
-  const priceInfo = await getPriceOnDate(modelId, caughtDate);
+  const priceInfo = await getPriceOnDate(tenantId, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;
 
-  await createCrCaught({ dealerId, modelId, quantity, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null });
+  await createCrCaught({ tenantId, dealerId, modelId, quantity, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null });
 
   const m = await getModelById(modelId);
   await logAudit({
@@ -254,6 +259,7 @@ export async function getModelHistoryAction(modelId: string): Promise<StockEvent
   if (!(await isAuthenticated())) return [];
   const dealerId = await getActiveDealerId();
   if (!dealerId) return [];
+  const tenantId = OWNER_TENANT_ID;
 
   const dealers = await listDealerIds();
   const dealerName = (id: string) => dealers.find((d) => d.id === id)?.name ?? id.slice(0, 8);
@@ -267,7 +273,7 @@ export async function getModelHistoryAction(modelId: string): Promise<StockEvent
       note: schema.purchases.referenceNote,
     })
     .from(schema.purchases)
-    .where(and(eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId)))
+    .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId)))
     .orderBy(asc(schema.purchases.purchaseDate));
 
   // Activations (outbound)
@@ -277,7 +283,7 @@ export async function getModelHistoryAction(modelId: string): Promise<StockEvent
       qty: sql<number>`COUNT(*)`.as("qty"),
     })
     .from(schema.activations)
-    .where(and(eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId)))
+    .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId)))
     .groupBy(schema.activations.activationDate)
     .orderBy(asc(schema.activations.activationDate));
 
@@ -293,6 +299,7 @@ export async function getModelHistoryAction(modelId: string): Promise<StockEvent
     .from(schema.interIdTransfers)
     .where(
       and(
+        eq(schema.interIdTransfers.tenantId, tenantId),
         eq(schema.interIdTransfers.fromDealerId, dealerId),
         eq(schema.interIdTransfers.modelId, modelId)
       )
@@ -310,6 +317,7 @@ export async function getModelHistoryAction(modelId: string): Promise<StockEvent
     .from(schema.interIdTransfers)
     .where(
       and(
+        eq(schema.interIdTransfers.tenantId, tenantId),
         eq(schema.interIdTransfers.toDealerId, dealerId),
         eq(schema.interIdTransfers.modelId, modelId),
         eq(schema.interIdTransfers.status, "ACCEPTED")

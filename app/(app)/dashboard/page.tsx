@@ -1,4 +1,4 @@
-import { getActiveDealer, listDealerIds } from "@/lib/dealer";
+import { getActiveDealer, listDealerIds, OWNER_TENANT_ID } from "@/lib/dealer";
 import { buildIncentiveReport, buildLastSixMonths } from "@/lib/incentive-engine/loader";
 import { countPendingCrossRegion, listInterIdTransfers } from "@/lib/db/queries/transfers";
 import { listStockForDealer } from "@/lib/db/queries/purchases";
@@ -58,12 +58,12 @@ export default async function DashboardPage() {
     await Promise.all([
       buildIncentiveReport({ dealerId: dealer.id, periodStart: startStr, periodEnd: endStr }),
       buildLastSixMonths(dealer.id),
-      countPendingCrossRegion(dealer.id),
-      listStockForDealer(dealer.id),
-      listInterIdTransfers(dealer.id),
+      countPendingCrossRegion(OWNER_TENANT_ID, dealer.id),
+      listStockForDealer(OWNER_TENANT_ID, dealer.id),
+      listInterIdTransfers(OWNER_TENANT_ID, dealer.id),
       listDealerIds(),
       getModelSalesAction(startStr, endStr),
-      getCrCaughtLoss(dealer.id, startStr, endStr, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealer.id, startStr, endStr, constants.basePercent),
     ]);
 
   const tb = report.targetBonus;

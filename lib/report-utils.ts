@@ -1,5 +1,6 @@
 import "server-only";
 import { db, schema } from "@/lib/db/client";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { and, eq, lte, gte } from "drizzle-orm";
 import type { IncentiveReport } from "@/lib/incentive-engine";
 import type { PolicyAchievementEntry } from "./report-types";
@@ -15,6 +16,7 @@ export async function buildPolicyAchievements(
   const [targetBonusPolicies, stockInPolicies, activationIncentivePolicies, dealerIncentivePolicies] =
     await Promise.all([
       db.select().from(schema.targetBonusPolicies).where(and(
+        eq(schema.targetBonusPolicies.tenantId, OWNER_TENANT_ID),
         eq(schema.targetBonusPolicies.dealerId, dealerId),
         lte(schema.targetBonusPolicies.periodStart, periodEnd),
         gte(schema.targetBonusPolicies.periodEnd, periodStart),
@@ -31,6 +33,7 @@ export async function buildPolicyAchievements(
         .from(schema.stockInPolicies)
         .innerJoin(schema.models, eq(schema.models.id, schema.stockInPolicies.modelId))
         .where(and(
+          eq(schema.stockInPolicies.tenantId, OWNER_TENANT_ID),
           eq(schema.stockInPolicies.dealerId, dealerId),
           lte(schema.stockInPolicies.periodStart, periodEnd),
           gte(schema.stockInPolicies.periodEnd, periodStart),
@@ -47,6 +50,7 @@ export async function buildPolicyAchievements(
         .from(schema.activationIncentivePolicies)
         .innerJoin(schema.models, eq(schema.models.id, schema.activationIncentivePolicies.modelId))
         .where(and(
+          eq(schema.activationIncentivePolicies.tenantId, OWNER_TENANT_ID),
           eq(schema.activationIncentivePolicies.dealerId, dealerId),
           lte(schema.activationIncentivePolicies.periodStart, periodEnd),
           gte(schema.activationIncentivePolicies.periodEnd, periodStart),
@@ -63,6 +67,7 @@ export async function buildPolicyAchievements(
         .from(schema.dealerIncentivePolicies)
         .leftJoin(schema.models, eq(schema.models.id, schema.dealerIncentivePolicies.modelId))
         .where(and(
+          eq(schema.dealerIncentivePolicies.tenantId, OWNER_TENANT_ID),
           eq(schema.dealerIncentivePolicies.dealerId, dealerId),
           lte(schema.dealerIncentivePolicies.periodStart, periodEnd),
           gte(schema.dealerIncentivePolicies.periodEnd, periodStart),

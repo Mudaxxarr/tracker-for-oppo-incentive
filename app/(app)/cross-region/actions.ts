@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
-import { getActiveDealerId } from "@/lib/dealer";
+import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import {
   createCrossRegion,
   deleteCrossRegion,
@@ -28,9 +28,11 @@ export async function createCrossRegionAction(
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
   const parsed = Schema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const id = await createCrossRegion({
+    tenantId,
     dealerId,
     ...parsed.data,
     sourceRegionNote: parsed.data.sourceRegionNote ?? null,
@@ -57,7 +59,7 @@ export async function updateStatusAction(
   if (!(await isAuthenticated())) return { ok: false, message: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { ok: false, message: "No active Dealer ID" };
-  const result = await updateCrossRegionStatus({ id, dealerId, status });
+  const result = await updateCrossRegionStatus({ id, tenantId: OWNER_TENANT_ID, dealerId, status });
   await logAudit({
     action: "cross_region.status",
     entityType: "cross_region_transfer",
@@ -89,6 +91,7 @@ export async function editCrossRegionAction(
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
   const parsed = EditSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -100,7 +103,7 @@ export async function editCrossRegionAction(
   const rows = await db
     .select()
     .from(schema.crossRegionTransfers)
-    .where(and(eq(schema.crossRegionTransfers.id, parsed.data.id), eq(schema.crossRegionTransfers.dealerId, dealerId)))
+    .where(and(eq(schema.crossRegionTransfers.tenantId, tenantId), eq(schema.crossRegionTransfers.id, parsed.data.id), eq(schema.crossRegionTransfers.dealerId, dealerId)))
     .limit(1);
   if (rows.length === 0) return { error: "Not found" };
   if (rows[0].status !== CROSS_REGION_STATUS.PENDING_REPORT) {
@@ -114,7 +117,7 @@ export async function editCrossRegionAction(
       reportedDate: parsed.data.reportedDate,
       sourceRegionNote: parsed.data.sourceRegionNote ?? null,
     })
-    .where(eq(schema.crossRegionTransfers.id, parsed.data.id));
+    .where(and(eq(schema.crossRegionTransfers.tenantId, tenantId), eq(schema.crossRegionTransfers.id, parsed.data.id)));
 
   await logAudit({
     action: "cross_region.edit",
@@ -131,7 +134,7 @@ export async function deleteCrossRegionAction(id: string): Promise<void> {
   if (!(await isAuthenticated())) return;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return;
-  await deleteCrossRegion(id, dealerId);
+  await deleteCrossRegion(id, OWNER_TENANT_ID, dealerId);
   await logAudit({
     action: "cross_region.delete",
     entityType: "cross_region_transfer",

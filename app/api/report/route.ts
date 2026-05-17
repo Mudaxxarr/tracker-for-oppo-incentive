@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
-import { getDealerIdById } from "@/lib/dealer";
+import { getDealerIdById, OWNER_TENANT_ID } from "@/lib/dealer";
 import { buildExcel } from "@/lib/export/report-excel";
 import { buildPDF } from "@/lib/export/report-pdf";
 import { buildDetailedPDF } from "@/lib/export/report-pdf-detailed";
@@ -91,6 +91,7 @@ export async function GET(req: Request) {
         .from(schema.activations)
         .innerJoin(schema.models, eq(schema.models.id, schema.activations.modelId))
         .where(and(
+          eq(schema.activations.tenantId, OWNER_TENANT_ID),
           eq(schema.activations.dealerId, dealerId),
           gte(schema.activations.activationDate, periodStart),
           lte(schema.activations.activationDate, periodEnd)
@@ -109,6 +110,7 @@ export async function GET(req: Request) {
         .from(schema.purchases)
         .innerJoin(schema.models, eq(schema.models.id, schema.purchases.modelId))
         .where(and(
+          eq(schema.purchases.tenantId, OWNER_TENANT_ID),
           eq(schema.purchases.dealerId, dealerId),
           gte(schema.purchases.purchaseDate, periodStart),
           lte(schema.purchases.purchaseDate, periodEnd)
