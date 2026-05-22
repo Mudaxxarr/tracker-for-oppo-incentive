@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db, schema } from "./db/client";
 import { eq } from "drizzle-orm";
+import { cache } from "react";
 import {
   makeDealerToken,
   parseDealerToken,
@@ -76,9 +77,25 @@ export async function endDealerSession(): Promise<void> {
   cookieStore.delete(DEALER_SESSION_COOKIE);
 }
 
+// H-B: cached per-request so multiple calls in one render don't hit DB repeatedly
+const checkTenantActive = cache(async (tenantId: string): Promise<boolean> => {
+  const rows = await db
+    .select({ status: schema.dealerTenants.status })
+    .from(schema.dealerTenants)
+    .where(eq(schema.dealerTenants.id, tenantId))
+    .limit(1);
+  if (rows.length === 0) return false;
+  const { status } = rows[0];
+  return status === "active" || status === "grace";
+});
+
 export async function getDealerSession(): Promise<ParsedDealerToken | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(DEALER_SESSION_COOKIE)?.value;
   if (!token) return null;
-  return parseDealerToken(token);
+  const parsed = await parseDealerToken(token);
+  if (!parsed) return null;
+  const active = await checkTenantActive(parsed.tenantId);
+  if (!active) return null;
+  return parsed;
 }

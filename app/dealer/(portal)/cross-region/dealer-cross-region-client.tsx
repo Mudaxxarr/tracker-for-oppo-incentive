@@ -28,10 +28,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   createCrossRegionAction,
-  deleteCrossRegionAction,
-  editCrossRegionAction,
-  updateStatusAction,
-  type CrFormState,
+  deleteDealerCrossRegionAction,
+  editDealerCrossRegionAction,
+  submitCrossRegionForApprovalAction,
+  type CrossRegionFormState,
 } from "./actions";
 import { formatDate } from "@/lib/format";
 import { CROSS_REGION_STATUS, type CrossRegionStatus } from "@/lib/constants";
@@ -42,26 +42,26 @@ import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 
 interface Props {
   models: ModelWithCurrentPrice[];
-  initial: CrossRegionRow[];
+  initialTransfers: CrossRegionRow[];
   hasDealer: boolean;
 }
 
 const STATUS_LABEL: Record<CrossRegionStatus, string> = {
   PENDING_REPORT: "Pending",
-  PENDING_OWNER_APPROVAL: "Awaiting Approval",
+  PENDING_OWNER_APPROVAL: "Awaiting Owner Approval",
   SHIFTED_TO_MY_ID: "Shifted to My ID",
   REJECTED: "Rejected",
 };
 
-export function CrossRegionClient({ models, initial, hasDealer }: Props) {
+export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }: Props) {
   const router = useRouter();
-  const [createState, createAction, createPending] = useActionState<CrFormState, FormData>(
+  const [createState, createAction, createPending] = useActionState<CrossRegionFormState, FormData>(
     createCrossRegionAction,
-    {}
+    {},
   );
-  const [editState, editAction, editPending] = useActionState<CrFormState, FormData>(
-    editCrossRegionAction,
-    {}
+  const [editState, editAction, editPending] = useActionState<CrossRegionFormState, FormData>(
+    editDealerCrossRegionAction,
+    {},
   );
   const [, startTransition] = useTransition();
   const [editRow, setEditRow] = useState<CrossRegionRow | null>(null);
@@ -72,7 +72,9 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
       toast.success("Cross-region transfer reported");
       setModelId("");
       router.refresh();
-    } else if (createState.error) toast.error(createState.error);
+    } else if (createState.error) {
+      toast.error(createState.error);
+    }
   }, [createState, router]);
 
   useEffect(() => {
@@ -80,26 +82,28 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
       toast.success("Transfer updated");
       setEditRow(null);
       router.refresh();
-    } else if (editState.error) toast.error(editState.error);
+    } else if (editState.error) {
+      toast.error(editState.error);
+    }
   }, [editState]);
 
-  const handleStatus = (id: string, status: CrossRegionStatus) => {
-    if (
-      status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID &&
-      !confirm("Mark as shifted? This auto-creates linked purchase rows at the current dealer price.")
-    ) return;
+  const handleSubmitForApproval = (id: string) => {
+    if (!confirm("Submit this transfer for owner approval? Stock will not move until the owner approves.")) return;
     startTransition(async () => {
-      const result = await updateStatusAction(id, status);
-      if (result.ok) toast.success(`Status: ${STATUS_LABEL[status]}`);
-      else toast.error(result.message ?? "Update failed");
+      const result = await submitCrossRegionForApprovalAction(id);
+      if (result.ok) toast.success("Transfer submitted — waiting for owner approval");
+      else toast.error(result.message ?? "Submit failed");
+      router.refresh();
     });
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Delete this cross-region row and any auto-created purchases? This cannot be undone.")) return;
+    if (!confirm("Delete this cross-region row and any auto-created purchases? This cannot be undone."))
+      return;
     startTransition(async () => {
-      await deleteCrossRegionAction(id);
+      await deleteDealerCrossRegionAction(id);
       toast.success("Deleted");
+      router.refresh();
     });
   };
 
@@ -117,7 +121,7 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
       {!hasDealer ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Create a Dealer ID first.
+            No active Dealer ID. Create one in <strong>IDs</strong> first.
           </CardContent>
         </Card>
       ) : (
@@ -136,7 +140,7 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
                     </span>
                   </SelectTrigger>
                   <SelectContent>
-                    {models.map((m) => (
+                    {models.filter((m) => m.isActive).map((m) => (
                       <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -169,105 +173,81 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {initial.length === 0 ? (
+                {initialTransfers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                       No cross-region transfers reported.
                     </TableCell>
                   </TableRow>
-                ) : initial.map((t) => {
-                  const status = t.status as CrossRegionStatus;
-                  return (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">{t.modelName}</TableCell>
-                      <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
-                      <TableCell>{formatDate(t.reportedDate)}</TableCell>
-                      <TableCell>{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
-                      <TableCell>
-                        {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
-                          <Badge variant="outline">Pending</Badge>
-                        ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
-                          <Badge variant="secondary">Awaiting Approval</Badge>
-                        ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
-                          <Badge>Shifted</Badge>
-                        ) : (
-                          <Badge variant="destructive">Rejected</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
+                ) : (
+                  initialTransfers.map((t) => {
+                    const status = t.status as CrossRegionStatus;
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium">{t.modelName}</TableCell>
+                        <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
+                        <TableCell>{formatDate(t.reportedDate)}</TableCell>
+                        <TableCell>{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
+                        <TableCell>
                           {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
-                            <>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Edit"
-                                onClick={() => setEditRow(t)}
-                              >
-                                <Pencil className="size-4" />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Mark shifted"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.SHIFTED_TO_MY_ID)}
-                              >
-                                <ArrowRightCircle className="size-4" />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Mark rejected"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.REJECTED)}
-                              >
-                                <XCircle className="size-4" />
-                              </Button>
-                            </>
+                            <Badge variant="outline">Pending</Badge>
                           ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
-                            <>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Approve — shift stock to dealer ID"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.SHIFTED_TO_MY_ID)}
-                              >
-                                <CheckCircle2 className="size-4 text-green-600" />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Reject"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.REJECTED)}
-                              >
-                                <XCircle className="size-4 text-destructive" />
-                              </Button>
-                            </>
+                            <Badge variant="secondary">Awaiting Approval</Badge>
                           ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
-                            <span className="text-xs text-muted-foreground">
-                              <CheckCircle2 className="mr-1 inline size-3.5" /> Done
-                            </span>
-                          ) : null}
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label="Delete"
-                            onClick={() => handleDelete(t.id)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                            <Badge>Shifted</Badge>
+                          ) : (
+                            <Badge variant="destructive">Rejected</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
+                              <>
+                                <Button
+                                  size="icon-sm"
+                                  variant="ghost"
+                                  aria-label="Edit"
+                                  onClick={() => setEditRow(t)}
+                                >
+                                  <Pencil className="size-4" />
+                                </Button>
+                                <Button
+                                  size="icon-sm"
+                                  variant="ghost"
+                                  aria-label="Submit for owner approval"
+                                  onClick={() => handleSubmitForApproval(t.id)}
+                                >
+                                  <ArrowRightCircle className="size-4" />
+                                </Button>
+                              </>
+                            ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
+                              <span className="text-xs text-muted-foreground">Waiting for owner…</span>
+                            ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
+                              <span className="text-xs text-muted-foreground">
+                                <CheckCircle2 className="mr-1 inline size-3.5" /> Done
+                              </span>
+                            ) : null}
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label="Delete"
+                              onClick={() => handleDelete(t.id)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Edit Sheet — only for PENDING rows */}
       <Sheet open={!!editRow} onOpenChange={(o) => { if (!o) setEditRow(null); }}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>

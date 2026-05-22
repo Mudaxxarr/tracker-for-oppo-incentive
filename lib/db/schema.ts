@@ -22,6 +22,9 @@ export const dealerTenants = pgTable("dealer_tenants", {
   startedAt: isoDate("started_at").notNull(),
   expiresAt: isoDate("expires_at").notNull(),
   status: text("status").notNull().default("active"), // 'active'|'grace'|'expired'|'suspended'
+  features: text("features").notNull().default("{}"),
+  backdateDays: integer("backdate_days").notNull().default(3),
+  purchaseApprovalThreshold: integer("purchase_approval_threshold"), // null = disabled
   createdAt: isoDateTime("created_at").notNull(),
 });
 
@@ -108,6 +111,7 @@ export const purchases = pgTable(
     source: text("source").notNull(),
     referenceNote: text("reference_note"),
     crossRegionTransferId: text("cross_region_transfer_id"),
+    reviewStatus: text("review_status").notNull().default("active"), // 'active'|'pending_review'|'approved'
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -325,6 +329,25 @@ export const crCaught = pgTable(
   })
 );
 
+// ---------- Owner Alerts ----------
+export const ownerAlerts = pgTable(
+  "owner_alerts",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull().references(() => dealerTenants.id, { onDelete: "cascade" }),
+    type: text("type").notNull(), // OWNER_ALERT_TYPE values
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    dealerId: text("dealer_id"),
+    message: text("message").notNull(),
+    isRead: boolean("is_read").notNull().default(false),
+    createdAt: isoDateTime("created_at").notNull(),
+  },
+  (t) => ({
+    byTenant: index("owner_alerts_by_tenant").on(t.tenantId, t.isRead, t.createdAt),
+  })
+);
+
 // ---------- App settings (global — owner only) ----------
 export const appSettings = pgTable("app_settings", {
   key: text("key").primaryKey(),
@@ -352,6 +375,23 @@ export const auditLog = pgTable(
     byDealer: index("audit_by_dealer").on(t.dealerId, t.createdAt),
     byAction: index("audit_by_action").on(t.action, t.createdAt),
     byCreated: index("audit_by_created").on(t.createdAt),
+  })
+);
+
+// ---------- Dealer Daily Backups ----------
+export const dealerDailyBackups = pgTable(
+  "dealer_daily_backups",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => dealerTenants.id, { onDelete: "cascade" }),
+    backupDate: text("backup_date").notNull(),
+    data: text("data").notNull(),
+    createdAt: isoDateTime("created_at").notNull(),
+  },
+  (t) => ({
+    uniqTenantDate: uniqueIndex("dealer_daily_backups_tenant_date").on(t.tenantId, t.backupDate),
   })
 );
 
@@ -388,3 +428,5 @@ export type CrCaught = typeof crCaught.$inferSelect;
 export type NewCrCaught = typeof crCaught.$inferInsert;
 export type AppSetting = typeof appSettings.$inferSelect;
 export type AuditLog = typeof auditLog.$inferSelect;
+export type OwnerAlert = typeof ownerAlerts.$inferSelect;
+export type NewOwnerAlert = typeof ownerAlerts.$inferInsert;

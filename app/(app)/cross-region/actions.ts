@@ -52,14 +52,15 @@ export async function createCrossRegionAction(
   return { ok: true };
 }
 
+// CR-1: owner approves or rejects a pending cross-region transfer
 export async function updateStatusAction(
   id: string,
-  status: "PENDING_REPORT" | "SHIFTED_TO_MY_ID" | "REJECTED"
+  status: "PENDING_REPORT" | "PENDING_OWNER_APPROVAL" | "SHIFTED_TO_MY_ID" | "REJECTED"
 ): Promise<{ ok: boolean; message?: string }> {
   if (!(await isAuthenticated())) return { ok: false, message: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { ok: false, message: "No active Dealer ID" };
-  const result = await updateCrossRegionStatus({ id, tenantId: OWNER_TENANT_ID, dealerId, status });
+  const result = await updateCrossRegionStatus({ id, tenantId: OWNER_TENANT_ID, dealerId, status, priceTenantId: OWNER_TENANT_ID });
   await logAudit({
     action: "cross_region.status",
     entityType: "cross_region_transfer",

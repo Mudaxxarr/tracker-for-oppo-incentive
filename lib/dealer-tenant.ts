@@ -4,6 +4,15 @@ import { db, schema } from "./db/client";
 import { and, asc, eq } from "drizzle-orm";
 import { DEALER_ACTIVE_ID_COOKIE } from "./constants";
 
+export async function getTenantById(tenantId: string) {
+  const rows = await db
+    .select()
+    .from(schema.dealerTenants)
+    .where(eq(schema.dealerTenants.id, tenantId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function listDealerIdsForTenant(tenantId: string) {
   return db
     .select()

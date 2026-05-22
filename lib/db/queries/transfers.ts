@@ -40,8 +40,24 @@ export async function createCrossRegion(input: {
   return id;
 }
 
+export async function submitCrossRegionForApproval(input: {
+  id: string; tenantId: string; dealerId: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  const rows = await db.select().from(schema.crossRegionTransfers)
+    .where(and(eq(schema.crossRegionTransfers.id, input.id), eq(schema.crossRegionTransfers.tenantId, input.tenantId), eq(schema.crossRegionTransfers.dealerId, input.dealerId)))
+    .limit(1);
+  if (rows.length === 0) return { ok: false, message: "Not found" };
+  if (rows[0].status !== CROSS_REGION_STATUS.PENDING_REPORT) return { ok: false, message: "Only pending transfers can be submitted for approval" };
+  await db.update(schema.crossRegionTransfers)
+    .set({ status: CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL })
+    .where(eq(schema.crossRegionTransfers.id, input.id));
+  return { ok: true };
+}
+
+// Owner-only: approve (PENDING_OWNER_APPROVAL → SHIFTED_TO_MY_ID) or reject
 export async function updateCrossRegionStatus(input: {
-  id: string; tenantId: string; dealerId: string; status: "PENDING_REPORT" | "SHIFTED_TO_MY_ID" | "REJECTED";
+  id: string; tenantId: string; dealerId: string; status: "PENDING_REPORT" | "PENDING_OWNER_APPROVAL" | "SHIFTED_TO_MY_ID" | "REJECTED";
+  priceTenantId?: string;
 }) {
   const rows = await db.select().from(schema.crossRegionTransfers)
     .where(and(eq(schema.crossRegionTransfers.id, input.id), eq(schema.crossRegionTransfers.tenantId, input.tenantId), eq(schema.crossRegionTransfers.dealerId, input.dealerId)))
@@ -51,8 +67,10 @@ export async function updateCrossRegionStatus(input: {
   const today = new Date().toISOString().slice(0, 10);
 
   if (input.status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID) {
-    if (transfer.status !== CROSS_REGION_STATUS.PENDING_REPORT) return { ok: false, message: "Only pending transfers can be shifted" };
-    const price = await getPriceOnDate(input.tenantId, transfer.modelId, today);
+    if (transfer.status !== CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL) {
+      return { ok: false, message: "Transfer must be pending owner approval before it can be approved" };
+    }
+    const price = await getPriceOnDate(input.priceTenantId ?? input.tenantId, transfer.modelId, today);
     if (!price) return { ok: false, message: "No dealer price defined for this model" };
     await db.insert(schema.purchases).values({
       id: randomUUID(), tenantId: input.tenantId, dealerId: transfer.dealerId,

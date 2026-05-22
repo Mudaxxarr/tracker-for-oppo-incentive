@@ -14,38 +14,37 @@ export interface StockRow {
   quantity: number;
 }
 
-export async function listStockForDealer(tenantId: string, dealerId: string): Promise<StockRow[]> {
+export async function listStockForDealer(tenantId: string, dealerId: string, priceTenantId?: string): Promise<StockRow[]> {
   const today = new Date().toISOString().slice(0, 10);
 
-  const purchaseQty = await db
-    .select({ modelId: schema.purchases.modelId, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
-    .from(schema.purchases)
-    .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
-    .groupBy(schema.purchases.modelId);
-
-  const activatedQty = await db
-    .select({ modelId: schema.activations.modelId, qty: sql<number>`COUNT(*)` })
-    .from(schema.activations)
-    .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId)))
-    .groupBy(schema.activations.modelId);
-
-  const transferredOutQty = await db
-    .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
-    .from(schema.interIdTransfers)
-    .where(
-      and(
-        eq(schema.interIdTransfers.tenantId, tenantId),
-        eq(schema.interIdTransfers.fromDealerId, dealerId),
-        ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)
+  const [purchaseQty, activatedQty, transferredOutQty, crCaughtQty] = await Promise.all([
+    db
+      .select({ modelId: schema.purchases.modelId, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
+      .groupBy(schema.purchases.modelId),
+    db
+      .select({ modelId: schema.activations.modelId, qty: sql<number>`COUNT(*)` })
+      .from(schema.activations)
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId)))
+      .groupBy(schema.activations.modelId),
+    db
+      .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+      .from(schema.interIdTransfers)
+      .where(
+        and(
+          eq(schema.interIdTransfers.tenantId, tenantId),
+          eq(schema.interIdTransfers.fromDealerId, dealerId),
+          ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)
+        )
       )
-    )
-    .groupBy(schema.interIdTransfers.modelId);
-
-  const crCaughtQty = await db
-    .select({ modelId: schema.crCaught.modelId, qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
-    .from(schema.crCaught)
-    .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)))
-    .groupBy(schema.crCaught.modelId);
+      .groupBy(schema.interIdTransfers.modelId),
+    db
+      .select({ modelId: schema.crCaught.modelId, qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
+      .from(schema.crCaught)
+      .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)))
+      .groupBy(schema.crCaught.modelId),
+  ]);
 
   const byModel = new Map<string, number>();
   for (const r of purchaseQty) byModel.set(r.modelId, (byModel.get(r.modelId) ?? 0) + Number(r.qty));
@@ -67,7 +66,7 @@ export async function listStockForDealer(tenantId: string, dealerId: string): Pr
     .leftJoin(
       schema.modelPriceHistory,
       and(
-        eq(schema.modelPriceHistory.tenantId, tenantId),
+        eq(schema.modelPriceHistory.tenantId, priceTenantId ?? tenantId),
         eq(schema.modelPriceHistory.modelId, schema.models.id),
         lte(schema.modelPriceHistory.effectiveFrom, today),
         sql`(${schema.modelPriceHistory.effectiveTo} IS NULL OR ${schema.modelPriceHistory.effectiveTo} > ${today})`
@@ -82,51 +81,45 @@ export async function listStockForDealer(tenantId: string, dealerId: string): Pr
 }
 
 export async function getStockForModel(tenantId: string, dealerId: string, modelId: string): Promise<number> {
-  const [{ qty: pq }] = await db
-    .select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
-    .from(schema.purchases)
-    .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId)));
-  const [{ qty: aq }] = await db
-    .select({ qty: sql<number>`COUNT(*)` })
-    .from(schema.activations)
-    .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId)));
-  const [{ qty: tq }] = await db
-    .select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
-    .from(schema.interIdTransfers)
-    .where(
-      and(
+  const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
+    db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId))),
+    db.select({ qty: sql<number>`COUNT(*)` })
+      .from(schema.activations)
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId))),
+    db.select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+      .from(schema.interIdTransfers)
+      .where(and(
         eq(schema.interIdTransfers.tenantId, tenantId),
         eq(schema.interIdTransfers.fromDealerId, dealerId),
         eq(schema.interIdTransfers.modelId, modelId),
         ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)
-      )
-    );
-  const crcQty = await getCrCaughtForStockCalc(tenantId, dealerId, modelId);
+      )),
+    getCrCaughtForStockCalc(tenantId, dealerId, modelId),
+  ]);
   return Number(pq) - Number(aq) - Number(tq) - crcQty;
 }
 
 export async function getStockForModelAsOf(tenantId: string, dealerId: string, modelId: string, asOf: string): Promise<number> {
-  const [{ qty: pq }] = await db
-    .select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
-    .from(schema.purchases)
-    .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lte(schema.purchases.purchaseDate, asOf)));
-  const [{ qty: aq }] = await db
-    .select({ qty: sql<number>`COUNT(*)` })
-    .from(schema.activations)
-    .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId), lte(schema.activations.activationDate, asOf)));
-  const [{ qty: tq }] = await db
-    .select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
-    .from(schema.interIdTransfers)
-    .where(
-      and(
+  const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
+    db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lte(schema.purchases.purchaseDate, asOf))),
+    db.select({ qty: sql<number>`COUNT(*)` })
+      .from(schema.activations)
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId), lte(schema.activations.activationDate, asOf))),
+    db.select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+      .from(schema.interIdTransfers)
+      .where(and(
         eq(schema.interIdTransfers.tenantId, tenantId),
         eq(schema.interIdTransfers.fromDealerId, dealerId),
         eq(schema.interIdTransfers.modelId, modelId),
         lte(schema.interIdTransfers.transferDate, asOf),
         ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)
-      )
-    );
-  const crcQty = await getCrCaughtAsOf(tenantId, dealerId, modelId, asOf);
+      )),
+    getCrCaughtAsOf(tenantId, dealerId, modelId, asOf),
+  ]);
   return Number(pq) - Number(aq) - Number(tq) - crcQty;
 }
 
@@ -163,10 +156,54 @@ export async function createPurchase(input: {
   tenantId: string; dealerId: string; modelId: string; quantity: number;
   unitDealerPrice: number; unitInvoicePrice: number; purchaseDate: string;
   source: PurchaseSource; referenceNote: string | null; crossRegionTransferId?: string | null;
+  reviewStatus?: string;
 }): Promise<string> {
   const id = randomUUID();
-  await db.insert(schema.purchases).values({ id, ...input, crossRegionTransferId: input.crossRegionTransferId ?? null });
+  await db.insert(schema.purchases).values({
+    id, ...input,
+    crossRegionTransferId: input.crossRegionTransferId ?? null,
+    reviewStatus: input.reviewStatus ?? "active",
+  });
   return id;
+}
+
+export async function updatePurchase(
+  id: string,
+  dealerId: string,
+  tenantId: string,
+  input: {
+    quantity: number;
+    unitDealerPrice: number;
+    unitInvoicePrice: number;
+    purchaseDate: string;
+    source: PurchaseSource;
+  }
+): Promise<void> {
+  await db
+    .update(schema.purchases)
+    .set({
+      quantity: input.quantity,
+      unitDealerPrice: input.unitDealerPrice,
+      unitInvoicePrice: input.unitInvoicePrice,
+      purchaseDate: input.purchaseDate,
+      source: input.source,
+    })
+    .where(
+      and(
+        eq(schema.purchases.id, id),
+        eq(schema.purchases.dealerId, dealerId),
+        eq(schema.purchases.tenantId, tenantId)
+      )
+    );
+}
+
+export async function getPurchaseById(id: string, dealerId: string, tenantId: string) {
+  const rows = await db
+    .select()
+    .from(schema.purchases)
+    .where(and(eq(schema.purchases.id, id), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.tenantId, tenantId)))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function deletePurchase(id: string, dealerId: string, tenantId: string): Promise<void> {

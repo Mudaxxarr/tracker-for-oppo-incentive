@@ -10,10 +10,23 @@ export type PurchaseSource = (typeof PURCHASE_SOURCE)[keyof typeof PURCHASE_SOUR
 
 export const CROSS_REGION_STATUS = {
   PENDING_REPORT: "PENDING_REPORT",
+  PENDING_OWNER_APPROVAL: "PENDING_OWNER_APPROVAL",
   SHIFTED_TO_MY_ID: "SHIFTED_TO_MY_ID",
   REJECTED: "REJECTED",
 } as const;
 export type CrossRegionStatus = (typeof CROSS_REGION_STATUS)[keyof typeof CROSS_REGION_STATUS];
+
+export const PURCHASE_REVIEW_STATUS = {
+  ACTIVE: "active",
+  PENDING_REVIEW: "pending_review",
+  APPROVED: "approved",
+} as const;
+export type PurchaseReviewStatus = (typeof PURCHASE_REVIEW_STATUS)[keyof typeof PURCHASE_REVIEW_STATUS];
+
+export const OWNER_ALERT_TYPE = {
+  CR_PENDING_APPROVAL: "cr_pending_approval",
+  PURCHASE_PENDING_REVIEW: "purchase_pending_review",
+} as const;
 
 export const INTER_ID_STATUS = {
   PENDING:  "PENDING",

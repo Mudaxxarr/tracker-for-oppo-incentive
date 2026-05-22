@@ -5,7 +5,8 @@ import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { db } from "@/lib/db/client";
-import { createPurchase, deletePurchase, updatePurchase } from "@/lib/db/queries/purchases";
+import { createPurchase, deletePurchase, getPurchaseById, updatePurchase } from "@/lib/db/queries/purchases";
+import { getStockForModel, getStockForModelAsOf } from "@/lib/db/queries/purchases";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -232,6 +233,29 @@ export async function updatePurchaseAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const data = parsed.data;
 
+  const existing = await getPurchaseById(data.id, dealerId, OWNER_TENANT_ID);
+  if (!existing) return { error: "Purchase not found" };
+
+  // S-2: quantity reduced — check the reduction doesn't push stock negative
+  if (data.quantity < existing.quantity) {
+    const reduction = existing.quantity - data.quantity;
+    const stock = await getStockForModel(OWNER_TENANT_ID, dealerId, existing.modelId);
+    if (stock < reduction) {
+      const m = await getModelById(existing.modelId);
+      return { error: `Cannot reduce quantity by ${reduction} — only ${stock} unit(s) of ${m?.name ?? "this model"} remain in stock` };
+    }
+  }
+
+  // S-3: date moved forward — check no activation in the gap becomes unbacked
+  if (data.purchaseDate > existing.purchaseDate) {
+    const stockAtNewDate = await getStockForModelAsOf(OWNER_TENANT_ID, dealerId, existing.modelId, data.purchaseDate);
+    // After move, stock between old and new date drops by purchase.quantity
+    if (stockAtNewDate - existing.quantity < 0) {
+      const m = await getModelById(existing.modelId);
+      return { error: `Cannot move purchase date forward — activations between ${existing.purchaseDate} and ${data.purchaseDate} would become unbacked for ${m?.name ?? "this model"}` };
+    }
+  }
+
   try {
     await updatePurchase(data.id, dealerId, OWNER_TENANT_ID, {
       quantity: data.quantity,
@@ -255,17 +279,34 @@ export async function updatePurchaseAction(
   }
 }
 
-export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ deleted: number }> {
+export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ deleted: number; blocked?: string[] }> {
   if (!(await isAuthenticated())) return { deleted: 0 };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { deleted: 0 };
   let deleted = 0;
+  const blocked: string[] = [];
   await db.transaction(async () => {
     for (const id of ids) {
+      const purchase = await getPurchaseById(id, dealerId, OWNER_TENANT_ID);
+      if (!purchase) continue;
+      const stock = await getStockForModel(OWNER_TENANT_ID, dealerId, purchase.modelId);
+      if (stock < purchase.quantity) {
+        blocked.push(id);
+        continue;
+      }
       await deletePurchase(id, dealerId, OWNER_TENANT_ID);
       deleted++;
     }
   });
+  if (blocked.length > 0) {
+    await logAudit({
+      action: "purchase.bulk_delete",
+      status: "error",
+      summary: `Bulk delete: ${deleted} deleted, ${blocked.length} blocked (consumed stock)`,
+      payload: { ids, blocked },
+    });
+    return { deleted, blocked };
+  }
   await logAudit({
     action: "purchase.bulk_delete",
     summary: `Bulk deleted ${deleted} purchase(s)`,
@@ -276,10 +317,18 @@ export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ delete
   return { deleted };
 }
 
-export async function deletePurchaseAction(id: string): Promise<void> {
-  if (!(await isAuthenticated())) return;
+export async function deletePurchaseAction(id: string): Promise<{ error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
-  if (!dealerId) return;
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const purchase = await getPurchaseById(id, dealerId, OWNER_TENANT_ID);
+  if (!purchase) return { error: "Purchase not found" };
+  const stock = await getStockForModel(OWNER_TENANT_ID, dealerId, purchase.modelId);
+  if (stock < purchase.quantity) {
+    const m = await getModelById(purchase.modelId);
+    const consumed = purchase.quantity - stock;
+    return { error: `Cannot delete — ${consumed} of ${purchase.quantity} unit(s) of ${m?.name ?? "this model"} have already been activated or transferred out` };
+  }
   await deletePurchase(id, dealerId, OWNER_TENANT_ID);
   await logAudit({
     action: "purchase.delete",
@@ -289,4 +338,5 @@ export async function deletePurchaseAction(id: string): Promise<void> {
   });
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
+  return {};
 }
