@@ -348,6 +348,27 @@ export const customers = pgTable(
   })
 );
 
+// ---------- Warranty Claims ----------
+export const warrantyClaims = pgTable(
+  "warranty_claims",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull().references(() => dealerTenants.id, { onDelete: "cascade" }),
+    dealerId: text("dealer_id").notNull().references(() => dealerIds.id, { onDelete: "cascade" }),
+    customerId: text("customer_id").references(() => customers.id, { onDelete: "set null" }),
+    activationId: text("activation_id").references(() => activations.id, { onDelete: "set null" }),
+    modelId: text("model_id").notNull().references(() => models.id, { onDelete: "restrict" }),
+    issueDesc: text("issue_desc").notNull(),
+    status: text("status").notNull().default("pending"), // pending|in_repair|resolved|rejected
+    createdAt: isoDateTime("created_at").notNull(),
+    resolvedAt: text("resolved_at"),
+  },
+  (t) => ({
+    byDealer: index("warranty_by_dealer").on(t.tenantId, t.dealerId, t.createdAt),
+    byStatus: index("warranty_by_status").on(t.tenantId, t.status, t.createdAt),
+  })
+);
+
 // ---------- Owner Alerts ----------
 export const ownerAlerts = pgTable(
   "owner_alerts",
@@ -451,3 +472,5 @@ export type OwnerAlert = typeof ownerAlerts.$inferSelect;
 export type NewOwnerAlert = typeof ownerAlerts.$inferInsert;
 export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
+export type WarrantyClaim = typeof warrantyClaims.$inferSelect;
+export type NewWarrantyClaim = typeof warrantyClaims.$inferInsert;

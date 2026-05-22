@@ -35,6 +35,14 @@ export const INTER_ID_STATUS = {
 } as const;
 export type InterIdStatus = (typeof INTER_ID_STATUS)[keyof typeof INTER_ID_STATUS];
 
+export const WARRANTY_CLAIM_STATUS = {
+  PENDING: "pending",
+  IN_REPAIR: "in_repair",
+  RESOLVED: "resolved",
+  REJECTED: "rejected",
+} as const;
+export type WarrantyClaimStatus = (typeof WARRANTY_CLAIM_STATUS)[keyof typeof WARRANTY_CLAIM_STATUS];
+
 export const SESSION_COOKIE = "oppo_session";
 export const TEAM_SESSION_COOKIE = "oppo_team_session";
 export const DEALER_SESSION_COOKIE = "dealer_session";
