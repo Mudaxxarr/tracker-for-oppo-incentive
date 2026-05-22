@@ -1,0 +1,40 @@
+{
+  "name": "Alhamd Sales Console",
+  "short_name": "Sales Console",
+  "description": "OPPO dealer management — activations, stock, incentives.",
+  "start_url": "/dealer/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#0A6E5C",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick Sell",
+      "short_name": "Sell",
+      "url": "/dealer/pos",
+      "description": "Open POS / sell flow"
+    },
+    {
+      "name": "New Activation",
+      "short_name": "Activate",
+      "url": "/dealer/activations",
+      "description": "Log a new activation"
+    }
+  ]
+}
