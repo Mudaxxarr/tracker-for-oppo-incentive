@@ -10,6 +10,7 @@ export interface ModelWithCurrentPrice {
   isActive: boolean;
   dealerPrice: number | null;
   invoicePrice: number | null;
+  lowStockThreshold: number | null;
 }
 
 export async function listModelsWithCurrentPrice(tenantId: string): Promise<ModelWithCurrentPrice[]> {
@@ -20,6 +21,7 @@ export async function listModelsWithCurrentPrice(tenantId: string): Promise<Mode
       name: schema.models.name,
       sku: schema.models.sku,
       isActive: schema.models.isActive,
+      lowStockThreshold: schema.models.lowStockThreshold,
       dealerPrice: schema.modelPriceHistory.dealerPrice,
       invoicePrice: schema.modelPriceHistory.invoicePrice,
     })
@@ -39,6 +41,20 @@ export async function listModelsWithCurrentPrice(tenantId: string): Promise<Mode
 export async function getModelById(id: string) {
   const rows = await db.select().from(schema.models).where(eq(schema.models.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+export async function getModelsWithThreshold(): Promise<{ id: string; name: string; lowStockThreshold: number }[]> {
+  const rows = await db
+    .select({ id: schema.models.id, name: schema.models.name, lowStockThreshold: schema.models.lowStockThreshold })
+    .from(schema.models)
+    .where(eq(schema.models.isActive, true));
+  return rows
+    .filter((r) => r.lowStockThreshold != null)
+    .map((r) => ({ id: r.id, name: r.name, lowStockThreshold: r.lowStockThreshold! }));
+}
+
+export async function setModelLowStockThreshold(id: string, threshold: number | null): Promise<void> {
+  await db.update(schema.models).set({ lowStockThreshold: threshold }).where(eq(schema.models.id, id));
 }
 
 export async function getPriceOnDate(

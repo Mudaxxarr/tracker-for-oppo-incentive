@@ -61,6 +61,7 @@ export const models = pgTable(
     name: text("name").notNull(),
     sku: text("sku"),
     isActive: boolean("is_active").notNull().default(true),
+    lowStockThreshold: integer("low_stock_threshold"), // null = no alert
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({

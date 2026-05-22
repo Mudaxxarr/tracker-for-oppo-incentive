@@ -14,6 +14,7 @@ import {
   BookUser,
   ShieldCheck,
   BookOpen,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/customers", label: "Customers", icon: BookUser },
   { href: "/warranty", label: "Warranty", icon: ShieldCheck },
   { href: "/scripts", label: "Scripts", icon: BookOpen },
+  { href: "/low-stock", label: "Low Stock", icon: AlertTriangle },
   { href: "/activity", label: "Activity", icon: History },
   { href: "/settings", label: "Settings", icon: Settings, primaryMobile: true },
   { href: "/team/dashboard", label: "Team View", icon: Users },
