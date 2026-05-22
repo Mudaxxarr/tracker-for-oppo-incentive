@@ -11,6 +11,7 @@ import {
   Package,
   Warehouse,
   Users,
+  BookUser,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,9 +32,15 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/policies", label: "Policies", icon: ScrollText },
   { href: "/reports", label: "Reports", icon: FileBarChart2, primaryMobile: true },
   { href: "/ids", label: "IDs", icon: IdCard },
+  { href: "/customers", label: "Customers", icon: BookUser },
   { href: "/activity", label: "Activity", icon: History },
   { href: "/settings", label: "Settings", icon: Settings, primaryMobile: true },
   { href: "/team/dashboard", label: "Team View", icon: Users },
+];
+
+export const ADMIN_NAV_ITEMS: NavItem[] = [
+  { href: "/admin/dealers", label: "Dealers", icon: Users },
+  { href: "/admin/revenue", label: "Revenue", icon: FileBarChart2 },
 ];
 
 export const PRIMARY_MOBILE_NAV = NAV_ITEMS.filter((i) => i.primaryMobile).slice(0, 5);
