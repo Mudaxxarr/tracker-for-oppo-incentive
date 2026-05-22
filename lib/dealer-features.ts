@@ -12,7 +12,8 @@ export type DealerFeatureKey =
   | "activity"
   | "customers"
   | "warranty"
-  | "scripts";
+  | "scripts"
+  | "pos";
 
 export type DealerFeatures = Partial<Record<DealerFeatureKey, boolean>>;
 
@@ -31,6 +32,7 @@ export const DEALER_FEATURE_LABELS: Record<DealerFeatureKey, string> = {
   customers: "Customers",
   warranty: "Warranty Claims",
   scripts: "Sales Scripts",
+  pos: "POS / Sell",
 };
 
 export const ALL_FEATURE_KEYS: DealerFeatureKey[] = [
@@ -48,6 +50,7 @@ export const ALL_FEATURE_KEYS: DealerFeatureKey[] = [
   "customers",
   "warranty",
   "scripts",
+  "pos",
 ];
 
 export function parseDealerFeatures(raw: string): DealerFeatures {

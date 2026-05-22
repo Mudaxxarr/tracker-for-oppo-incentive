@@ -20,6 +20,7 @@ import {
   BookUser,
   ShieldCheck,
   BookOpen,
+  Receipt,
 } from "lucide-react";
 import { logoutAction } from "@/app/dealer/actions";
 import type { DealerFeatureKey, DealerFeatures } from "@/lib/dealer-features";
@@ -41,6 +42,7 @@ const NAV: {
   { href: "/dealer/policies", label: "Policies", icon: ScrollText, feature: "policies" },
   { href: "/dealer/reports", label: "Reports", icon: FileBarChart2, feature: "reports", primaryMobile: true },
   { href: "/dealer/ids", label: "IDs", icon: IdCard, feature: "ids", primaryMobile: true },
+  { href: "/dealer/pos", label: "Sell", icon: Receipt, feature: "pos", primaryMobile: true },
   { href: "/dealer/customers", label: "Customers", icon: BookUser, feature: "customers" },
   { href: "/dealer/warranty", label: "Warranty", icon: ShieldCheck, feature: "warranty" },
   { href: "/dealer/scripts", label: "Scripts", icon: BookOpen, feature: "scripts" },
