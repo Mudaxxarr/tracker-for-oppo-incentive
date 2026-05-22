@@ -369,6 +369,16 @@ export const warrantyClaims = pgTable(
   })
 );
 
+// ---------- Sales Scripts (global — owner manages, all dealers read) ----------
+export const scripts = pgTable("scripts", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: isoDateTime("created_at").notNull(),
+});
+
 // ---------- Owner Alerts ----------
 export const ownerAlerts = pgTable(
   "owner_alerts",
@@ -474,3 +484,5 @@ export type Customer = typeof customers.$inferSelect;
 export type NewCustomer = typeof customers.$inferInsert;
 export type WarrantyClaim = typeof warrantyClaims.$inferSelect;
 export type NewWarrantyClaim = typeof warrantyClaims.$inferInsert;
+export type Script = typeof scripts.$inferSelect;
+export type NewScript = typeof scripts.$inferInsert;
