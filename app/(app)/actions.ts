@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDealerIdById, setActiveDealerId } from "@/lib/dealer";
-import { endSession } from "@/lib/auth";
+import { endSession, isAuthenticated } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 export async function switchDealerAction(id: string): Promise<void> {
+  if (!(await isAuthenticated())) return;
   const dealer = await getDealerIdById(id);
   if (!dealer) return;
   await setActiveDealerId(id);
@@ -21,7 +22,7 @@ export async function switchDealerAction(id: string): Promise<void> {
 }
 
 export async function lockAction(): Promise<void> {
-  await logAudit({ action: "auth.lock", summary: "Locked app" });
+  await logAudit({ action: "auth.logout", summary: "Admin signed out" });
   await endSession();
-  redirect("/unlock");
+  redirect("/login");
 }

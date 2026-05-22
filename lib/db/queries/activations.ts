@@ -88,6 +88,43 @@ export async function createActivation(input: {
   return { id, pricedAt: snapshot, isCrossRegion };
 }
 
+export async function updateActivation(
+  id: string,
+  dealerId: string,
+  tenantId: string,
+  input: {
+    activationDate: string;
+    imei: string | null;
+    isCrossRegion: boolean;
+    dealerPriceSnapshot: number;
+  }
+): Promise<void> {
+  await db
+    .update(schema.activations)
+    .set({
+      activationDate: input.activationDate,
+      imei: input.imei,
+      isCrossRegion: input.isCrossRegion,
+      dealerPriceSnapshot: input.dealerPriceSnapshot,
+    })
+    .where(
+      and(
+        eq(schema.activations.id, id),
+        eq(schema.activations.dealerId, dealerId),
+        eq(schema.activations.tenantId, tenantId)
+      )
+    );
+}
+
+export async function getActivationById(id: string, dealerId: string, tenantId: string) {
+  const rows = await db
+    .select()
+    .from(schema.activations)
+    .where(and(eq(schema.activations.id, id), eq(schema.activations.dealerId, dealerId), eq(schema.activations.tenantId, tenantId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function deleteActivation(id: string, dealerId: string, tenantId: string): Promise<void> {
   await db
     .delete(schema.activations)

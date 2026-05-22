@@ -2,7 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { randomUUID } from "node:crypto";
 import { db, schema } from "./db/client";
-import { and, desc, eq, gte, like, lte, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, lte, sql, type SQL } from "drizzle-orm";
 import { getActiveDealerId } from "./dealer";
 
 export type AuditStatus = "ok" | "error";
@@ -88,16 +88,23 @@ export async function listAuditLog(filters: AuditFilters = {}) {
   return where.length === 0 ? q : q.where(and(...where));
 }
 
-/** Permanently delete log rows older than `olderThanDays`. Returns count. */
-export async function purgeAuditLog(olderThanDays: number): Promise<number> {
+/** Permanently delete log rows older than `olderThanDays`. Returns count.
+ *  Pass `scopeDealerIds` to restrict the purge to a specific set of dealer IDs
+ *  (required for dealer portal calls to prevent cross-tenant log deletion). */
+export async function purgeAuditLog(olderThanDays: number, scopeDealerIds?: string[]): Promise<number> {
   const cutoff = new Date(Date.now() - olderThanDays * 24 * 3600 * 1000).toISOString();
+  const baseCondition = lte(schema.auditLog.createdAt, cutoff);
+  const condition =
+    scopeDealerIds && scopeDealerIds.length > 0
+      ? and(baseCondition, inArray(schema.auditLog.dealerId, scopeDealerIds))
+      : baseCondition;
   const [{ n }] = await db
     .select({ n: sql<number>`COUNT(*)` })
     .from(schema.auditLog)
-    .where(lte(schema.auditLog.createdAt, cutoff));
+    .where(condition);
   const count = Number(n);
   if (count > 0) {
-    await db.delete(schema.auditLog).where(lte(schema.auditLog.createdAt, cutoff));
+    await db.delete(schema.auditLog).where(condition);
   }
   return count;
 }

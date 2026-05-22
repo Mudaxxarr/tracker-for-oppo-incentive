@@ -8,6 +8,8 @@ import { db } from "@/lib/db/client";
 import {
   createActivation,
   deleteActivation,
+  getActivationById,
+  updateActivation,
 } from "@/lib/db/queries/activations";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
@@ -74,43 +76,49 @@ export async function createActivationAction(
     return { error: "IMEI can only be set when quantity is 1" };
   }
   try {
-    const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
-    if (qty > stock) {
-      const m = await getModelById(data.modelId);
-      return {
-        error: `Only ${stock} ${m?.name ?? "unit(s)"} available as of ${data.activationDate} — cannot activate ${qty}`,
-      };
-    }
     const isCR = data.isCrossRegion === "on" || data.isCrossRegion === "true";
+
     if (qty === 1) {
-      const result = await createActivation({
-        tenantId,
-        dealerId,
-        modelId: data.modelId,
-        activationDate: data.activationDate,
-        imei: data.imei ? data.imei : null,
-        purchaseId: data.purchaseId || null,
-        isCrossRegion: isCR,
+      let stockError: string | null = null;
+      let singleResult: { id: string; pricedAt: number; isCrossRegion: boolean } | undefined;
+      await db.transaction(async () => {
+        const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
+        if (stock < 1) {
+          const m = await getModelById(data.modelId);
+          stockError = `Only ${stock} ${m?.name ?? "unit(s)"} available as of ${data.activationDate} — cannot activate 1`;
+          return;
+        }
+        singleResult = await createActivation({
+          tenantId,
+          dealerId,
+          modelId: data.modelId,
+          activationDate: data.activationDate,
+          imei: data.imei ? data.imei : null,
+          purchaseId: data.purchaseId || null,
+          isCrossRegion: isCR,
+        });
       });
+      if (stockError) return { error: stockError };
+      if (!singleResult) return { error: "Failed to create activation" };
       const m = await getModelById(data.modelId);
       await logAudit({
         action: "activation.create",
         entityType: "activation",
-        entityId: result.id,
-        summary: `Activated 1 × ${m?.name ?? "?"} @ ${formatPKR(result.pricedAt)}${
+        entityId: singleResult.id,
+        summary: `Activated 1 × ${m?.name ?? "?"} @ ${formatPKR(singleResult.pricedAt)}${
           data.imei ? ` (IMEI ••••${data.imei.slice(-6)})` : ""
         }`,
         payload: {
           modelId: data.modelId,
           activationDate: data.activationDate,
           imei: data.imei || null,
-          dealerPriceSnapshot: result.pricedAt,
-          isCrossRegion: result.isCrossRegion,
+          dealerPriceSnapshot: singleResult.pricedAt,
+          isCrossRegion: singleResult.isCrossRegion,
         },
       });
       revalidatePath("/activations");
       revalidatePath("/dashboard");
-      return { ok: true, pricedAt: result.pricedAt };
+      return { ok: true, pricedAt: singleResult.pricedAt };
     }
 
     const price = await getPriceOnDate(tenantId, data.modelId, data.activationDate);
@@ -120,7 +128,14 @@ export async function createActivationAction(
       };
     }
     let inserted = 0;
+    let bulkStockError: string | null = null;
     await db.transaction(async () => {
+      const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
+      if (qty > stock) {
+        const m = await getModelById(data.modelId);
+        bulkStockError = `Only ${stock} ${m?.name ?? "unit(s)"} available as of ${data.activationDate} — cannot activate ${qty}`;
+        return;
+      }
       for (let i = 0; i < qty; i++) {
         await createActivation({
           tenantId,
@@ -135,6 +150,7 @@ export async function createActivationAction(
         inserted += 1;
       }
     });
+    if (bulkStockError) return { error: bulkStockError };
     const m = await getModelById(data.modelId);
     await logAudit({
       action: "activation.bulk_qty",
@@ -292,6 +308,75 @@ export async function bulkCreateActivationsByDateAction(
       status: "error",
       summary: `Bulk-by-date failed: ${msg}`,
     });
+    return { error: msg };
+  }
+}
+
+const UpdateActivationSchema = z.object({
+  id: z.string().min(1),
+  modelId: z.string().min(1),
+  activationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  imei: z
+    .string()
+    .trim()
+    .regex(/^\d{14,16}$/, "IMEI must be 14–16 digits")
+    .optional()
+    .or(z.literal("")),
+  isCrossRegion: z
+    .union([z.literal("on"), z.literal("true"), z.literal("")])
+    .optional(),
+});
+
+export async function updateActivationAction(
+  _prev: ActivationFormState,
+  formData: FormData
+): Promise<ActivationFormState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
+
+  const parsed = UpdateActivationSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const data = parsed.data;
+
+  const existing = await getActivationById(data.id, dealerId, tenantId);
+  if (!existing) return { error: "Activation not found" };
+
+  if (data.activationDate < existing.activationDate) {
+    const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
+    if (stock < 1) {
+      const m = await getModelById(data.modelId);
+      return { error: `Only ${stock} ${m?.name ?? "unit(s)"} available as of ${data.activationDate} — cannot move activation to this date` };
+    }
+  }
+
+  const price = await getPriceOnDate(tenantId, data.modelId, data.activationDate);
+  if (!price) {
+    return { error: `No dealer price defined for this model on ${data.activationDate}` };
+  }
+
+  const isCR = data.isCrossRegion === "on" || data.isCrossRegion === "true";
+
+  try {
+    await updateActivation(data.id, dealerId, tenantId, {
+      activationDate: data.activationDate,
+      imei: data.imei || null,
+      isCrossRegion: isCR,
+      dealerPriceSnapshot: price.dealerPrice,
+    });
+    const m = await getModelById(data.modelId);
+    await logAudit({
+      action: "activation.update",
+      entityType: "activation",
+      entityId: data.id,
+      summary: `Updated activation ${data.id.slice(0, 8)}: date=${data.activationDate}, ${m?.name ?? "?"} @ ${formatPKR(price.dealerPrice)}`,
+    });
+    revalidatePath("/activations");
+    revalidatePath("/dashboard");
+    return { ok: true, pricedAt: price.dealerPrice };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to update activation";
     return { error: msg };
   }
 }

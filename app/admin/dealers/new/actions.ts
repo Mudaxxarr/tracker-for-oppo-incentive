@@ -1,12 +1,13 @@
 "use server";
 
 import { createTenant } from "@/lib/admin/dealers";
+import { isAuthenticated } from "@/lib/auth";
 import { z } from "zod";
 
 const Schema = z.object({
   businessName: z.string().min(2).max(120),
   ownerEmail: z.string().email(),
-  adminEmail: z.string().email(),
+  adminEmail: z.string().min(3).max(120),
   planMonths: z.coerce.number().int().min(1).max(60),
 });
 
@@ -24,6 +25,7 @@ export async function createTenantAction(
   _prev: CreateTenantState,
   formData: FormData,
 ): Promise<CreateTenantState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const parsed = Schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };

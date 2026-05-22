@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
-import { createPurchase, deletePurchase } from "@/lib/db/queries/purchases";
+import { db } from "@/lib/db/client";
+import { createPurchase, deletePurchase, updatePurchase } from "@/lib/db/queries/purchases";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -208,6 +209,71 @@ export async function createBulkInvoiceAction(
     });
     return { error: msg };
   }
+}
+
+const UpdatePurchaseSchema = z.object({
+  id: z.string().min(1),
+  quantity: z.coerce.number().int().positive("Quantity must be ≥ 1"),
+  unitDealerPrice: z.coerce.number().nonnegative(),
+  unitInvoicePrice: z.coerce.number().nonnegative(),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  source: z.enum([PURCHASE_SOURCE.REGULAR, PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN]),
+});
+
+export async function updatePurchaseAction(
+  _prev: PurchaseFormState,
+  formData: FormData
+): Promise<PurchaseFormState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+
+  const parsed = UpdatePurchaseSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const data = parsed.data;
+
+  try {
+    await updatePurchase(data.id, dealerId, OWNER_TENANT_ID, {
+      quantity: data.quantity,
+      unitDealerPrice: data.unitDealerPrice,
+      unitInvoicePrice: data.unitInvoicePrice,
+      purchaseDate: data.purchaseDate,
+      source: data.source,
+    });
+    await logAudit({
+      action: "purchase.update",
+      entityType: "purchase",
+      entityId: data.id,
+      summary: `Updated purchase ${data.id.slice(0, 8)}: qty=${data.quantity}, ${formatPKR(data.unitDealerPrice)}, date=${data.purchaseDate}`,
+    });
+    revalidatePath("/purchases");
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to update purchase";
+    return { error: msg };
+  }
+}
+
+export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ deleted: number }> {
+  if (!(await isAuthenticated())) return { deleted: 0 };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { deleted: 0 };
+  let deleted = 0;
+  await db.transaction(async () => {
+    for (const id of ids) {
+      await deletePurchase(id, dealerId, OWNER_TENANT_ID);
+      deleted++;
+    }
+  });
+  await logAudit({
+    action: "purchase.bulk_delete",
+    summary: `Bulk deleted ${deleted} purchase(s)`,
+    payload: { ids },
+  });
+  revalidatePath("/purchases");
+  revalidatePath("/dashboard");
+  return { deleted };
 }
 
 export async function deletePurchaseAction(id: string): Promise<void> {

@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "../client";
-import { and, asc, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 export interface ModelWithCurrentPrice {
@@ -94,43 +94,89 @@ export async function updateModelPrice(
   tenantId: string,
   input: { modelId: string; dealerPrice: number; invoicePrice: number; effectiveFrom: string }
 ): Promise<void> {
-  await db
-    .update(schema.modelPriceHistory)
-    .set({ effectiveTo: input.effectiveFrom })
-    .where(
-      and(
-        eq(schema.modelPriceHistory.tenantId, tenantId),
-        eq(schema.modelPriceHistory.modelId, input.modelId),
-        isNull(schema.modelPriceHistory.effectiveTo)
-      )
-    );
-  await db.insert(schema.modelPriceHistory).values({
-    id: randomUUID(),
-    tenantId,
-    modelId: input.modelId,
-    dealerPrice: input.dealerPrice,
-    invoicePrice: input.invoicePrice,
-    effectiveFrom: input.effectiveFrom,
-    effectiveTo: null,
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.modelPriceHistory)
+      .set({ effectiveTo: input.effectiveFrom })
+      .where(
+        and(
+          eq(schema.modelPriceHistory.tenantId, tenantId),
+          eq(schema.modelPriceHistory.modelId, input.modelId),
+          isNull(schema.modelPriceHistory.effectiveTo)
+        )
+      );
+    await tx.insert(schema.modelPriceHistory).values({
+      id: randomUUID(),
+      tenantId,
+      modelId: input.modelId,
+      dealerPrice: input.dealerPrice,
+      invoicePrice: input.invoicePrice,
+      effectiveFrom: input.effectiveFrom,
+      effectiveTo: null,
+    });
   });
 }
 
 async function restitchPriceHistory(tenantId: string, modelId: string): Promise<void> {
-  const rows = await db
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .select()
+      .from(schema.modelPriceHistory)
+      .where(and(eq(schema.modelPriceHistory.tenantId, tenantId), eq(schema.modelPriceHistory.modelId, modelId)))
+      .orderBy(asc(schema.modelPriceHistory.effectiveFrom));
+    for (let i = 0; i < rows.length; i++) {
+      const next = rows[i + 1];
+      const targetEffectiveTo = next ? next.effectiveFrom : null;
+      if (rows[i].effectiveTo !== targetEffectiveTo) {
+        await tx
+          .update(schema.modelPriceHistory)
+          .set({ effectiveTo: targetEffectiveTo })
+          .where(eq(schema.modelPriceHistory.id, rows[i].id));
+      }
+    }
+  });
+}
+
+/**
+ * After any price history change, update every activation's dealerPriceSnapshot
+ * to match the price that was effective on its activationDate.
+ * Only touches activations that fall within a known price window — activations
+ * outside any price window are left unchanged.
+ */
+async function syncActivationSnapshots(tenantId: string, modelId: string): Promise<void> {
+  const priceHistory = await db
     .select()
     .from(schema.modelPriceHistory)
     .where(and(eq(schema.modelPriceHistory.tenantId, tenantId), eq(schema.modelPriceHistory.modelId, modelId)))
     .orderBy(asc(schema.modelPriceHistory.effectiveFrom));
-  for (let i = 0; i < rows.length; i++) {
-    const next = rows[i + 1];
-    const targetEffectiveTo = next ? next.effectiveFrom : null;
-    if (rows[i].effectiveTo !== targetEffectiveTo) {
-      await db
-        .update(schema.modelPriceHistory)
-        .set({ effectiveTo: targetEffectiveTo })
-        .where(eq(schema.modelPriceHistory.id, rows[i].id));
-    }
+
+  for (const price of priceHistory) {
+    const baseCondition = and(
+      eq(schema.activations.tenantId, tenantId),
+      eq(schema.activations.modelId, modelId),
+      gte(schema.activations.activationDate, price.effectiveFrom)
+    );
+    const condition =
+      price.effectiveTo !== null
+        ? and(baseCondition, lt(schema.activations.activationDate, price.effectiveTo))
+        : baseCondition;
+    await db
+      .update(schema.activations)
+      .set({ dealerPriceSnapshot: price.dealerPrice })
+      .where(condition);
   }
+}
+
+/** Sync all models' activation snapshots in one pass — call from the manual "Sync Prices" action. */
+export async function syncAllActivationSnapshots(tenantId: string): Promise<{ modelsProcessed: number }> {
+  const models = await db
+    .selectDistinct({ modelId: schema.modelPriceHistory.modelId })
+    .from(schema.modelPriceHistory)
+    .where(eq(schema.modelPriceHistory.tenantId, tenantId));
+  for (const { modelId } of models) {
+    await syncActivationSnapshots(tenantId, modelId);
+  }
+  return { modelsProcessed: models.length };
 }
 
 export async function addPriceEntry(
@@ -140,6 +186,7 @@ export async function addPriceEntry(
   const id = randomUUID();
   await db.insert(schema.modelPriceHistory).values({ id, tenantId, ...input, effectiveTo: null });
   await restitchPriceHistory(tenantId, input.modelId);
+  await syncActivationSnapshots(tenantId, input.modelId);
   return id;
 }
 
@@ -152,6 +199,7 @@ export async function updatePriceEntry(
     .set({ dealerPrice: input.dealerPrice, invoicePrice: input.invoicePrice, effectiveFrom: input.effectiveFrom })
     .where(and(eq(schema.modelPriceHistory.id, input.priceId), eq(schema.modelPriceHistory.tenantId, tenantId)));
   await restitchPriceHistory(tenantId, input.modelId);
+  await syncActivationSnapshots(tenantId, input.modelId);
 }
 
 export async function deletePriceEntry(
@@ -162,6 +210,7 @@ export async function deletePriceEntry(
     .delete(schema.modelPriceHistory)
     .where(and(eq(schema.modelPriceHistory.id, input.priceId), eq(schema.modelPriceHistory.tenantId, tenantId)));
   await restitchPriceHistory(tenantId, input.modelId);
+  await syncActivationSnapshots(tenantId, input.modelId);
 }
 
 export async function updateModel(input: {

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { renewTenant } from "@/lib/admin/dealers";
+import { isAuthenticated } from "@/lib/auth";
 import { z } from "zod";
 
 const Schema = z.object({
@@ -15,6 +16,7 @@ export async function renewTenantAction(
   _prev: RenewState,
   formData: FormData,
 ): Promise<RenewState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const parsed = Schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };

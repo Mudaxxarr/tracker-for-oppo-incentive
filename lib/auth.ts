@@ -182,6 +182,49 @@ export async function hashPin(pin: string): Promise<string> {
   return bcrypt.hash(pin, 10);
 }
 
+// ── Admin email/password login ────────────────────────────────────────────────
+
+const ADMIN_EMAIL_KEY = "admin_email";
+const ADMIN_PASSWORD_HASH_KEY = "admin_password_hash";
+
+async function getAdminSetting(key: string): Promise<string | null> {
+  try {
+    const rows = await db.select().from(schema.appSettings).where(eq(schema.appSettings.key, key)).limit(1);
+    if (rows.length > 0 && rows[0].value) return rows[0].value;
+  } catch { /* fall through */ }
+  return null;
+}
+
+async function setAdminSetting(key: string, value: string): Promise<void> {
+  const existing = await db.select().from(schema.appSettings).where(eq(schema.appSettings.key, key)).limit(1);
+  const now = new Date().toISOString();
+  if (existing.length > 0) {
+    await db.update(schema.appSettings).set({ value, updatedAt: now }).where(eq(schema.appSettings.key, key));
+  } else {
+    await db.insert(schema.appSettings).values({ key, value, updatedAt: now });
+  }
+}
+
+export async function hasAdminCredentials(): Promise<boolean> {
+  const email = await getAdminSetting(ADMIN_EMAIL_KEY);
+  const hash = await getAdminSetting(ADMIN_PASSWORD_HASH_KEY);
+  return !!(email && hash);
+}
+
+export async function verifyAdminCredentials(email: string, password: string): Promise<boolean> {
+  const storedEmail = await getAdminSetting(ADMIN_EMAIL_KEY);
+  const storedHash = await getAdminSetting(ADMIN_PASSWORD_HASH_KEY);
+  if (!storedEmail || !storedHash) return false;
+  if (email.toLowerCase().trim() !== storedEmail.toLowerCase().trim()) return false;
+  return bcrypt.compare(password, storedHash);
+}
+
+export async function setAdminCredentials(email: string, password: string): Promise<void> {
+  const hash = await bcrypt.hash(password, 12);
+  await setAdminSetting(ADMIN_EMAIL_KEY, email.toLowerCase().trim());
+  await setAdminSetting(ADMIN_PASSWORD_HASH_KEY, hash);
+}
+
 // ── Team session ─────────────────────────────────────────────────────────────
 
 async function getTeamPinHash(): Promise<string | null> {
@@ -246,7 +289,13 @@ export async function isTeamAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies();
   const token = cookieStore.get(TEAM_SESSION_COOKIE)?.value;
   if (!token) return false;
-  return verifyToken(token);
+  if (!verifyToken(token)) return false;
+  const invalidatedAt = await getSessionInvalidatedAt();
+  if (invalidatedAt > 0) {
+    const issued = Number(token.split(".")[0]);
+    if (issued <= invalidatedAt) return false;
+  }
+  return true;
 }
 
 /** Returns true if the visitor holds either an admin or a team session. */
