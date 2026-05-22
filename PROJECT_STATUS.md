@@ -105,51 +105,46 @@ These are embedded in the app. SOs tap "Open Script" mid-sale. Stored in `script
 
 ---
 
-## Security Fixes Applied (committed: `4db05e1`)
+## Security Fixes Applied
 
-| ID | Fix | File |
-|----|-----|------|
-| C-1 | Auth guard on all admin actions | `app/admin/dealers/[id]/` actions |
-| C-2 | Stock check inside `db.transaction()` — create activation (owner) | `app/(app)/activations/actions.ts` |
-| C-3 | `updateModelPrice` wrapped in transaction | `lib/db/queries/models.ts` |
-| H-1 | `purgeAuditLog` scoped to caller's dealer IDs | `lib/audit.ts` |
-| H-2 | `switchDealerAction` auth guard | `app/(app)/actions.ts` |
-| H-3 | Team session revocation check | `lib/auth.ts` |
-| H-4 | `updateActivationAction` stock check on date move | `app/(app)/activations/actions.ts` |
-| H-5 | `bulkDeletePurchasesAction` wrapped in transaction | `app/(app)/purchases/actions.ts` |
-| H-6 | `restitchPriceHistory` wrapped in transaction | `lib/db/queries/models.ts` |
+### Batch 1 (commit: `4db05e1`)
+| ID | Fix |
+|----|-----|
+| C-1 | Auth guard on all admin actions |
+| C-2 | Stock check inside `db.transaction()` — create activation (owner) |
+| C-3 | `updateModelPrice` wrapped in transaction |
+| H-1 | `purgeAuditLog` scoped to caller's dealer IDs |
+| H-2 | `switchDealerAction` auth guard |
+| H-3 | Team session revocation check |
+| H-4 | `updateActivationAction` stock check on date move |
+| H-5 | `bulkDeletePurchasesAction` wrapped in transaction |
+| H-6 | `restitchPriceHistory` wrapped in transaction |
+
+### Batch 2 (commit: `61944da`) — Steps 1 & 2 complete
+| ID | Fix |
+|----|-----|
+| S-1 / S-1b | `deletePurchaseAction` blocked when stock consumed (owner + dealer) |
+| S-2 | `updatePurchaseAction` blocks qty reduction that would go negative |
+| S-3 | `updatePurchaseAction` blocks date-forward move that unbacks activations |
+| S-4 | `bulkDeletePurchasesAction` per-purchase stock check in transaction |
+| S-5 | Inter-ID transfer already had stock check (already guarded) |
+| S-6 | CR-caught already had stock check (already guarded) |
+| CR-1 | SO can only submit for owner approval; PENDING_OWNER_APPROVAL flow + alerts |
+| CR-2 | Purchases above threshold → pending_review + HIGH ALERT to owner |
+| CR-3 | Dealer activation: stock re-check + inserts inside `db.transaction()` |
+| H-A | Activation date window: `today - backdateDays ≤ date ≤ today` (configurable) |
+| H-B | `getDealerSession()` now live-checks tenant active/grace status (React cache) |
+| H-C | `deleteDealerPurchaseAction` blocked when stock consumed |
+| H-D | `isCrossRegion` flag requires approved CR transfer record for that model |
+| H-E | Bulk dealer activations wrapped in `db.transaction()` |
+| auth | `parseDealerToken()` is async — missing `await` fixed in `getDealerSession()` |
 
 ---
 
 ## Full Completion Roadmap (in order)
 
-### STEP 1 — Security: Stock Integrity Guards ❌ NOT DONE
-
-| ID | File | Fix |
-|----|------|-----|
-| S-1 | `app/(app)/purchases/actions.ts` | Block `deletePurchaseAction` if stock consumed |
-| S-1b | `app/dealer/(portal)/purchases/actions.ts` | Same for dealer side |
-| S-2 | `app/(app)/purchases/actions.ts` | Block qty reduction if would go negative |
-| S-3 | `app/(app)/purchases/actions.ts` | Block date-forward move if gap period goes negative |
-| S-4 | `app/(app)/purchases/actions.ts` | Per-purchase check in `bulkDeletePurchasesAction` |
-| S-5 | transfers actions | Block transfer qty increase if sender stock insufficient |
-| S-6 | cr-caught actions | Stock floor check before adding CR-caught |
-
-Helper needed: `getPurchaseById(id, dealerId, tenantId)` in `lib/db/queries/purchases.ts`
-
-### STEP 2 — Security: SO Abuse Vectors ❌ NOT DONE
-
-| ID | Severity | Fix needed |
-|----|----------|-----------|
-| CR-3 | Critical | Dealer activation stock check into `db.transaction()` |
-| H-E | High | Bulk dealer activation stock check into `db.transaction()` |
-| H-B | High | `getDealerSession()` — check live tenant status/expiry |
-| CR-1 | Critical | Block SO self-approving CR → requires owner approval |
-| H-C | High | `deleteDealerPurchaseAction` — consumed stock check |
-| S-4 (dealer) | High | Bulk delete dealer purchases — stock check per item |
-| H-A | High | Date window on activations — AWAITING USER DECISION |
-| CR-2 | Critical | Fake purchase qty → target bonus — AWAITING USER DECISION |
-| H-D | Medium | isCrossRegion validation — AWAITING USER DECISION |
+### STEP 1 — Security: Stock Integrity Guards ✅ COMPLETE (commit `61944da`)
+### STEP 2 — Security: SO Abuse Vectors ✅ COMPLETE (commit `61944da`)
 
 ### STEP 3 — Missing Features: Customer DB ❌ NOT DONE
 - Schema: `customers` table (name, phone, CNIC, dealer_id, tenant_id, created_at)
@@ -214,13 +209,14 @@ Helper needed: `getPurchaseById(id, dealerId, tenantId)` in `lib/db/queries/purc
 **Date:** 2026-05-22
 
 **Work done:**
-- Built 8 dashboard layout views (Financial, Performance, Timeline, Executive + enhanced Cards)
-- Applied all 9 security fixes (C-1 → H-6), committed as `4db05e1`
-- Conducted manual SO abuse audit — found 14 loopholes total
-- Cross-verified original spec vs what was built — identified 3 major gaps: no APK, missing Phase 3 features, missing revenue dashboard
-- **User decisions locked:** Mobile = PWA first → then Capacitor APK. Stack stays Next.js.
-- Created this PROJECT_STATUS.md as the living handoff document
+- Applied Steps 1 & 2 completely — all 14 security loopholes closed (commit `61944da`)
+- Fixed critical auth bug: `parseDealerToken()` is async, was missing `await` in `getDealerSession()`
+- Added schema: `backdateDays`, `purchaseApprovalThreshold` on `dealer_tenants`; `reviewStatus` on `purchases`; new `owner_alerts` table
+- Migration script: `scripts/migrate-add-security-settings.mjs`
+- Added `lib/db/queries/alerts.ts` with `createOwnerAlert`, `listOwnerAlerts`, `countUnreadAlerts`, `markAlertRead`
+- CR-1 full flow: dealer submits → PENDING_OWNER_APPROVAL → owner approves/rejects with approve/reject buttons in UI
+- Both cross-region client UIs updated with new status badge and workflow buttons
 
-**Git state:** `master` · commit `4db05e1` · no remote configured · ~49 modified + ~40 untracked files not yet committed
+**Git state:** `master` · latest commit `61944da` · no remote configured
 
-**Next action:** Start STEP 1 — Stock Integrity Guards (S-1 through S-6). Begin with `getPurchaseById` helper, then `deletePurchaseAction` guard, working through the list in order.
+**Next action:** STEP 3 — Customer DB. Schema: `customers` table (name, phone, CNIC, dealer_id, tenant_id). Owner list + dealer create/search. Optional FK from activations to customers.
