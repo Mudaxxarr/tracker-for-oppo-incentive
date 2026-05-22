@@ -4,6 +4,10 @@ import bcrypt from "bcryptjs";
 import { db, schema } from "@/lib/db/client";
 import { asc, count, desc, eq, sql } from "drizzle-orm";
 import { logAudit } from "@/lib/audit";
+import {
+  type DealerFeatures,
+  parseDealerFeatures,
+} from "@/lib/dealer-features";
 
 export interface TenantListRow {
   id: string;
@@ -24,6 +28,7 @@ export interface TenantDetail {
   expiresAt: string;
   status: string;
   createdAt: string;
+  features: DealerFeatures;
   users: {
     id: string;
     email: string;
@@ -96,7 +101,29 @@ export async function getTenantById(id: string): Promise<TenantDetail | null> {
     .where(eq(schema.dealerUsers.tenantId, id))
     .orderBy(asc(schema.dealerUsers.email));
 
-  return { ...tenant, users: userRows };
+  return {
+    ...tenant,
+    features: parseDealerFeatures(tenant.features),
+    users: userRows,
+  };
+}
+
+export async function updateDealerFeatures(
+  tenantId: string,
+  features: DealerFeatures,
+): Promise<void> {
+  await db
+    .update(schema.dealerTenants)
+    .set({ features: JSON.stringify(features) })
+    .where(eq(schema.dealerTenants.id, tenantId));
+
+  await logAudit({
+    action: "admin_dealer_features_updated",
+    summary: `Updated feature flags for tenant ${tenantId}`,
+    entityType: "dealer_tenant",
+    entityId: tenantId,
+    payload: { features },
+  });
 }
 
 export async function createTenant(
@@ -174,29 +201,99 @@ export async function renewTenant(id: string, months: number): Promise<void> {
   });
 }
 
+export interface RevenueTenantRow {
+  id: string;
+  businessName: string;
+  ownerEmail: string;
+  status: string;
+  expiresAt: string;
+  planMonths: number;
+  monthlyFee: number | null;
+}
+
 export async function getRevenueSummary() {
   const today = new Date().toISOString().slice(0, 10);
+  const in7Days = addDays(today, 7);
   const in30Days = addDays(today, 30);
 
   const rows = await db
     .select({
+      id: schema.dealerTenants.id,
+      businessName: schema.dealerTenants.businessName,
+      ownerEmail: schema.dealerTenants.ownerEmail,
       status: schema.dealerTenants.status,
       expiresAt: schema.dealerTenants.expiresAt,
+      planMonths: schema.dealerTenants.planMonths,
+      monthlyFee: schema.dealerTenants.monthlyFee,
     })
     .from(schema.dealerTenants)
-    .where(sql`${schema.dealerTenants.id} != 'owner'`);
+    .where(sql`${schema.dealerTenants.id} != 'owner'`)
+    .orderBy(schema.dealerTenants.expiresAt);
 
-  let active = 0, expiringSoon = 0, grace = 0, expired = 0, suspended = 0;
+  let active = 0, expiringIn7 = 0, expiringSoon = 0, grace = 0, expired = 0, suspended = 0;
+  let mrr = 0;
 
   for (const row of rows) {
     if (row.status === "suspended") { suspended++; continue; }
     if (row.status === "grace") { grace++; continue; }
     if (row.status === "expired") { expired++; continue; }
     active++;
+    mrr += row.monthlyFee ?? 0;
+    if (row.expiresAt <= in7Days) expiringIn7++;
     if (row.expiresAt <= in30Days) expiringSoon++;
   }
 
-  return { total: rows.length, active, expiringSoon, grace, expired, suspended };
+  return {
+    total: rows.length,
+    active,
+    expiringIn7,
+    expiringSoon,
+    grace,
+    expired,
+    suspended,
+    mrr,
+    arr: mrr * 12,
+    tenants: rows as RevenueTenantRow[],
+  };
+}
+
+export async function resetDealerUserPassword(
+  userId: string,
+): Promise<{ email: string; tempPassword: string }> {
+  const rows = await db
+    .select({ email: schema.dealerUsers.email, tenantId: schema.dealerUsers.tenantId })
+    .from(schema.dealerUsers)
+    .where(eq(schema.dealerUsers.id, userId))
+    .limit(1);
+
+  if (rows.length === 0) throw new Error(`Dealer user ${userId} not found`);
+
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+  await db
+    .update(schema.dealerUsers)
+    .set({ passwordHash })
+    .where(eq(schema.dealerUsers.id, userId));
+
+  await logAudit({
+    action: "admin_dealer_password_reset",
+    summary: `Reset password for dealer user ${rows[0].email}`,
+    entityType: "dealer_user",
+    entityId: userId,
+    payload: { email: rows[0].email },
+  });
+
+  return { email: rows[0].email, tempPassword };
+}
+
+export async function getTenantFeaturesById(tenantId: string): Promise<DealerFeatures> {
+  const rows = await db
+    .select({ features: schema.dealerTenants.features })
+    .from(schema.dealerTenants)
+    .where(eq(schema.dealerTenants.id, tenantId))
+    .limit(1);
+  return parseDealerFeatures(rows[0]?.features ?? "{}");
 }
 
 function generateTempPassword(): string {

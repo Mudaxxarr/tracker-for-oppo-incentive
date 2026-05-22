@@ -25,6 +25,7 @@ export const dealerTenants = pgTable("dealer_tenants", {
   features: text("features").notNull().default("{}"),
   backdateDays: integer("backdate_days").notNull().default(3),
   purchaseApprovalThreshold: integer("purchase_approval_threshold"), // null = disabled
+  monthlyFee: real("monthly_fee"), // null = unset
   createdAt: isoDateTime("created_at").notNull(),
 });
 
