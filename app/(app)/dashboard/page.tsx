@@ -1,28 +1,16 @@
 import { getActiveDealer, listDealerIds, OWNER_TENANT_ID } from "@/lib/dealer";
 import { buildIncentiveReport, buildLastSixMonths } from "@/lib/incentive-engine/loader";
 import { countPendingCrossRegion, listInterIdTransfers } from "@/lib/db/queries/transfers";
-import { listStockForDealer } from "@/lib/db/queries/purchases";
+import { listStockForDealer, getCrStockSummary } from "@/lib/db/queries/purchases";
 import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
+import { sumRebatesForPeriod } from "@/lib/db/queries/rebates";
 import { getConstants } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { KpiCard } from "@/components/feature/kpi-card";
-import { TrendCharts } from "@/components/feature/trend-charts";
-import { Badge } from "@/components/ui/badge";
-import { DashboardAnalytics } from "./dashboard-analytics";
+import { DashboardClient } from "./dashboard-analytics";
 import { getModelSalesAction } from "./actions";
-import {
-  Smartphone,
-  Percent,
-  Award,
-  Truck,
-  Wallet,
-  ArrowLeftRight,
-  ArrowRight,
-  Package,
-  ShieldAlert,
-} from "lucide-react";
-import { formatPKR } from "@/lib/format";
 import Link from "next/link";
+import { ArrowLeftRight } from "lucide-react";
+import { formatPKR } from "@/lib/format";
 
 function monthBounds() {
   const today = new Date();
@@ -31,7 +19,6 @@ function monthBounds() {
   return {
     startStr: start.toISOString().slice(0, 10),
     endStr: end.toISOString().slice(0, 10),
-    label: start.toLocaleString("en-US", { month: "long", year: "numeric" }),
   };
 }
 
@@ -44,17 +31,18 @@ export default async function DashboardPage() {
           <CardTitle>No active Dealer ID</CardTitle>
         </CardHeader>
         <CardContent>
-          <Link className="text-sm underline" href="/ids">Create your first Dealer ID →</Link>
+          <Link className="text-sm underline" href="/ids">
+            Create your first Dealer ID →
+          </Link>
         </CardContent>
       </Card>
     );
   }
 
-  const { startStr, endStr, label } = monthBounds();
-
+  const { startStr, endStr } = monthBounds();
   const constants = await getConstants();
 
-  const [report, sixMonths, pendingCount, stock, transfers, allDealers, initialSales, crLoss] =
+  const [report, sixMonths, pendingCount, stock, transfers, allDealers, initialSales, crLoss, crStock, initialRebateTotal] =
     await Promise.all([
       buildIncentiveReport({ dealerId: dealer.id, periodStart: startStr, periodEnd: endStr }),
       buildLastSixMonths(dealer.id),
@@ -64,197 +52,66 @@ export default async function DashboardPage() {
       listDealerIds(),
       getModelSalesAction(startStr, endStr),
       getCrCaughtLoss(OWNER_TENANT_ID, dealer.id, startStr, endStr, constants.basePercent),
+      getCrStockSummary(OWNER_TENANT_ID, dealer.id),
+      sumRebatesForPeriod(OWNER_TENANT_ID, dealer.id, startStr, endStr),
     ]);
 
-  const tb = report.targetBonus;
-
-  // Build "moved to" map: modelId → destination dealer name(s)
+  // Pre-compute transfer destinations as a plain object (serializable across server/client)
   const dealerNameById = new Map(allDealers.map((d) => [d.id, d.name]));
-  const movedTo = new Map<string, string[]>();
+  const movedTo: Record<string, string[]> = {};
   for (const t of transfers) {
     if (t.fromDealerId === dealer.id) {
       const destName = dealerNameById.get(t.toDealerId) ?? "another ID";
-      const cur = movedTo.get(t.modelId) ?? [];
+      const cur = movedTo[t.modelId] ?? [];
       if (!cur.includes(destName)) cur.push(destName);
-      movedTo.set(t.modelId, cur);
+      movedTo[t.modelId] = cur;
     }
   }
 
-  // Models with incentive: any model that has a non-zero total in the report
-  const modelsWithIncentive = new Set(
-    report.rows.filter((r) => r.total > 0 || r.stockInEarned > 0).map((r) => r.modelId)
-  );
-
-  // Stock rows: only show if model has incentive configured
-  const stockWithIncentive = stock.filter((s) => modelsWithIncentive.has(s.modelId));
+  const totalCrRemaining = crStock.reduce((s, r) => s + r.crRemaining, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            <strong>{dealer.name}</strong> — {label}
-          </p>
-        </div>
-        {pendingCount > 0 ? (
-          <Link href="/cross-region">
-            <Badge variant="outline" className="gap-1">
-              <ArrowLeftRight className="size-3" />
-              {pendingCount} pending cross-region
-            </Badge>
-          </Link>
-        ) : null}
-      </div>
-
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <KpiCard
-          label="Active phones this month"
-          value={report.totalActivations}
-          icon={<Smartphone className="size-4" />}
-        />
-        <KpiCard
-          label={`${report.baseIncentivePercent}% earned`}
-          value={report.totals.basePercentEarned}
-          format="currency"
-          icon={<Percent className="size-4" />}
-        />
-        <KpiCard
-          label={`Target bonus ${tb.bonusPercent}%`}
-          value={report.totals.bonusPercentEarned}
-          format="currency"
-          icon={<Award className="size-4" />}
-          highlightZero
-          progress={
-            tb.targetQty != null
-              ? { current: tb.actualQty, target: tb.targetQty }
-              : undefined
-          }
-          helper={tb.eligible ? "Purchase target met ✓" : `${tb.actualQty}/${tb.targetQty ?? "—"} purchased`}
-        />
-        <KpiCard
-          label="Stock-In earned"
-          value={report.totals.stockInEarned}
-          format="currency"
-          icon={<Truck className="size-4" />}
-        />
-        <KpiCard
-          label="Total expected from OPPO"
-          value={report.totals.grandTotal}
-          format="currency"
-          icon={<Wallet className="size-4" />}
-        />
-        <KpiCard
-          label="CR Caught Loss (est.)"
-          value={crLoss.lostIncentive}
-          format="currency"
-          icon={<ShieldAlert className="size-4" />}
-          highlightZero
-          helper={crLoss.totalUnits > 0 ? `${crLoss.totalUnits} units caught` : "No catches this month"}
-        />
-      </div>
-
-      <TrendCharts data={sixMonths} />
-
-      {/* Current stock overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Package className="size-4" />
-            Current Stock
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {stock.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              No stock on hand.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {stock.map((s) => {
-                const moved = movedTo.get(s.modelId);
-                const hasIncentive = modelsWithIncentive.has(s.modelId);
-                return (
-                  <div
-                    key={s.modelId}
-                    className="flex flex-col gap-1 bg-card p-3"
-                  >
-                    <span className="text-xs font-medium leading-tight truncate">
-                      {s.modelName}
-                    </span>
-                    <span className="text-2xl font-bold tabular-nums text-foreground">
-                      {s.quantity}
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {s.dealerPrice != null ? (
-                        <span className="text-[10px] text-muted-foreground tabular-nums">
-                          {formatPKR(s.dealerPrice)}
-                        </span>
-                      ) : null}
-                      {moved ? (
-                        <span className="flex items-center gap-0.5 text-[10px] text-blue-500">
-                          <ArrowRight className="size-2.5" />
-                          {moved.join(", ")}
-                        </span>
-                      ) : null}
-                      {!hasIncentive ? (
-                        <span className="rounded bg-muted px-1 text-[9px] text-muted-foreground">
-                          no incentive
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Model activations — incentive-only */}
-      {stockWithIncentive.length > 0 || report.rows.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Incentive models — {label}</CardTitle>
+    <div className="space-y-4">
+      {crStock.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/60 dark:border-blue-800 dark:bg-blue-950/30">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-blue-800 dark:text-blue-300">
+              <ArrowLeftRight className="size-4" />
+              Cross-Region Stock in This ID
+              <span className="ml-auto rounded-full bg-blue-700 px-2 py-0.5 text-xs font-bold text-white">
+                {totalCrRemaining} unit{totalCrRemaining !== 1 ? "s" : ""} remaining
+              </span>
+            </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {report.rows.filter((r) => r.total > 0 || r.stockInEarned > 0).length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">
-                  No incentive earned yet this month.
+          <CardContent className="pb-4">
+            <div className="flex flex-wrap gap-3">
+              {crStock.map((r) => (
+                <div key={r.modelId} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-xs dark:border-blue-700 dark:bg-background">
+                  <p className="font-medium">{r.modelName}</p>
+                  <p className="text-muted-foreground">
+                    {r.crRemaining} remaining · {r.crActivated}/{r.crPurchased} activated
+                  </p>
                 </div>
-              ) : (
-                report.rows
-                  .filter((r) => r.total > 0 || r.stockInEarned > 0)
-                  .sort((a, b) => b.qtyActivated - a.qtyActivated)
-                  .map((row) => (
-                    <div key={row.modelId} className="flex items-center justify-between p-4">
-                      <div>
-                        <div className="font-medium">{row.modelName}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {row.qtyActivated} activated · {row.stockInRegularQty} stocked
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium tabular-nums">{formatPKR(row.total)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          4% {formatPKR(row.basePercentEarned)}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-              )}
+              ))}
             </div>
+            <p className="mt-2 text-[11px] text-blue-700 dark:text-blue-400">
+              The system automatically tags the most-recent activations as cross-region when regular stock is exhausted.
+            </p>
           </CardContent>
         </Card>
-      ) : null}
-
-      {/* Model-wise analytics */}
-      <DashboardAnalytics
-        initialRows={initialSales}
+      )}
+      <DashboardClient
+        dealerName={dealer.name}
         initialFrom={startStr}
         initialTo={endStr}
+        initialReport={report}
+        initialModelSales={initialSales}
+        initialCrLoss={crLoss}
+        initialRebateTotal={initialRebateTotal}
+        sixMonths={sixMonths}
+        stock={stock}
+        movedTo={movedTo}
+        pendingCount={pendingCount}
       />
     </div>
   );

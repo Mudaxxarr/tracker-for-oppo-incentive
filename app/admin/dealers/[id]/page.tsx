@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { KpiCard } from "@/components/feature/kpi-card";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { Smartphone, CalendarDays, Package } from "lucide-react";
+import { ExternalLink, Smartphone, CalendarDays, Package } from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -65,8 +65,20 @@ export default async function AdminDealerDetailPage({ params }: Props) {
           <h1 className="text-xl font-semibold">{tenant.businessName}</h1>
           <p className="text-sm text-muted-foreground">{tenant.ownerEmail}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={`/api/admin/impersonate/${id}`}
+            className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
+          >
+            <ExternalLink className="size-4" />
+            Enter Portal
+          </a>
+          <Link href={`/admin/dealers/${id}/settings`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Settings</Link>
+          <Link href={`/admin/dealers/${id}/features`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Features</Link>
           <Link href={`/admin/dealers/${id}/renew`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Renew</Link>
+          <Link href={`/admin/dealers/${id}/team`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Team</Link>
+          <Link href={`/admin/dealers/${id}/reset-password`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Reset Password</Link>
+          <Link href={`/admin/dealers/${id}/backups`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Backups</Link>
           <Link href="/admin/dealers" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>Back</Link>
         </div>
       </div>

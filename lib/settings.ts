@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { db, schema } from "./db/client";
 import { eq } from "drizzle-orm";
 import { BASE_INCENTIVE_PERCENT, DEFAULT_TARGET_BONUS_PERCENT } from "./constants";
@@ -38,16 +39,25 @@ async function writeNumber(key: string, value: number) {
   }
 }
 
+const _getConstantsCached = unstable_cache(
+  async () => {
+    const [base, bonus] = await Promise.all([
+      readNumber(KEYS.base, BASE_INCENTIVE_PERCENT),
+      readNumber(KEYS.bonus, DEFAULT_TARGET_BONUS_PERCENT),
+    ]);
+    return { basePercent: base, defaultBonusPercent: bonus };
+  },
+  ["app-constants"],
+  { revalidate: 60, tags: ["app-constants"] },
+);
+
 export async function getConstants() {
-  const [base, bonus] = await Promise.all([
-    readNumber(KEYS.base, BASE_INCENTIVE_PERCENT),
-    readNumber(KEYS.bonus, DEFAULT_TARGET_BONUS_PERCENT),
-  ]);
-  return { basePercent: base, defaultBonusPercent: bonus };
+  return _getConstantsCached();
 }
 
 export async function setConstants(input: { basePercent?: number; defaultBonusPercent?: number }) {
   if (input.basePercent != null) await writeNumber(KEYS.base, input.basePercent);
   if (input.defaultBonusPercent != null)
     await writeNumber(KEYS.bonus, input.defaultBonusPercent);
+  revalidateTag("app-constants", {});
 }

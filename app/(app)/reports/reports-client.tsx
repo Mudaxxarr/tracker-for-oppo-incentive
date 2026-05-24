@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatPKR } from "@/lib/format";
-import { FileBarChart2, FileSpreadsheet, ChevronDown } from "lucide-react";
+import {
+  FileBarChart2,
+  FileSpreadsheet,
+  ChevronDown,
+  TrendingUp,
+  Smartphone,
+  Wallet,
+  RefreshCw,
+  ShieldAlert,
+  Truck,
+  Award,
+  CircleCheck,
+  CircleX,
+  ArrowUpRight,
+} from "lucide-react";
 import type { IncentiveReport } from "@/lib/incentive-engine";
 import type { PolicyAchievementEntry } from "@/lib/report-types";
+import type { CrShiftedValueResult } from "@/lib/db/queries/purchases";
+import type { RebateRow } from "@/lib/db/queries/rebates";
 
 export type { PolicyAchievementEntry };
 
@@ -26,11 +42,20 @@ interface DealerOpt {
   name: string;
 }
 
+interface CrCaughtLoss {
+  totalUnits: number;
+  lostIncentive: number;
+}
+
 interface ReportEntry {
   dealerId: string;
   dealerName: string;
   report: IncentiveReport;
   policies: PolicyAchievementEntry[];
+  crCaughtLoss: CrCaughtLoss;
+  crShiftedValue: CrShiftedValueResult;
+  rebateTotal: number;
+  rebateRows: RebateRow[];
 }
 
 interface Props {
@@ -164,6 +189,10 @@ export function ReportsClient({
           dealerName={entry.dealerName}
           report={entry.report}
           policies={entry.policies}
+          crCaughtLoss={entry.crCaughtLoss}
+          crShiftedValue={entry.crShiftedValue}
+          rebateTotal={entry.rebateTotal}
+          rebateRows={entry.rebateRows}
           discrepancy={discrepancyByDealer[entry.dealerId] ?? ""}
           onDiscrepancy={(v) =>
             setDiscrepancyByDealer((prev) => ({ ...prev, [entry.dealerId]: v }))
@@ -191,6 +220,10 @@ function ReportSection({
   dealerName,
   report,
   policies,
+  crCaughtLoss,
+  crShiftedValue,
+  rebateTotal,
+  rebateRows,
   discrepancy,
   onDiscrepancy,
   downloads,
@@ -198,26 +231,45 @@ function ReportSection({
   dealerName: string;
   report: IncentiveReport;
   policies: PolicyAchievementEntry[];
+  crCaughtLoss: CrCaughtLoss;
+  crShiftedValue: CrShiftedValueResult;
+  rebateTotal: number;
+  rebateRows: RebateRow[];
   discrepancy: string;
   onDiscrepancy: (v: string) => void;
   downloads: DownloadItem[];
 }) {
   const [dropOpen, setDropOpen] = useState(false);
+  const tb = report.targetBonus;
   const oppoLedger = Number(discrepancy.replace(/[^\d.-]/g, "")) || 0;
   const delta = oppoLedger - report.totals.grandTotal;
+  const netReceivable = report.totals.grandTotal + rebateTotal - crCaughtLoss.lostIncentive;
+  const totalStockedUnits = report.rows.reduce((s, r) => s + r.stockInRegularQty, 0);
+
+  const earningStreams = [
+    { label: `Base ${report.baseIncentivePercent}%`, value: report.totals.basePercentEarned, color: "#8b5cf6", icon: <TrendingUp className="size-3" /> },
+    { label: `Target Bonus ${tb.bonusPercent}%`, value: report.totals.bonusPercentEarned, color: "#3b82f6", icon: <Award className="size-3" /> },
+    { label: "Stock-In Earned", value: report.totals.stockInEarned, color: "#10b981", icon: <Truck className="size-3" /> },
+    { label: "Activation Incentive", value: report.totals.activationIncentiveEarned, color: "#f59e0b", icon: <Smartphone className="size-3" /> },
+    { label: "Dealer Incentive", value: report.totals.dealerIncentiveEarned, color: "#ef4444", icon: <Wallet className="size-3" /> },
+  ].filter((s) => s.value > 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-          <span>{dealerName}</span>
+    <Card className="overflow-hidden">
+      {/* Header */}
+      <div className="relative overflow-hidden border-b bg-gradient-to-r from-primary/8 via-primary/3 to-transparent">
+        <div className="absolute -top-6 -right-6 size-32 rounded-full bg-primary/5 blur-2xl pointer-events-none" />
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 relative z-10">
+          <div>
+            <h2 className="text-lg font-bold">{dealerName}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {report.totalActivations} activation{report.totalActivations !== 1 ? "s" : ""} ·{" "}
+              {totalStockedUnits} unit{totalStockedUnits !== 1 ? "s" : ""} stocked
+              {report.totalActivationsCrossRegion > 0 && ` · ${report.totalActivationsCrossRegion} cross-region`}
+            </p>
+          </div>
           <div className="relative">
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => setDropOpen((o) => !o)}
-            >
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setDropOpen((o) => !o)}>
               <FileBarChart2 className="size-4" />
               Download
               <ChevronDown className="size-3.5 opacity-60" />
@@ -245,75 +297,186 @@ function ReportSection({
               </>
             )}
           </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-          <Stat label="Activations" value={report.totalActivations.toString()} />
-          <Stat label="4% earned" value={formatPKR(report.totals.basePercentEarned)} />
-          <Stat
-            label={`${report.targetBonus.bonusPercent}% Bonus (on activations)`}
-            value={formatPKR(report.totals.bonusPercentEarned)}
-            sub={
-              report.targetBonus.eligible
-                ? `Purchase target met ✓ (${report.targetBonus.actualQty} purchased)`
-                : `${report.targetBonus.actualQty}/${report.targetBonus.targetQty ?? "—"} purchased — not met`
-            }
-          />
-          <Stat label="Activation incentive" value={formatPKR(report.totals.activationIncentiveEarned)} />
-          <Stat label="Dealer incentive" value={formatPKR(report.totals.dealerIncentiveEarned)} />
-          <Stat label="Stock-in" value={formatPKR(report.totals.stockInEarned)} />
+        </div>
+      </div>
+
+      <CardContent className="space-y-6 pt-5">
+        {/* ── Financial Summary: 3 hero totals ── */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Gross earnings */}
+          <div className="rounded-xl border bg-card p-4 space-y-1">
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <Wallet className="size-3" /> Gross from OPPO
+            </div>
+            <div className="text-3xl font-black tabular-nums text-primary">
+              {formatPKR(report.totals.grandTotal)}
+            </div>
+            {earningStreams.length > 0 && (
+              <div className="flex h-1.5 overflow-hidden rounded-full mt-2">
+                {earningStreams.map((s, i) => {
+                  const pct = (s.value / report.totals.grandTotal) * 100;
+                  return <div key={i} style={{ width: `${pct}%`, backgroundColor: s.color }} />;
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Rebates receivable */}
+          <div className={`rounded-xl border p-4 space-y-1 ${rebateTotal > 0 ? "border-cyan-300 bg-cyan-50/60 dark:border-cyan-700 dark:bg-cyan-950/20" : "bg-muted/20"}`}>
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <RefreshCw className="size-3" /> Rebates Receivable
+            </div>
+            <div className={`text-3xl font-black tabular-nums ${rebateTotal > 0 ? "text-cyan-700 dark:text-cyan-400" : "text-muted-foreground/50"}`}>
+              {rebateTotal > 0 ? formatPKR(rebateTotal) : "—"}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {rebateRows.length > 0
+                ? `${rebateRows.length} price-drop event${rebateRows.length > 1 ? "s" : ""}`
+                : "No price drops this period"}
+            </div>
+          </div>
+
+          {/* Net receivable */}
+          <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4 space-y-1">
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <ArrowUpRight className="size-3" /> Net Receivable
+            </div>
+            <div className="text-3xl font-black tabular-nums text-primary">
+              {formatPKR(netReceivable)}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {crCaughtLoss.totalUnits > 0
+                ? `After ${crCaughtLoss.totalUnits} CR catch${crCaughtLoss.totalUnits > 1 ? "es" : ""} (−${formatPKR(crCaughtLoss.lostIncentive)} est. loss)`
+                : rebateTotal > 0
+                ? `Incentive + rebates`
+                : "Total incentive"}
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-md border p-3">
-          <div className="text-xs text-muted-foreground">Grand total (engine)</div>
-          <div className="text-2xl font-semibold tabular-nums">
-            {formatPKR(report.totals.grandTotal)}
+        {/* ── Income Streams Waterfall ── */}
+        <div className="rounded-xl border overflow-hidden">
+          <div className="px-4 py-2.5 bg-muted/40 border-b">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Income Streams Breakdown</div>
           </div>
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          {earningStreams.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-center text-muted-foreground">No earnings this period.</div>
+          ) : (
+            earningStreams.map((s) => {
+              const pct = report.totals.grandTotal > 0 ? (s.value / report.totals.grandTotal) * 100 : 0;
+              return (
+                <div key={s.label} className="flex items-center gap-3 px-4 py-2.5 border-b last:border-b-0">
+                  <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                  <div className="w-40 shrink-0 text-sm text-muted-foreground truncate">{s.label}</div>
+                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: s.color }} />
+                  </div>
+                  <div className="w-8 text-right text-[11px] text-muted-foreground shrink-0">{pct.toFixed(0)}%</div>
+                  <div className="w-28 text-right text-sm font-semibold tabular-nums shrink-0">{formatPKR(s.value)}</div>
+                </div>
+              );
+            })
+          )}
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-t font-semibold text-sm">
+            <span>Grand Total (engine)</span>
+            <span className="tabular-nums">{formatPKR(report.totals.grandTotal)}</span>
+          </div>
+        </div>
+
+        {/* ── Target Bonus Status ── */}
+        <div className={`rounded-xl border p-4 ${tb.eligible ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/20" : "border-amber-300/60 bg-amber-50/40 dark:border-amber-700/50 dark:bg-amber-950/10"}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                {tb.eligible
+                  ? <CircleCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  : <CircleX className="size-4 text-amber-600 dark:text-amber-400" />}
+                <span className={`text-sm font-semibold ${tb.eligible ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+                  Target Bonus — {tb.eligible ? "Achieved" : "Not Achieved"}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground pl-6">
+                {tb.actualQty} / {tb.targetQty ?? "—"} units purchased · {tb.bonusPercent}% bonus rate
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-black tabular-nums ${tb.eligible ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/50"}`}>
+                {formatPKR(report.totals.bonusPercentEarned)}
+              </div>
+              {!tb.eligible && tb.targetQty != null && (
+                <div className="text-[11px] text-muted-foreground">{tb.targetQty - tb.actualQty} more needed</div>
+              )}
+            </div>
+          </div>
+          {tb.targetQty != null && (
+            <div className="mt-3 h-2 rounded-full bg-black/10 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${tb.eligible ? "bg-emerald-500" : "bg-amber-400"}`}
+                style={{ width: `${Math.min(100, (tb.actualQty / tb.targetQty) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── OPPO Ledger Reconciliation ── */}
+        <div className="rounded-xl border p-4 space-y-3">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Reconcile with OPPO Ledger</div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 items-end">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Our calculation</label>
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm font-semibold tabular-nums">
+                {formatPKR(report.totals.grandTotal)}
+              </div>
+            </div>
+            <div className="space-y-1">
               <label className="text-xs text-muted-foreground">OPPO ledger says (PKR)</label>
               <Input
                 type="number"
-                placeholder="paste OPPO's amount here…"
+                placeholder="Paste OPPO's amount…"
                 value={discrepancy}
                 onChange={(e) => onDiscrepancy(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Delta (OPPO − engine)</label>
               <div
-                className={
-                  delta === 0
-                    ? "rounded-md border px-3 py-2 text-sm tabular-nums"
+                className={`rounded-md border px-3 py-2 text-sm font-semibold tabular-nums ${
+                  !discrepancy
+                    ? "text-muted-foreground/50"
+                    : delta === 0
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
                     : delta < 0
-                      ? "rounded-md border bg-destructive/10 px-3 py-2 text-sm font-medium tabular-nums text-destructive"
-                      : "rounded-md border bg-emerald-500/10 px-3 py-2 text-sm font-medium tabular-nums text-emerald-600"
-                }
+                    ? "border-red-300 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
+                    : "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                }`}
               >
-                {discrepancy ? formatPKR(delta) : "—"}
-                {discrepancy && delta < 0 ? " under-credited" : ""}
-                {discrepancy && delta > 0 ? " over-credited" : ""}
+                {discrepancy
+                  ? `${delta >= 0 ? "+" : ""}${formatPKR(delta)}${delta < 0 ? " under-credited" : delta > 0 ? " over-credited" : " — matches"}`
+                  : "—"}
               </div>
             </div>
           </div>
         </div>
 
+        {/* ── Per-Model Breakdown Table ── */}
         <div>
-          <h3 className="mb-2 text-sm font-medium">Per model</h3>
-          <div className="overflow-x-auto">
+          <div className="mb-3 flex items-center gap-2">
+            <Smartphone className="size-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Per-Model Breakdown</h3>
+          </div>
+          <div className="overflow-x-auto rounded-xl border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Old / New price split</TableHead>
-                  <TableHead className="text-right">4%</TableHead>
-                  <TableHead className="text-right">1%</TableHead>
-                  <TableHead className="text-right">Activation</TableHead>
-                  <TableHead className="text-right">Dealer</TableHead>
-                  <TableHead className="text-right">Stock-In</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold">Model</TableHead>
+                  <TableHead className="text-right font-semibold">Activated</TableHead>
+                  <TableHead className="text-right font-semibold">Price Split</TableHead>
+                  <TableHead className="text-right font-semibold">{report.baseIncentivePercent}%</TableHead>
+                  <TableHead className="text-right font-semibold">{tb.bonusPercent}%</TableHead>
+                  <TableHead className="text-right font-semibold">Act.</TableHead>
+                  <TableHead className="text-right font-semibold">Dealer</TableHead>
+                  <TableHead className="text-right font-semibold">Stock-In</TableHead>
+                  <TableHead className="text-right font-semibold">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,15 +488,15 @@ function ReportSection({
                   </TableRow>
                 ) : (
                   report.rows.map((r) => (
-                    <TableRow key={r.modelId}>
+                    <TableRow key={r.modelId} className={r.total > 0 ? "" : "opacity-60"}>
                       <TableCell className="font-medium">{r.modelName}</TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {r.qtyActivated}
-                        {r.qtyActivatedCrossRegion > 0 ? (
-                          <Badge variant="secondary" className="ml-2">
+                        <span>{r.qtyActivated}</span>
+                        {r.qtyActivatedCrossRegion > 0 && (
+                          <Badge variant="secondary" className="ml-1.5 text-[10px]">
                             {r.qtyActivatedCrossRegion} CR
                           </Badge>
-                        ) : null}
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
                         {r.priceSubperiods.map((s, i) => (
@@ -342,22 +505,12 @@ function ReportSection({
                           </span>
                         ))}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPKR(r.basePercentEarned)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPKR(r.bonusPercentEarned)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPKR(r.activationIncentiveEarned)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPKR(r.dealerIncentiveEarned)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPKR(r.stockInEarned)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">
+                      <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.basePercentEarned)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.bonusPercentEarned)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.activationIncentiveEarned)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.dealerIncentiveEarned)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.stockInEarned)}</TableCell>
+                      <TableCell className="text-right font-bold tabular-nums text-primary">
                         {formatPKR(r.total)}
                       </TableCell>
                     </TableRow>
@@ -366,51 +519,122 @@ function ReportSection({
               </TableBody>
             </Table>
           </div>
+          {report.totalActivationsCrossRegion > 0 && (
+            <p className="mt-2 text-[11px] text-muted-foreground px-1">
+              {report.totalActivationsCrossRegion} cross-region phone{report.totalActivationsCrossRegion > 1 ? "s" : ""} earn base%/bonus%/activation/dealer incentive but are excluded from stock-in.
+            </p>
+          )}
         </div>
 
-        {report.totalActivationsCrossRegion > 0 ? (
-          <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-            <strong>Cross-region note:</strong> {report.totalActivationsCrossRegion}{" "}
-            phones were cross-region. They earn 4% / 1% / activation / dealer
-            incentive but are excluded from stock-in.
-          </div>
-        ) : null}
-
-        {policies.length > 0 && (
-          <div>
-            <h3 className="mb-2 text-sm font-medium">Policies &amp; Achievements</h3>
+        {/* ── Price-Drop Rebates Section ── */}
+        {rebateRows.length > 0 && (
+          <div className="rounded-xl border border-cyan-300 dark:border-cyan-700 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-cyan-50/80 dark:bg-cyan-950/30 border-b border-cyan-200 dark:border-cyan-800">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="size-3.5 text-cyan-600 dark:text-cyan-400" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-cyan-700 dark:text-cyan-400">
+                  Price-Drop Rebates — OPPO Owes You
+                </span>
+              </div>
+              <div className="text-sm font-bold tabular-nums text-cyan-700 dark:text-cyan-400">
+                {formatPKR(rebateTotal)}
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
+                  <TableRow className="bg-cyan-50/40 dark:bg-cyan-950/10 hover:bg-cyan-50/40">
+                    <TableHead>Date</TableHead>
                     <TableHead>Model</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead className="text-right">Target</TableHead>
-                    <TableHead className="text-right">Per unit / %</TableHead>
-                    <TableHead className="text-right">Actual</TableHead>
-                    <TableHead className="text-right">Earned</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
+                    <TableHead>Dealer ID</TableHead>
+                    <TableHead className="text-right">Old Price</TableHead>
+                    <TableHead className="text-right">New Price</TableHead>
+                    <TableHead className="text-right">−/Unit</TableHead>
+                    <TableHead className="text-right">Stock Qty</TableHead>
+                    <TableHead className="text-right">Rebate</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {policies.map((p, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-xs font-medium capitalize">{p.type.replace(/-/g, " ")}</TableCell>
-                      <TableCell className="text-xs">{p.modelName ?? <span className="text-muted-foreground">All models</span>}</TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{p.periodStart} → {p.periodEnd}</TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">{p.targetQty ?? "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">
-                        {p.type === "target-bonus" ? `${p.perUnitAmount}%` : formatPKR(p.perUnitAmount)}
+                  {rebateRows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{r.rebateDate}</TableCell>
+                      <TableCell className="font-medium">{r.modelName}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{r.dealerName}</TableCell>
+                      <TableCell className="text-right tabular-nums text-xs line-through opacity-50">{formatPKR(r.oldDealerPrice)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.newDealerPrice)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-xs font-semibold text-cyan-700 dark:text-cyan-400">
+                        +{formatPKR(r.rebatePerUnit)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">{p.actualQty}</TableCell>
-                      <TableCell className="text-right tabular-nums text-xs font-medium">{formatPKR(p.earned)}</TableCell>
-                      <TableCell className="text-right">
-                        {p.eligible
-                          ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">Met ✓</span>
-                          : <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-400">Not Met ✗</span>
-                        }
+                      <TableCell className="text-right tabular-nums">{r.eligibleQty}</TableCell>
+                      <TableCell className="text-right tabular-nums font-bold text-cyan-700 dark:text-cyan-400">
+                        {formatPKR(r.totalRebateAmount)}
                       </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="border-t-2 bg-cyan-50/60 dark:bg-cyan-950/20">
+                    <TableCell colSpan={7} className="text-right text-sm font-semibold">Total Rebate Receivable</TableCell>
+                    <TableCell className="text-right tabular-nums font-black text-cyan-700 dark:text-cyan-400">
+                      {formatPKR(rebateTotal)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {/* ── CR-Caught Loss ── */}
+        {crCaughtLoss.totalUnits > 0 && (
+          <div className="rounded-xl border border-red-200 dark:border-red-800 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-red-50/60 dark:bg-red-950/20 border-b border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="size-3.5 text-red-600 dark:text-red-400" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-red-600 dark:text-red-400">
+                  CR-Caught Loss
+                </span>
+              </div>
+              <Badge variant="outline" className="border-red-300 text-red-600 dark:text-red-400 text-[10px]">
+                {crCaughtLoss.totalUnits} unit{crCaughtLoss.totalUnits > 1 ? "s" : ""} caught
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-3">
+              <div className="bg-card px-4 py-3">
+                <div className="text-[10px] text-muted-foreground">Units Caught</div>
+                <div className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{crCaughtLoss.totalUnits}</div>
+              </div>
+              <div className="bg-card px-4 py-3">
+                <div className="text-[10px] text-muted-foreground">Est. Lost Incentive</div>
+                <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{formatPKR(crCaughtLoss.lostIncentive)}</div>
+                <div className="text-[10px] text-muted-foreground">dealer price × {report.baseIncentivePercent}% × 1.25</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── CR-Shifted Stock ── */}
+        {crShiftedValue.totalUnits > 0 && (
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <h3 className="text-sm font-semibold">CR-Shifted Stock Received</h3>
+              <Badge variant="secondary">{crShiftedValue.totalUnits} units · {formatPKR(crShiftedValue.totalValue)}</Badge>
+            </div>
+            <div className="overflow-x-auto rounded-xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead>Model</TableHead>
+                    <TableHead className="text-right">Units</TableHead>
+                    <TableHead className="text-right">Dealer Price</TableHead>
+                    <TableHead className="text-right">Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {crShiftedValue.byModel.map((m) => (
+                    <TableRow key={m.modelId}>
+                      <TableCell className="font-medium">{m.modelName}</TableCell>
+                      <TableCell className="text-right tabular-nums">{m.qty}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatPKR(m.dealerPrice)}</TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">{formatPKR(m.totalValue)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -418,17 +642,66 @@ function ReportSection({
             </div>
           </div>
         )}
+
+        {/* ── Policies & Achievements ── */}
+        {policies.length > 0 && (
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <Award className="size-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold">Policies &amp; Achievements</h3>
+            </div>
+            <div className="space-y-2">
+              {policies.map((p, i) => {
+                const progPct = p.targetQty != null && p.targetQty > 0
+                  ? Math.min(100, (p.actualQty / p.targetQty) * 100)
+                  : null;
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-xl border p-3 ${
+                      p.eligible
+                        ? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20"
+                        : "border-border bg-muted/20"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          {p.eligible
+                            ? <CircleCheck className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            : <CircleX className="size-3.5 text-muted-foreground/60 shrink-0" />}
+                          <span className="text-sm font-medium capitalize">{p.type.replace(/-/g, " ")}</span>
+                          {p.modelName && <Badge variant="secondary" className="text-[10px]">{p.modelName}</Badge>}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground pl-5">
+                          {p.periodStart} → {p.periodEnd}
+                          {p.targetQty != null && ` · ${p.actualQty}/${p.targetQty} ${p.eligible ? "✓" : `(${p.targetQty - p.actualQty} more needed)`}`}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-base font-bold tabular-nums ${p.eligible ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/70"}`}>
+                          {formatPKR(p.earned)}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {p.type === "target-bonus" ? `${p.perUnitAmount}% rate` : `${formatPKR(p.perUnitAmount)}/unit`}
+                        </div>
+                      </div>
+                    </div>
+                    {progPct !== null && (
+                      <div className="mt-2 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${p.eligible ? "bg-emerald-500" : "bg-primary/40"}`}
+                          style={{ width: `${progPct}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
-  );
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-md border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-base font-semibold tabular-nums">{value}</div>
-      {sub ? <div className="text-[11px] text-muted-foreground">{sub}</div> : null}
-    </div>
   );
 }

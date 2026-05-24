@@ -20,12 +20,15 @@ export async function buildIncentiveReport(input: {
   periodStart: string;
   periodEnd: string;
   baseIncentivePercent?: number;
+  /** tenantId for data queries (activations, purchases). Defaults to OWNER_TENANT_ID for the main app. Pass the dealer's tenantId for the dealer portal. */
+  dataTenantId?: string;
 }): Promise<IncentiveReport> {
   const { dealerId, periodStart, periodEnd } = input;
   const constants = await getConstants();
   const basePct = input.baseIncentivePercent ?? constants.basePercent;
 
   const tenantId = OWNER_TENANT_ID;
+  const dataTenantId = input.dataTenantId ?? OWNER_TENANT_ID;
 
   const [
     models,
@@ -71,7 +74,7 @@ export async function buildIncentiveReport(input: {
       .from(schema.activations)
       .where(
         and(
-          eq(schema.activations.tenantId, tenantId),
+          eq(schema.activations.tenantId, dataTenantId),
           eq(schema.activations.dealerId, dealerId),
           gte(schema.activations.activationDate, minStart),
           lte(schema.activations.activationDate, maxEnd)
@@ -82,7 +85,7 @@ export async function buildIncentiveReport(input: {
       .from(schema.purchases)
       .where(
         and(
-          eq(schema.purchases.tenantId, tenantId),
+          eq(schema.purchases.tenantId, dataTenantId),
           eq(schema.purchases.dealerId, dealerId),
           gte(schema.purchases.purchaseDate, minStart),
           lte(schema.purchases.purchaseDate, maxEnd)
@@ -93,7 +96,7 @@ export async function buildIncentiveReport(input: {
       .from(schema.interIdTransfers)
       .where(
         and(
-          eq(schema.interIdTransfers.tenantId, tenantId),
+          eq(schema.interIdTransfers.tenantId, dataTenantId),
           eq(schema.interIdTransfers.fromDealerId, dealerId),
           gte(schema.interIdTransfers.transferDate, minStart),
           lte(schema.interIdTransfers.transferDate, maxEnd)
@@ -154,9 +157,13 @@ export async function buildIncentiveReport(input: {
   return calculateIncentives(engineInput);
 }
 
-export async function buildLastSixMonths(dealerId: string): Promise<
-  Array<{ label: string; total: number; activations: number }>
-> {
+export async function buildLastSixMonths(
+  dealerId: string,
+  dataTenantId?: string,
+): Promise<Array<{ label: string; total: number; activations: number }>> {
+  const tenantId = OWNER_TENANT_ID;
+  const effectiveDataTenantId = dataTenantId ?? OWNER_TENANT_ID;
+
   const today = new Date();
   const months = Array.from({ length: 6 }, (_, i) => {
     const start = new Date(today.getFullYear(), today.getMonth() - (5 - i), 1);
@@ -168,15 +175,82 @@ export async function buildLastSixMonths(dealerId: string): Promise<
     };
   });
 
-  const reports = await Promise.all(
-    months.map((m) =>
-      buildIncentiveReport({ dealerId, periodStart: m.startStr, periodEnd: m.endStr })
-    )
-  );
+  const rangeStart = months[0].startStr;
+  const rangeEnd = months[months.length - 1].endStr;
 
-  return months.map((m, i) => ({
-    label: m.label,
-    total: reports[i].totals.grandTotal,
-    activations: reports[i].totalActivations,
-  }));
+  // Fetch constants + all policies + models in one parallel batch
+  const [
+    constants,
+    models,
+    targetBonusPolicies,
+    stockInPolicies,
+    activationIncentivePolicies,
+    dealerIncentivePolicies,
+  ] = await Promise.all([
+    getConstants(),
+    db.select().from(schema.models),
+    db.select().from(schema.targetBonusPolicies).where(and(eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId))),
+    db.select().from(schema.stockInPolicies).where(and(eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId))),
+    db.select().from(schema.activationIncentivePolicies).where(and(eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId))),
+    db.select().from(schema.dealerIncentivePolicies).where(and(eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId))),
+  ]);
+
+  // Extend window to cover all policy gates (so target/dealer-incentive counts are correct)
+  let minStart = rangeStart;
+  let maxEnd = rangeEnd;
+  const extend = (s: string, e: string) => {
+    if (s < minStart) minStart = s;
+    if (e > maxEnd) maxEnd = e;
+  };
+  for (const p of targetBonusPolicies) extend(p.periodStart, p.periodEnd);
+  for (const p of stockInPolicies) extend(p.periodStart, p.periodEnd);
+  for (const p of activationIncentivePolicies) extend(p.periodStart, p.periodEnd);
+  for (const p of dealerIncentivePolicies) extend(p.periodStart, p.periodEnd);
+
+  // Fetch all transactional data for the full extended range in one batch
+  const [activations, purchases, interIdOut] = await Promise.all([
+    db.select().from(schema.activations).where(
+      and(eq(schema.activations.tenantId, effectiveDataTenantId), eq(schema.activations.dealerId, dealerId), gte(schema.activations.activationDate, minStart), lte(schema.activations.activationDate, maxEnd))
+    ),
+    db.select().from(schema.purchases).where(
+      and(eq(schema.purchases.tenantId, effectiveDataTenantId), eq(schema.purchases.dealerId, dealerId), gte(schema.purchases.purchaseDate, minStart), lte(schema.purchases.purchaseDate, maxEnd))
+    ),
+    db.select().from(schema.interIdTransfers).where(
+      and(eq(schema.interIdTransfers.tenantId, effectiveDataTenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), gte(schema.interIdTransfers.transferDate, minStart), lte(schema.interIdTransfers.transferDate, maxEnd))
+    ),
+  ]);
+
+  const engineBase = {
+    dealerId,
+    baseIncentivePercent: constants.basePercent,
+    models: models.map((m) => ({ id: m.id, name: m.name })),
+    activations: activations.map((a) => ({
+      id: a.id, modelId: a.modelId, activationDate: a.activationDate,
+      dealerPriceSnapshot: a.dealerPriceSnapshot, isCrossRegion: a.isCrossRegion,
+    })),
+    purchases: purchases.map((p) => ({
+      id: p.id, modelId: p.modelId, quantity: p.quantity,
+      unitDealerPrice: p.unitDealerPrice, purchaseDate: p.purchaseDate,
+      source: p.source as "REGULAR" | "CROSS_REGION_TRANSFER_IN",
+    })),
+    targetBonusPolicies,
+    stockInPolicies: stockInPolicies.map((p) => ({
+      id: p.id, modelId: p.modelId, periodStart: p.periodStart,
+      periodEnd: p.periodEnd, perUnitAmount: p.perUnitAmount, minQty: p.minQty,
+    })),
+    activationIncentivePolicies: activationIncentivePolicies.map((p) => ({
+      id: p.id, modelId: p.modelId, periodStart: p.periodStart,
+      periodEnd: p.periodEnd, perUnitAmount: p.perUnitAmount, targetQty: p.targetQty,
+    })),
+    dealerIncentivePolicies,
+    interIdOut: interIdOut.map((t) => ({
+      id: t.id, modelId: t.modelId, quantity: t.quantity, transferDate: t.transferDate,
+    })),
+  };
+
+  // Pure in-memory calculation per month — no additional DB I/O
+  return months.map((m) => {
+    const report = calculateIncentives({ ...engineBase, periodStart: m.startStr, periodEnd: m.endStr });
+    return { label: m.label, total: report.totals.grandTotal, activations: report.totalActivations };
+  });
 }

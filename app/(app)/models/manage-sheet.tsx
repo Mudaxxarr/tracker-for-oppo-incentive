@@ -25,14 +25,16 @@ import { Trash2, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { ModelPriceHistory } from "@/lib/db/schema";
+import type { RebateRow } from "@/lib/db/queries/rebates";
 
 interface Props {
   model: ModelWithCurrentPrice;
   history: ModelPriceHistory[];
+  rebates: RebateRow[];
   onClose: () => void;
 }
 
-export function ManageModelSheet({ model, history, onClose }: Props) {
+export function ManageModelSheet({ model, history, rebates, onClose }: Props) {
   // Controlled state — re-syncs whenever the active model changes (fixes the
   // "default value of an uncontrolled FieldControl" warning).
   const [name, setName] = useState(model.name);
@@ -94,9 +96,15 @@ export function ManageModelSheet({ model, history, onClose }: Props) {
       toast.error("Can't delete the only price entry — add a new one first");
       return;
     }
+    const linkedRebates = rebates.filter((r) => r.priceHistoryId === priceId);
+    const linkedTotal = linkedRebates.reduce((s, r) => s + r.totalRebateAmount, 0);
+    const rebateWarning =
+      linkedRebates.length > 0
+        ? `\n\n⚠️ WARNING: This price drop has ${linkedRebates.length} rebate record(s) worth PKR ${linkedTotal.toLocaleString()}. Deleting this entry will also permanently delete those rebates.`
+        : "";
     if (
       !confirm(
-        `Delete price entry effective ${formatDate(effectiveFrom)}? Timeline will be re-stitched automatically.`
+        `Delete price entry effective ${formatDate(effectiveFrom)}? Timeline will be re-stitched automatically.${rebateWarning}`
       )
     )
       return;
@@ -249,6 +257,53 @@ export function ManageModelSheet({ model, history, onClose }: Props) {
               </div>
             )}
           </section>
+
+          {rebates.length > 0 && (
+            <>
+              <hr />
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-medium">Rebate history</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically calculated when dealer price dropped. Company adjusts this into your ledger.
+                  </p>
+                </div>
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Dealer</TableHead>
+                        <TableHead className="text-right">Old ₨</TableHead>
+                        <TableHead className="text-right">New ₨</TableHead>
+                        <TableHead className="text-right">Per unit</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right font-semibold">Total ₨</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rebates.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="text-xs">{formatDate(r.rebateDate)}</TableCell>
+                          <TableCell className="text-xs">{r.dealerName}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.oldDealerPrice)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.newDealerPrice)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs text-amber-600">−{formatPKR(r.rebatePerUnit)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{r.eligibleQty}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs font-semibold text-emerald-600">{formatPKR(r.totalRebateAmount)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Grand total: <span className="font-semibold text-emerald-700">
+                    {formatPKR(rebates.reduce((s, r) => s + r.totalRebateAmount, 0))}
+                  </span>
+                </p>
+              </section>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -390,14 +445,16 @@ function PriceRow({ modelId, row, onDelete }: PriceRowProps) {
           >
             <Pencil className="size-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Delete"
-            onClick={onDelete}
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          {row.effectiveTo === null && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Delete"
+              onClick={onDelete}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>

@@ -298,7 +298,10 @@ export async function isTeamAuthenticated(): Promise<boolean> {
   return true;
 }
 
-/** Returns true if the visitor holds either an admin or a team session. */
+/** Returns true if the visitor holds either an admin, team, or owner-staff session. */
 export async function isAnyAuthenticated(): Promise<boolean> {
-  return (await isAuthenticated()) || (await isTeamAuthenticated());
+  if (await isAuthenticated()) return true;
+  if (await isTeamAuthenticated()) return true;
+  const { getStaffSession } = await import("./staff-auth");
+  return !!(await getStaffSession());
 }

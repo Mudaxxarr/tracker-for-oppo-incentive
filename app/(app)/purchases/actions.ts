@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { db } from "@/lib/db/client";
 import { createPurchase, deletePurchase, getPurchaseById, updatePurchase } from "@/lib/db/queries/purchases";
@@ -35,7 +35,7 @@ export async function createPurchaseAction(
   _prev: PurchaseFormState,
   formData: FormData
 ): Promise<PurchaseFormState> {
-  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID — create one in IDs first" };
   const tenantId = OWNER_TENANT_ID;
@@ -127,7 +127,7 @@ export async function getPriceOnDateAction(
   modelId: string,
   date: string
 ): Promise<{ dealerPrice: number; invoicePrice: number } | null> {
-  if (!(await isAuthenticated())) return null;
+  if (!(await isAnyAuthenticated())) return null;
   if (!modelId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   return getPriceOnDate(OWNER_TENANT_ID, modelId, date);
 }
@@ -157,7 +157,7 @@ export async function createBulkInvoiceAction(
   _prev: BulkInvoiceState,
   formData: FormData
 ): Promise<BulkInvoiceState> {
-  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
   const tenantId = OWNER_TENANT_ID;

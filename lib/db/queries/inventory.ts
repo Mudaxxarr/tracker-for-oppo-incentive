@@ -7,40 +7,44 @@ export interface InventoryModelRow {
   modelId: string; modelName: string; dealerPrice: number | null;
   invoicePrice: number | null; totalStock: number;
   regularQty: number; crossRegionQty: number; interIdInQty: number;
+  earliestPurchaseDate: string | null;
 }
 
-export async function listInventoryForDealer(tenantId: string, dealerId: string): Promise<InventoryModelRow[]> {
+export async function listInventoryForDealer(tenantId: string, dealerId: string, priceTenantId?: string): Promise<InventoryModelRow[]> {
   const today = new Date().toISOString().slice(0, 10);
 
-  const purchaseRows = await db
-    .select({ modelId: schema.purchases.modelId, source: schema.purchases.source, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
-    .from(schema.purchases)
-    .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
-    .groupBy(schema.purchases.modelId, schema.purchases.source);
-
-  const activationRows = await db
-    .select({ modelId: schema.activations.modelId, qty: sql<number>`COUNT(*)` })
-    .from(schema.activations)
-    .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId)))
-    .groupBy(schema.activations.modelId);
-
-  const transferOutRows = await db
-    .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
-    .from(schema.interIdTransfers)
-    .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)))
-    .groupBy(schema.interIdTransfers.modelId);
-
-  const crCaughtRows = await db
-    .select({ modelId: schema.crCaught.modelId, qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
-    .from(schema.crCaught)
-    .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)))
-    .groupBy(schema.crCaught.modelId);
-
-  const interIdInRows = await db
-    .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
-    .from(schema.interIdTransfers)
-    .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.toDealerId, dealerId), eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED)))
-    .groupBy(schema.interIdTransfers.modelId);
+  const [purchaseRows, activationRows, transferOutRows, crCaughtRows, interIdInRows, earliestDateRows] = await Promise.all([
+    db
+      .select({ modelId: schema.purchases.modelId, source: schema.purchases.source, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
+      .groupBy(schema.purchases.modelId, schema.purchases.source),
+    db
+      .select({ modelId: schema.activations.modelId, qty: sql<number>`COUNT(*)` })
+      .from(schema.activations)
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId)))
+      .groupBy(schema.activations.modelId),
+    db
+      .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+      .from(schema.interIdTransfers)
+      .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)))
+      .groupBy(schema.interIdTransfers.modelId),
+    db
+      .select({ modelId: schema.crCaught.modelId, qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
+      .from(schema.crCaught)
+      .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)))
+      .groupBy(schema.crCaught.modelId),
+    db
+      .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+      .from(schema.interIdTransfers)
+      .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.toDealerId, dealerId), eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED)))
+      .groupBy(schema.interIdTransfers.modelId),
+    db
+      .select({ modelId: schema.purchases.modelId, minDate: sql<string>`MIN(${schema.purchases.purchaseDate})` })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
+      .groupBy(schema.purchases.modelId),
+  ]);
 
   const activatedMap = new Map<string, number>();
   for (const r of activationRows) activatedMap.set(r.modelId, Number(r.qty));
@@ -52,6 +56,8 @@ export async function listInventoryForDealer(tenantId: string, dealerId: string)
   const crossRegionMap = new Map<string, number>();
   const interIdMap = new Map<string, number>();
   const allModelIds = new Set<string>();
+  const earliestDateMap = new Map<string, string>();
+  for (const r of earliestDateRows) earliestDateMap.set(r.modelId, r.minDate);
 
   for (const r of purchaseRows) {
     allModelIds.add(r.modelId);
@@ -83,7 +89,7 @@ export async function listInventoryForDealer(tenantId: string, dealerId: string)
     .leftJoin(
       schema.modelPriceHistory,
       and(
-        eq(schema.modelPriceHistory.tenantId, tenantId),
+        eq(schema.modelPriceHistory.tenantId, priceTenantId ?? tenantId),
         eq(schema.modelPriceHistory.modelId, schema.models.id),
         lte(schema.modelPriceHistory.effectiveFrom, today),
         or(isNull(schema.modelPriceHistory.effectiveTo), gt(schema.modelPriceHistory.effectiveTo, today))
@@ -98,6 +104,7 @@ export async function listInventoryForDealer(tenantId: string, dealerId: string)
       regularQty: regularMap.get(m.id) ?? 0,
       crossRegionQty: crossRegionMap.get(m.id) ?? 0,
       interIdInQty: interIdMap.get(m.id) ?? 0,
+      earliestPurchaseDate: earliestDateMap.get(m.id) ?? null,
     }))
     .filter((r) => r.totalStock > 0)
     .sort((a, b) => a.modelName.localeCompare(b.modelName));

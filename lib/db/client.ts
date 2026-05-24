@@ -15,7 +15,7 @@ declare global {
 function createPool(): Pool {
   const url = process.env.POSTGRES_URL;
   if (!url) throw new Error("POSTGRES_URL environment variable is required");
-  return new Pool({ connectionString: url, max: 10 });
+  return new Pool({ connectionString: url, max: 20 });
 }
 
 const pool: Pool = globalThis.__oppoPool ?? createPool();

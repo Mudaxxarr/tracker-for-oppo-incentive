@@ -24,21 +24,24 @@ import {
 import {
   createModelAction,
   deleteModelAction,
+  syncAllActivationPricesAction,
   type ModelFormState,
 } from "./actions";
 import { ManageModelSheet } from "./manage-sheet";
 import { formatDate, formatPKR } from "@/lib/format";
-import { Plus, Settings2, Trash2, Smartphone } from "lucide-react";
+import { Plus, RefreshCw, Settings2, Trash2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { ModelPriceHistory } from "@/lib/db/schema";
+import type { RebateRow } from "@/lib/db/queries/rebates";
 
 interface Props {
   models: ModelWithCurrentPrice[];
   history: Record<string, ModelPriceHistory[]>;
+  rebates: Record<string, RebateRow[]>;
 }
 
-export function ModelsClient({ models, history }: Props) {
+export function ModelsClient({ models, history, rebates }: Props) {
   const router = useRouter();
   const [createState, createAction, creating] = useActionState<ModelFormState, FormData>(
     createModelAction,
@@ -47,6 +50,21 @@ export function ModelsClient({ models, history }: Props) {
   const [, startTransition] = useTransition();
   const [manageId, setManageId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const onSyncPrices = () => {
+    setSyncing(true);
+    startTransition(async () => {
+      const r = await syncAllActivationPricesAction();
+      setSyncing(false);
+      if (r.ok) {
+        toast.success(`Prices synced — ${r.modelsProcessed} model(s) processed`);
+        router.refresh();
+      } else {
+        toast.error(r.error ?? "Sync failed");
+      }
+    });
+  };
 
   useEffect(() => {
     if (createState.ok) {
@@ -89,6 +107,11 @@ export function ModelsClient({ models, history }: Props) {
             price effective on the activation date.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={onSyncPrices} disabled={syncing}>
+            <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Syncing…" : "Sync Prices"}
+          </Button>
         <Sheet open={addOpen} onOpenChange={setAddOpen}>
           <SheetTrigger
             render={
@@ -148,6 +171,7 @@ export function ModelsClient({ models, history }: Props) {
             </form>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
 
       {models.length === 0 ? (
@@ -243,6 +267,7 @@ export function ModelsClient({ models, history }: Props) {
         <ManageModelSheet
           model={managed}
           history={history[managed.id] ?? []}
+          rebates={rebates[managed.id] ?? []}
           onClose={() => setManageId(null)}
         />
       ) : null}

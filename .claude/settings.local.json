@@ -15,7 +15,19 @@
       "Bash(node -e \"const Database = require\\('better-sqlite3'\\); const db = new Database\\('local.db'\\); const tables = db.prepare\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\).all\\(\\); console.log\\(tables.map\\(t => t.name\\)\\);\")",
       "Bash(Get-ChildItem -Name \"*.db\" -Recurse)",
       "Bash(node -e \"const Database = require\\('better-sqlite3'\\); const db = new Database\\('./data/oppo-tracker.db'\\); const tables = db.prepare\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\).all\\(\\); console.log\\(tables.map\\(t => t.name\\)\\);\")",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(cat app/admin/dealers/[id]/features/page.tsx)",
+      "Bash(cat app/admin/dealers/[id]/backups/page.tsx)",
+      "Bash(cat app/admin/dealers/[id]/reset-password/page.tsx)",
+      "Bash(git diff *)",
+      "Bash(cd C:\\\\Users\\\\Admin\\\\Downloads\\\\Claude\\\\Oppo Ecosystem\\\\oppo-tracker *)",
+      "PowerShell(cd \"C:\\\\Users\\\\Admin\\\\Downloads\\\\Claude\\\\Oppo Ecosystem\\\\oppo-tracker\"; Get-ChildItem \"app/dealer/\\(portal\\)/activations\" -File | ForEach-Object { $_.Name })",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Admin\\\\Downloads\\\\Claude\\\\Oppo Ecosystem\\\\oppo-tracker\\\\app\\\\\\(app\\)\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(sed -n '47,70p' \"C:/Users/Admin/Downloads/Claude/Oppo Ecosystem/oppo-tracker/lib/db/queries/cr-caught.ts\")",
+      "Bash(sed -n '92,110p' \"C:/Users/Admin/Downloads/Claude/Oppo Ecosystem/oppo-tracker/lib/audit.ts\")",
+      "Bash(node -e \"const p = require\\('./package.json'\\); const deps = {...p.dependencies,...p.devDependencies}; const chart = Object.keys\\(deps\\).filter\\(k => /chart|recharts|victory|d3|visx|nivo|apex|plot|graph/i.test\\(k\\)\\); console.log\\('Chart libs:', chart\\); console.log\\('All UI deps:', Object.keys\\(deps\\).filter\\(k => /ui|radix|base|headless|framer|motion/i.test\\(k\\)\\)\\)\")"
     ]
   }
 }

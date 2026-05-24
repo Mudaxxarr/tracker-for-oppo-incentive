@@ -27,7 +27,7 @@ export default function NewDealerPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <CredRow label="Email" value={c.adminEmail} />
+            <CredRow label="Dealer Login ID" value={c.adminEmail} />
             <CredRow label="Temp Password" value={c.tempPassword} mono />
           </CardContent>
           <CardFooter className="flex gap-2">
@@ -52,9 +52,8 @@ export default function NewDealerPage() {
             <Field id="ownerEmail" label="Owner Email" type="email" placeholder="owner@example.com" />
             <Field
               id="adminEmail"
-              label="Admin Login Email"
-              type="email"
-              placeholder="admin@example.com"
+              label="Dealer Login ID"
+              placeholder="e.g. dealer001 or LAHORE-DLR-1"
             />
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="planMonths">

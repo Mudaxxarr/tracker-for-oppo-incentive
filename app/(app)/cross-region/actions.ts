@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import {
   createCrossRegion,
@@ -10,6 +10,8 @@ import {
   updateCrossRegionStatus,
 } from "@/lib/db/queries/transfers";
 import { getModelById } from "@/lib/db/queries/models";
+import { createOwnerAlert } from "@/lib/db/queries/alerts";
+import { CROSS_REGION_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 
 const Schema = z.object({
@@ -25,19 +27,35 @@ export async function createCrossRegionAction(
   _prev: CrFormState,
   fd: FormData
 ): Promise<CrFormState> {
-  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
   const tenantId = OWNER_TENANT_ID;
   const parsed = Schema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const isOwner = await isAuthenticated();
   const id = await createCrossRegion({
     tenantId,
     dealerId,
     ...parsed.data,
     sourceRegionNote: parsed.data.sourceRegionNote ?? null,
+    // SO-created transfers go straight to pending owner approval
+    initialStatus: isOwner ? CROSS_REGION_STATUS.PENDING_REPORT : CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL,
   });
   const m = await getModelById(parsed.data.modelId);
+
+  if (!isOwner) {
+    await createOwnerAlert({
+      tenantId,
+      type: OWNER_ALERT_TYPE.CR_PENDING_APPROVAL,
+      entityType: "cross_region_transfer",
+      entityId: id,
+      dealerId,
+      message: `SO reported cross-region transfer: ${parsed.data.quantity} × ${m?.name ?? "?"} — awaiting your approval.`,
+    });
+  }
+
   await logAudit({
     action: "cross_region.create",
     entityType: "cross_region_transfer",

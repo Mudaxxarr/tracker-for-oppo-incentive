@@ -3,7 +3,18 @@
 import { db, schema } from "@/lib/db/client";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
-import { isAuthenticated } from "@/lib/auth";
+import { isAnyAuthenticated } from "@/lib/auth";
+import { getPriceOnDate } from "@/lib/db/queries/models";
+
+/** Returns the dealer price effective on `date` for the given model, or null if none defined. */
+export async function getPriceOnDateAction(
+  modelId: string,
+  date: string
+): Promise<{ dealerPrice: number } | null> {
+  if (!(await isAnyAuthenticated())) return null;
+  const row = await getPriceOnDate(OWNER_TENANT_ID, modelId, date);
+  return row ? { dealerPrice: row.dealerPrice } : null;
+}
 
 export interface ModelQtyRow {
   modelId: string;
@@ -21,7 +32,7 @@ export async function getActivationSummaryAction(
   from: string,
   to: string
 ): Promise<ModelQtyRow[]> {
-  if (!(await isAuthenticated())) return [];
+  if (!(await isAnyAuthenticated())) return [];
   const dealerId = await getActiveDealerId();
   if (!dealerId) return [];
 
@@ -52,7 +63,7 @@ export async function getDailyActivationsAction(
   from: string,
   to: string
 ): Promise<DailyModelRow[]> {
-  if (!(await isAuthenticated())) return [];
+  if (!(await isAnyAuthenticated())) return [];
   const dealerId = await getActiveDealerId();
   if (!dealerId) return [];
 

@@ -101,9 +101,13 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
     if (!confirm("Delete this cross-region row and any auto-created purchases? This cannot be undone."))
       return;
     startTransition(async () => {
-      await deleteDealerCrossRegionAction(id);
-      toast.success("Deleted");
-      router.refresh();
+      try {
+        await deleteDealerCrossRegionAction(id);
+        toast.success("Deleted");
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Delete failed");
+      }
     });
   };
 

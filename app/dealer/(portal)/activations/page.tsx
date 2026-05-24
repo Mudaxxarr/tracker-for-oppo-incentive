@@ -1,57 +1,58 @@
-import { listDealerActivationsAction, deleteDealerActivationAction } from "./actions";
-import { DealerActivationForm } from "./dealer-activation-form";
+import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
-import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { getTenantFeaturesById } from "@/lib/admin/dealers";
+import { isFeatureEnabled } from "@/lib/dealer-features";
+import { FeatureDisabled } from "@/components/dealer/feature-disabled";
+import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
+import { listActivations } from "@/lib/db/queries/activations";
+import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
+import { listStockForDealer } from "@/lib/db/queries/purchases";
+import { DealerActivationsClient } from "./dealer-activations-client";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 
-export default async function DealerActivationsPage() {
-  const [session, data] = await Promise.all([
-    getDealerSession(),
-    listDealerActivationsAction(),
+interface SearchParams {
+  modelId?: string;
+  from?: string;
+  to?: string;
+}
+
+export default async function DealerActivationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const session = await getDealerSession();
+  if (!session) redirect("/dealer/login");
+
+  const features = await getTenantFeaturesById(session.tenantId);
+  if (!isFeatureEnabled(features, "activations")) return <FeatureDisabled />;
+
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  const sp = await searchParams;
+
+  const [models, activations, stock] = await Promise.all([
+    listModelsWithCurrentPrice(OWNER_TENANT_ID),
+    dealerId
+      ? listActivations({
+          tenantId: session.tenantId,
+          dealerId,
+          modelId: sp.modelId || undefined,
+          from: sp.from || undefined,
+          to: sp.to || undefined,
+        })
+      : Promise.resolve([]),
+    dealerId
+      ? listStockForDealer(session.tenantId, dealerId, OWNER_TENANT_ID)
+      : Promise.resolve([]),
   ]);
-  const isAdmin = session?.role === "admin";
-  const { activations, models } = data;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Activations</h1>
-
-      <DealerActivationForm models={models.map((m) => ({ id: m.id, name: m.name }))} />
-
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">
-          {activations.length} record{activations.length !== 1 ? "s" : ""}
-        </h2>
-        {activations.map((a) => (
-          <div
-            key={a.id}
-            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3"
-          >
-            <div>
-              <p className="text-sm font-medium">{a.imei ?? "—"}</p>
-              <p className="text-xs text-muted-foreground">
-                {a.modelName} &middot; {format(new Date(a.activationDate), "dd MMM yyyy")}
-              </p>
-            </div>
-            {isAdmin && (
-              <form
-                action={async () => {
-                  "use server";
-                  await deleteDealerActivationAction(a.id);
-                }}
-              >
-                <Button type="submit" variant="ghost" size="icon" className="text-destructive">
-                  <Trash2 className="size-4" />
-                </Button>
-              </form>
-            )}
-          </div>
-        ))}
-        {activations.length === 0 && (
-          <p className="text-sm text-muted-foreground">No activations yet.</p>
-        )}
-      </div>
-    </div>
+    <DealerActivationsClient
+      models={models}
+      stock={stock}
+      initialActivations={activations}
+      initialFilters={sp}
+      hasDealer={!!dealerId}
+    />
   );
 }

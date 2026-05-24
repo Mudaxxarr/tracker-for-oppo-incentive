@@ -120,8 +120,13 @@ export function PoliciesClient(props: Props) {
   ) => {
     if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
     startTransition(async () => {
-      await deletePolicyAction(type, id);
-      toast.success("Policy deleted");
+      try {
+        await deletePolicyAction(type, id);
+        toast.success("Policy deleted");
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Delete failed");
+      }
     });
   };
 
@@ -565,6 +570,10 @@ function EditTargetBonusRow({ policy, onDone, onCancel }: {
   onCancel: () => void;
 }) {
   const [state, action, pending] = useActionState<PolicyFormState, FormData>(updateTargetBonusAction, {});
+  const [periodStart, setPeriodStart] = useState(policy.periodStart);
+  const [periodEnd, setPeriodEnd] = useState(policy.periodEnd);
+  const [targetQty, setTargetQty] = useState(String(policy.targetActivationsQty));
+  const [bonusPercent, setBonusPercent] = useState(String(policy.bonusPercent));
   useEffect(() => {
     if (state.ok) { toast.success("Updated"); onDone(); }
     else if (state.error) toast.error(state.error);
@@ -574,15 +583,15 @@ function EditTargetBonusRow({ policy, onDone, onCancel }: {
       <TableCell colSpan={6}>
         <form action={action} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="id" value={policy.id} />
-          <Input name="periodStart" type="date" defaultValue={policy.periodStart} required className="w-36" />
-          <Input name="periodEnd" type="date" defaultValue={policy.periodEnd} required className="w-36" />
+          <Input name="periodStart" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required className="w-36" />
+          <Input name="periodEnd" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required className="w-36" />
           <div className="space-y-0.5">
             <label className="text-[10px] text-muted-foreground">Target purchase qty</label>
-            <Input name="targetActivationsQty" type="number" min={1} defaultValue={policy.targetActivationsQty} required className="w-28" />
+            <Input name="targetActivationsQty" type="number" min={1} value={targetQty} onChange={(e) => setTargetQty(e.target.value)} required className="w-28" />
           </div>
           <div className="space-y-0.5">
             <label className="text-[10px] text-muted-foreground">Bonus %</label>
-            <Input name="bonusPercent" type="number" step="any" min={0} defaultValue={policy.bonusPercent} required className="w-24" />
+            <Input name="bonusPercent" type="number" step="any" min={0} value={bonusPercent} onChange={(e) => setBonusPercent(e.target.value)} required className="w-24" />
           </div>
           <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
@@ -598,6 +607,10 @@ function EditStockInRow({ policy, onDone, onCancel }: {
   onCancel: () => void;
 }) {
   const [state, action, pending] = useActionState<PolicyFormState, FormData>(updateStockInAction, {});
+  const [periodStart, setPeriodStart] = useState(policy.periodStart);
+  const [periodEnd, setPeriodEnd] = useState(policy.periodEnd);
+  const [perUnitAmount, setPerUnitAmount] = useState(String(policy.perUnitAmount));
+  const [minQty, setMinQty] = useState(String(policy.minQty ?? ""));
   useEffect(() => {
     if (state.ok) { toast.success("Updated"); onDone(); }
     else if (state.error) toast.error(state.error);
@@ -608,10 +621,10 @@ function EditStockInRow({ policy, onDone, onCancel }: {
         <form action={action} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="id" value={policy.id} />
           <input type="hidden" name="modelId" value={policy.modelId} />
-          <Input name="periodStart" type="date" defaultValue={policy.periodStart} required className="w-36" />
-          <Input name="periodEnd" type="date" defaultValue={policy.periodEnd} required className="w-36" />
-          <Input name="perUnitAmount" type="number" step="any" min={0} defaultValue={policy.perUnitAmount} required className="w-28" placeholder="Per unit ₨" />
-          <Input name="minQty" type="number" min={1} defaultValue={policy.minQty ?? undefined} required className="w-24" placeholder="Min qty" />
+          <Input name="periodStart" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required className="w-36" />
+          <Input name="periodEnd" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required className="w-36" />
+          <Input name="perUnitAmount" type="number" step="any" min={0} value={perUnitAmount} onChange={(e) => setPerUnitAmount(e.target.value)} required className="w-28" placeholder="Per unit ₨" />
+          <Input name="minQty" type="number" min={1} value={minQty} onChange={(e) => setMinQty(e.target.value)} required className="w-24" placeholder="Min qty" />
           <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
         </form>
@@ -626,6 +639,10 @@ function EditActivationIncentiveRow({ policy, onDone, onCancel }: {
   onCancel: () => void;
 }) {
   const [state, action, pending] = useActionState<PolicyFormState, FormData>(updateActivationIncentiveAction, {});
+  const [periodStart, setPeriodStart] = useState(policy.periodStart);
+  const [periodEnd, setPeriodEnd] = useState(policy.periodEnd);
+  const [perUnitAmount, setPerUnitAmount] = useState(String(policy.perUnitAmount));
+  const [targetQty, setTargetQty] = useState(String(policy.targetQty ?? ""));
   useEffect(() => {
     if (state.ok) { toast.success("Updated"); onDone(); }
     else if (state.error) toast.error(state.error);
@@ -636,10 +653,10 @@ function EditActivationIncentiveRow({ policy, onDone, onCancel }: {
         <form action={action} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="id" value={policy.id} />
           <input type="hidden" name="modelId" value={policy.modelId} />
-          <Input name="periodStart" type="date" defaultValue={policy.periodStart} required className="w-36" />
-          <Input name="periodEnd" type="date" defaultValue={policy.periodEnd} required className="w-36" />
-          <Input name="perUnitAmount" type="number" step="any" min={0} defaultValue={policy.perUnitAmount} required className="w-28" placeholder="Per unit ₨" />
-          <Input name="targetQty" type="number" min={1} defaultValue={policy.targetQty ?? undefined} required className="w-24" placeholder="Target qty" />
+          <Input name="periodStart" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required className="w-36" />
+          <Input name="periodEnd" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required className="w-36" />
+          <Input name="perUnitAmount" type="number" step="any" min={0} value={perUnitAmount} onChange={(e) => setPerUnitAmount(e.target.value)} required className="w-28" placeholder="Per unit ₨" />
+          <Input name="targetQty" type="number" min={1} value={targetQty} onChange={(e) => setTargetQty(e.target.value)} required className="w-24" placeholder="Target qty" />
           <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
         </form>
@@ -654,6 +671,10 @@ function EditDealerIncentiveRow({ policy, onDone, onCancel }: {
   onCancel: () => void;
 }) {
   const [state, action, pending] = useActionState<PolicyFormState, FormData>(updateDealerIncentiveAction, {});
+  const [periodStart, setPeriodStart] = useState(policy.periodStart);
+  const [periodEnd, setPeriodEnd] = useState(policy.periodEnd);
+  const [targetTotal, setTargetTotal] = useState(String(policy.targetTotalActivations));
+  const [perUnitAmount, setPerUnitAmount] = useState(String(policy.perUnitAmount));
   useEffect(() => {
     if (state.ok) { toast.success("Updated"); onDone(); }
     else if (state.error) toast.error(state.error);
@@ -663,10 +684,10 @@ function EditDealerIncentiveRow({ policy, onDone, onCancel }: {
       <TableCell colSpan={7}>
         <form action={action} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="id" value={policy.id} />
-          <Input name="periodStart" type="date" defaultValue={policy.periodStart} required className="w-36" />
-          <Input name="periodEnd" type="date" defaultValue={policy.periodEnd} required className="w-36" />
-          <Input name="targetTotalActivations" type="number" min={1} defaultValue={policy.targetTotalActivations} required className="w-28" placeholder="Target qty" />
-          <Input name="perUnitAmount" type="number" step="any" min={0} defaultValue={policy.perUnitAmount} required className="w-28" placeholder="Per unit ₨" />
+          <Input name="periodStart" type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required className="w-36" />
+          <Input name="periodEnd" type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required className="w-36" />
+          <Input name="targetTotalActivations" type="number" min={1} value={targetTotal} onChange={(e) => setTargetTotal(e.target.value)} required className="w-28" placeholder="Target qty" />
+          <Input name="perUnitAmount" type="number" step="any" min={0} value={perUnitAmount} onChange={(e) => setPerUnitAmount(e.target.value)} required className="w-28" placeholder="Per unit ₨" />
           <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
         </form>

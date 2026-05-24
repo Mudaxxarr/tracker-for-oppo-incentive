@@ -46,7 +46,9 @@ describe("incentive-engine: price snapshot integrity", () => {
 });
 
 describe("incentive-engine: target bonus (1%) gating", () => {
-  it("fires when target met by exactly 1 phone (boundary)", () => {
+  it("fires when purchase target met by exactly the threshold (boundary)", () => {
+    // Gate is on REGULAR purchase qty (50 units purchased = target met).
+    // The 1% bonus then applies to all 50 activations.
     const result = calculateIncentives(
       baseInput({
         activations: Array.from({ length: 50 }, (_, i) => ({
@@ -56,18 +58,22 @@ describe("incentive-engine: target bonus (1%) gating", () => {
           dealerPriceSnapshot: 100_000,
           isCrossRegion: false,
         })),
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 50, unitDealerPrice: 100_000, purchaseDate: "2026-05-05", source: "REGULAR" },
+        ],
         targetBonusPolicies: [
           { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 50, bonusPercent: 1 },
         ],
       })
     );
     expect(result.targetBonus.eligible).toBe(true);
-    expect(result.targetBonus.actualQty).toBe(50);
+    expect(result.targetBonus.actualQty).toBe(50); // purchase qty
     // 50 phones * 100k * 1% = 50_000
     expect(result.totals.bonusPercentEarned).toBe(50_000);
   });
 
-  it("does NOT fire if target not met — bonus must be 0", () => {
+  it("does NOT fire if purchase target not met — bonus must be 0", () => {
+    // 49 regular purchases < target of 50; bonus stays 0 even with 49 activations.
     const result = calculateIncentives(
       baseInput({
         activations: Array.from({ length: 49 }, (_, i) => ({
@@ -77,15 +83,18 @@ describe("incentive-engine: target bonus (1%) gating", () => {
           dealerPriceSnapshot: 100_000,
           isCrossRegion: false,
         })),
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 49, unitDealerPrice: 100_000, purchaseDate: "2026-05-05", source: "REGULAR" },
+        ],
         targetBonusPolicies: [
           { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 50, bonusPercent: 1 },
         ],
       })
     );
     expect(result.targetBonus.eligible).toBe(false);
-    expect(result.targetBonus.actualQty).toBe(49);
+    expect(result.targetBonus.actualQty).toBe(49); // purchase qty
     expect(result.totals.bonusPercentEarned).toBe(0);
-    // base 4% should still be applied
+    // base 4% should still be applied to activations
     expect(result.totals.basePercentEarned).toBe(49 * 100_000 * 0.04);
   });
 });
@@ -112,8 +121,8 @@ describe("incentive-engine: cross-region exclusion from stock-in only", () => {
           },
         ],
         purchases: [
-          // 5 regular, 5 cross-region — stock-in earnings should only count regular
-          { id: "p1", modelId: MODEL_A.id, quantity: 5, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
+          // 10 regular (meets purchase target of 10), 5 cross-region (excluded from target gate + stock-in)
+          { id: "p1", modelId: MODEL_A.id, quantity: 10, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
           { id: "p2", modelId: MODEL_A.id, quantity: 5, unitDealerPrice: 100_000, purchaseDate: "2026-05-04", source: "CROSS_REGION_TRANSFER_IN" },
         ],
         targetBonusPolicies: [
@@ -134,20 +143,20 @@ describe("incentive-engine: cross-region exclusion from stock-in only", () => {
     expect(result.totalActivations).toBe(10);
     expect(result.totalActivationsCrossRegion).toBe(1);
     expect(result.targetBonus.eligible).toBe(true);
-    expect(result.dealerIncentive.eligible).toBe(true);
+    expect(result.dealerIncentives[0]?.eligible).toBe(true);
 
     // Per phone: 4% of 100k = 4000, 1% = 1000, activation = 500, dealer = 200 → 5700
     // 10 phones × 5700 = 57_000 from per-phone earnings.
-    // Stock-in: 5 regular × 1000 = 5000 (the 5 cross-region purchases yield NO stock-in).
+    // Stock-in: 10 regular × 1000 = 10_000 (the 5 cross-region purchases yield NO stock-in).
     const row = result.rows.find((r) => r.modelId === MODEL_A.id)!;
     expect(row.basePercentEarned).toBe(40_000);
     expect(row.bonusPercentEarned).toBe(10_000);
     expect(row.activationIncentiveEarned).toBe(5_000);
     expect(row.dealerIncentiveEarned).toBe(2_000);
-    expect(row.stockInEarned).toBe(5_000);
-    expect(row.stockInRegularQty).toBe(5);
+    expect(row.stockInEarned).toBe(10_000);
+    expect(row.stockInRegularQty).toBe(10);
     expect(row.stockInCrossRegionQty).toBe(5);
-    expect(row.total).toBe(62_000);
+    expect(row.total).toBe(67_000);
   });
 });
 
@@ -279,13 +288,55 @@ describe("incentive-engine: stock-in min_qty gating + cross-region filter", () =
   });
 });
 
+describe("incentive-engine: stock-in policy date window enforcement", () => {
+  it("purchases outside the policy window earn zero stock-in even though they are in the report period", () => {
+    // Policy covers only May 1–3. 6 regular units purchased May 1–3 (inside).
+    // 4 more units purchased May 10 (outside). Only the 6 inside should earn.
+    const result = calculateIncentives(
+      baseInput({
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 6, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
+          { id: "p2", modelId: MODEL_A.id, quantity: 4, unitDealerPrice: 100_000, purchaseDate: "2026-05-10", source: "REGULAR" },
+        ],
+        stockInPolicies: [
+          { id: "sip1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-03", perUnitAmount: 1_000, minQty: null },
+        ],
+      })
+    );
+    const row = result.rows.find((r) => r.modelId === MODEL_A.id)!;
+    // Only the 6 units within the policy window (May 1–3) count.
+    expect(row.stockInRegularQty).toBe(6);
+    expect(row.effectiveStockInQty).toBe(6);
+    expect(row.stockInEarned).toBe(6_000); // 6 × 1000
+  });
+
+  it("purchases entirely outside the policy window earn nothing", () => {
+    // 10 units purchased May 15, but policy only covers May 1–3 → zero stock-in earned.
+    const result = calculateIncentives(
+      baseInput({
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 10, unitDealerPrice: 100_000, purchaseDate: "2026-05-15", source: "REGULAR" },
+        ],
+        stockInPolicies: [
+          { id: "sip1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-03", perUnitAmount: 1_000, minQty: null },
+        ],
+      })
+    );
+    const row = result.rows.find((r) => r.modelId === MODEL_A.id)!;
+    // The row exists (the purchase is visible in the report period) but nothing earned.
+    expect(row.stockInRegularQty).toBe(0); // none within the May 1–3 policy window
+    expect(row.effectiveStockInQty).toBe(0);
+    expect(row.stockInEarned).toBe(0);
+  });
+});
+
 describe("incentive-engine: empty + edge cases", () => {
   it("returns zero totals on empty input", () => {
     const result = calculateIncentives(baseInput({}));
     expect(result.totals.grandTotal).toBe(0);
     expect(result.rows).toHaveLength(0);
     expect(result.targetBonus.eligible).toBe(false);
-    expect(result.dealerIncentive.eligible).toBe(false);
+    expect(result.dealerIncentives).toHaveLength(0);
   });
 
   it("rejects an inverted period", () => {

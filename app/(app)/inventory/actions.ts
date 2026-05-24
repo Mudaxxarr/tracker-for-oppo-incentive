@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, listDealerIds, OWNER_TENANT_ID } from "@/lib/dealer";
 import { createActivation } from "@/lib/db/queries/activations";
 import {
@@ -13,12 +13,14 @@ import {
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
+import { createOwnerAlert } from "@/lib/db/queries/alerts";
+import { OWNER_ALERT_TYPE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
 import { db, schema } from "@/lib/db/client";
 import { and, asc, eq, sql } from "drizzle-orm";
 
-export type InvActionState = { error?: string; ok?: boolean };
+export type InvActionState = { error?: string; ok?: boolean; pendingApproval?: boolean };
 
 const QuickActivateSchema = z.object({
   modelId: z.string().min(1),
@@ -215,7 +217,7 @@ export async function crCaughtAction(
   _prev: InvActionState,
   fd: FormData
 ): Promise<InvActionState> {
-  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
   const tenantId = OWNER_TENANT_ID;
@@ -230,19 +232,34 @@ export async function crCaughtAction(
   const priceInfo = await getPriceOnDate(tenantId, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;
 
-  await createCrCaught({ tenantId, dealerId, modelId, quantity, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null });
+  const isOwner = await isAuthenticated();
+  // SO-submitted CR-caught requires owner approval before stock is deducted
+  const status = isOwner ? "active" : "pending_owner_approval";
 
+  const id = await createCrCaught({ tenantId, dealerId, modelId, quantity, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null, status });
   const m = await getModelById(modelId);
+
+  if (!isOwner) {
+    await createOwnerAlert({
+      tenantId,
+      type: OWNER_ALERT_TYPE.CR_CAUGHT_PENDING_APPROVAL,
+      entityType: "cr_caught",
+      entityId: id,
+      dealerId,
+      message: `SO reported CR-caught: ${quantity} × ${m?.name ?? "?"} on ${caughtDate} (value: ${formatPKR(quantity * priceSnap)}) — approve to deduct from stock.`,
+    });
+  }
+
   await logAudit({
     action: "cr.caught",
     entityType: "cr_caught",
-    summary: `CR Caught: ${quantity} × ${m?.name ?? "?"} on ${caughtDate} (lost ${formatPKR(quantity * priceSnap * 0.05)})`,
-    payload: { modelId, quantity, caughtDate },
+    summary: `CR Caught${isOwner ? "" : " (pending approval)"}: ${quantity} × ${m?.name ?? "?"} on ${caughtDate}`,
+    payload: { modelId, quantity, caughtDate, status },
   });
 
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
-  return { ok: true };
+  return { ok: true, pendingApproval: !isOwner };
 }
 
 // ---- History ----

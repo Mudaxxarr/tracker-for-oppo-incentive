@@ -2,6 +2,7 @@ import "server-only";
 import { db, schema } from "../client";
 import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { createRebatesForPriceDrop, reEvaluateRebatesFromEntry } from "./rebates";
 
 export interface ModelWithCurrentPrice {
   id: string;
@@ -110,6 +111,15 @@ export async function updateModelPrice(
   tenantId: string,
   input: { modelId: string; dealerPrice: number; invoicePrice: number; effectiveFrom: string }
 ): Promise<void> {
+  // Fetch current price before closing it (needed for rebate detection)
+  const currentRows = await db
+    .select({ id: schema.modelPriceHistory.id, dealerPrice: schema.modelPriceHistory.dealerPrice })
+    .from(schema.modelPriceHistory)
+    .where(and(eq(schema.modelPriceHistory.tenantId, tenantId), eq(schema.modelPriceHistory.modelId, input.modelId), isNull(schema.modelPriceHistory.effectiveTo)))
+    .limit(1);
+  const currentPrice = currentRows[0] ?? null;
+
+  let newHistoryId: string;
   await db.transaction(async (tx) => {
     await tx
       .update(schema.modelPriceHistory)
@@ -121,8 +131,9 @@ export async function updateModelPrice(
           isNull(schema.modelPriceHistory.effectiveTo)
         )
       );
+    newHistoryId = randomUUID();
     await tx.insert(schema.modelPriceHistory).values({
-      id: randomUUID(),
+      id: newHistoryId,
       tenantId,
       modelId: input.modelId,
       dealerPrice: input.dealerPrice,
@@ -131,6 +142,18 @@ export async function updateModelPrice(
       effectiveTo: null,
     });
   });
+
+  // Create rebates if price dropped
+  if (currentPrice && input.dealerPrice < currentPrice.dealerPrice) {
+    await createRebatesForPriceDrop({
+      tenantId,
+      modelId: input.modelId,
+      oldDealerPrice: currentPrice.dealerPrice,
+      newDealerPrice: input.dealerPrice,
+      rebateDate: input.effectiveFrom,
+      priceHistoryId: newHistoryId!,
+    });
+  }
 }
 
 async function restitchPriceHistory(tenantId: string, modelId: string): Promise<void> {
@@ -199,10 +222,38 @@ export async function addPriceEntry(
   tenantId: string,
   input: { modelId: string; dealerPrice: number; invoicePrice: number; effectiveFrom: string }
 ): Promise<string> {
+  // Capture the price active at effectiveFrom BEFORE inserting, so we can detect a drop
+  const prevRows = await db
+    .select({ dealerPrice: schema.modelPriceHistory.dealerPrice })
+    .from(schema.modelPriceHistory)
+    .where(
+      and(
+        eq(schema.modelPriceHistory.tenantId, tenantId),
+        eq(schema.modelPriceHistory.modelId, input.modelId),
+        lte(schema.modelPriceHistory.effectiveFrom, input.effectiveFrom),
+        or(isNull(schema.modelPriceHistory.effectiveTo), gt(schema.modelPriceHistory.effectiveTo, input.effectiveFrom))
+      )
+    )
+    .orderBy(desc(schema.modelPriceHistory.effectiveFrom))
+    .limit(1);
+  const prevDealerPrice = prevRows[0]?.dealerPrice ?? null;
+
   const id = randomUUID();
   await db.insert(schema.modelPriceHistory).values({ id, tenantId, ...input, effectiveTo: null });
   await restitchPriceHistory(tenantId, input.modelId);
   await syncActivationSnapshots(tenantId, input.modelId);
+
+  if (prevDealerPrice !== null && input.dealerPrice < prevDealerPrice) {
+    await createRebatesForPriceDrop({
+      tenantId,
+      modelId: input.modelId,
+      oldDealerPrice: prevDealerPrice,
+      newDealerPrice: input.dealerPrice,
+      rebateDate: input.effectiveFrom,
+      priceHistoryId: id,
+    });
+  }
+
   return id;
 }
 
@@ -216,17 +267,31 @@ export async function updatePriceEntry(
     .where(and(eq(schema.modelPriceHistory.id, input.priceId), eq(schema.modelPriceHistory.tenantId, tenantId)));
   await restitchPriceHistory(tenantId, input.modelId);
   await syncActivationSnapshots(tenantId, input.modelId);
+  await reEvaluateRebatesFromEntry(tenantId, input.modelId, input.priceId);
 }
 
 export async function deletePriceEntry(
   tenantId: string,
   input: { modelId: string; priceId: string }
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const entryRows = await db
+    .select({ effectiveTo: schema.modelPriceHistory.effectiveTo })
+    .from(schema.modelPriceHistory)
+    .where(and(eq(schema.modelPriceHistory.id, input.priceId), eq(schema.modelPriceHistory.tenantId, tenantId)))
+    .limit(1);
+  if (entryRows.length === 0) return { ok: false, reason: "Price entry not found" };
+  if (entryRows[0].effectiveTo !== null) {
+    return { ok: false, reason: "Sirf current (active) price entry delete ho sakti hai. Purani entries sirf edit ki ja sakti hain." };
+  }
+  await db
+    .delete(schema.rebates)
+    .where(and(eq(schema.rebates.tenantId, tenantId), eq(schema.rebates.priceHistoryId, input.priceId)));
   await db
     .delete(schema.modelPriceHistory)
     .where(and(eq(schema.modelPriceHistory.id, input.priceId), eq(schema.modelPriceHistory.tenantId, tenantId)));
   await restitchPriceHistory(tenantId, input.modelId);
   await syncActivationSnapshots(tenantId, input.modelId);
+  return { ok: true };
 }
 
 export async function updateModel(input: {

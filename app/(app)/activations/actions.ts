@@ -13,6 +13,8 @@ import {
 } from "@/lib/db/queries/activations";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { createOwnerAlert } from "@/lib/db/queries/alerts";
+import { OWNER_ALERT_TYPE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
 
@@ -418,4 +420,35 @@ export async function bulkDeleteActivationsAction(
   revalidatePath("/activations");
   revalidatePath("/dashboard");
   return { deleted };
+}
+
+export async function requestActivationDeletionAction(
+  activationId: string
+): Promise<{ ok?: boolean; error?: string }> {
+  if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
+
+  const activation = await getActivationById(activationId, dealerId, tenantId);
+  if (!activation) return { error: "Activation not found" };
+
+  const m = await getModelById(activation.modelId);
+  await createOwnerAlert({
+    tenantId,
+    type: OWNER_ALERT_TYPE.ACTIVATION_DELETION_REQUEST,
+    entityType: "activation",
+    entityId: activationId,
+    dealerId,
+    message: `SO requested deletion of activation: ${m?.name ?? "?"} on ${activation.activationDate}${activation.imei ? ` (IMEI ••••${activation.imei.slice(-6)})` : ""}`,
+  });
+
+  await logAudit({
+    action: "activation.delete_requested",
+    entityType: "activation",
+    entityId: activationId,
+    summary: `SO requested deletion of activation ${activationId.slice(0, 8)}`,
+  });
+
+  return { ok: true };
 }

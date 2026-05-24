@@ -9,6 +9,7 @@ import {
   deleteModel,
   deletePriceEntry,
   getModelById,
+  syncAllActivationSnapshots,
   updateModel,
   updatePriceEntry,
 } from "@/lib/db/queries/models";
@@ -161,7 +162,8 @@ export async function deletePriceEntryAction(input: {
   priceId: string;
 }): Promise<{ ok: boolean; error?: string }> {
   if (!(await requireAuth())) return { ok: false, error: "Not authenticated" };
-  await deletePriceEntry(OWNER_TENANT_ID, input);
+  const result = await deletePriceEntry(OWNER_TENANT_ID, input);
+  if (!result.ok) return { ok: false, error: result.reason };
   await logAudit({
     action: "model.price_entry.delete",
     entityType: "model",
@@ -170,6 +172,23 @@ export async function deletePriceEntryAction(input: {
   });
   revalidatePath("/models");
   return { ok: true };
+}
+
+export async function syncAllActivationPricesAction(): Promise<{
+  ok: boolean;
+  error?: string;
+  modelsProcessed?: number;
+}> {
+  if (!(await requireAuth())) return { ok: false, error: "Not authenticated" };
+  const result = await syncAllActivationSnapshots(OWNER_TENANT_ID);
+  await logAudit({
+    action: "model.sync_prices",
+    summary: `Synced activation price snapshots across ${result.modelsProcessed} model(s)`,
+  });
+  revalidatePath("/models");
+  revalidatePath("/activations");
+  revalidatePath("/reports");
+  return { ok: true, modelsProcessed: result.modelsProcessed };
 }
 
 export async function deleteModelAction(

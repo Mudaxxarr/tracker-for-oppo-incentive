@@ -325,6 +325,7 @@ export const crCaught = pgTable(
     caughtDate: isoDate("caught_date").notNull(),
     dealerPriceSnapshot: real("dealer_price_snapshot").notNull(),
     note: text("note"),
+    status: text("status").notNull().default("active"), // 'active' | 'pending_owner_approval'
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -430,6 +431,39 @@ export const auditLog = pgTable(
   })
 );
 
+// ---------- Rebates (price-cut adjustment per dealer) ----------
+export const rebates = pgTable(
+  "rebates",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull().references(() => dealerTenants.id, { onDelete: "cascade" }),
+    dealerId: text("dealer_id").notNull().references(() => dealerIds.id, { onDelete: "cascade" }),
+    modelId: text("model_id").notNull().references(() => models.id, { onDelete: "restrict" }),
+    oldDealerPrice: real("old_dealer_price").notNull(),
+    newDealerPrice: real("new_dealer_price").notNull(),
+    rebatePerUnit: real("rebate_per_unit").notNull(),
+    eligibleQty: integer("eligible_qty").notNull(),
+    totalRebateAmount: real("total_rebate_amount").notNull(),
+    rebateDate: isoDate("rebate_date").notNull(),
+    priceHistoryId: text("price_history_id"),
+    createdAt: isoDateTime("created_at").notNull(),
+  },
+  (t) => ({
+    byDealer: index("rebates_by_dealer").on(t.tenantId, t.dealerId, t.rebateDate),
+    byModel: index("rebates_by_model").on(t.tenantId, t.modelId, t.rebateDate),
+  })
+);
+
+// ---------- Owner Staff (SO / Accountant for owner portal) ----------
+export const ownerStaff = pgTable("owner_staff", {
+  id: text("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("so"), // 'so' | 'accountant'
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: isoDateTime("created_at").notNull(),
+});
+
 // ---------- Dealer Daily Backups ----------
 export const dealerDailyBackups = pgTable(
   "dealer_daily_backups",
@@ -488,3 +522,7 @@ export type WarrantyClaim = typeof warrantyClaims.$inferSelect;
 export type NewWarrantyClaim = typeof warrantyClaims.$inferInsert;
 export type Script = typeof scripts.$inferSelect;
 export type NewScript = typeof scripts.$inferInsert;
+export type Rebate = typeof rebates.$inferSelect;
+export type NewRebate = typeof rebates.$inferInsert;
+export type OwnerStaff = typeof ownerStaff.$inferSelect;
+export type NewOwnerStaff = typeof ownerStaff.$inferInsert;

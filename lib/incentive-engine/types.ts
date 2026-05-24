@@ -55,6 +55,8 @@ export interface EngineActivationIncentivePolicy {
 
 export interface EngineDealerIncentivePolicy {
   id: string;
+  /** When set, only activations of this model count toward the target and earn the incentive. */
+  modelId?: string | null;
   periodStart: ISODate;
   periodEnd: ISODate;
   targetTotalActivations: number;
@@ -138,11 +140,13 @@ export interface TargetBonusOutcome {
 }
 
 export interface DealerIncentiveOutcome {
-  policyId: string | null;
+  policyId: string;
+  modelId: string | null;
   eligible: boolean;
-  targetTotal: number | null;
+  targetTotal: number;
   actualTotal: number;
   perUnitAmount: number;
+  earned: number;
 }
 
 export interface IncentiveReport {
@@ -157,7 +161,7 @@ export interface IncentiveReport {
   totalCrossRegionPurchaseQty: number;
 
   targetBonus: TargetBonusOutcome;
-  dealerIncentive: DealerIncentiveOutcome;
+  dealerIncentives: DealerIncentiveOutcome[];
 
   rows: IncentiveReportRow[];
 

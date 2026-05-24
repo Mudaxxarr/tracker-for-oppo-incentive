@@ -23,17 +23,19 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   primaryMobile?: boolean;
+  /** Roles that can see this item. Undefined = owner-only (hidden from all staff). */
+  roles?: ("so" | "accountant")[];
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, primaryMobile: true },
-  { href: "/purchases", label: "Purchases", icon: ShoppingCart, primaryMobile: true },
-  { href: "/activations", label: "Activations", icon: Smartphone, primaryMobile: true },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, primaryMobile: true, roles: ["so", "accountant"] },
+  { href: "/purchases", label: "Purchases", icon: ShoppingCart, primaryMobile: true, roles: ["so", "accountant"] },
+  { href: "/activations", label: "Activations", icon: Smartphone, primaryMobile: true, roles: ["so", "accountant"] },
   { href: "/models", label: "Models", icon: Package },
-  { href: "/inventory", label: "Inventory", icon: Warehouse },
-  { href: "/cross-region", label: "Cross-Region", icon: ArrowLeftRight },
+  { href: "/inventory", label: "Inventory", icon: Warehouse, roles: ["so", "accountant"] },
+  { href: "/cross-region", label: "Cross-Region", icon: ArrowLeftRight, roles: ["so"] },
   { href: "/policies", label: "Policies", icon: ScrollText },
-  { href: "/reports", label: "Reports", icon: FileBarChart2, primaryMobile: true },
+  { href: "/reports", label: "Reports", icon: FileBarChart2, primaryMobile: true, roles: ["accountant"] },
   { href: "/ids", label: "IDs", icon: IdCard },
   { href: "/customers", label: "Customers", icon: BookUser },
   { href: "/warranty", label: "Warranty", icon: ShieldCheck },

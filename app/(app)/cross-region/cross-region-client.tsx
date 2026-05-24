@@ -39,11 +39,13 @@ import { CheckCircle2, XCircle, Trash2, ArrowRightCircle, Pencil } from "lucide-
 import { toast } from "sonner";
 import type { CrossRegionRow } from "@/lib/db/queries/transfers";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
+import type { StaffRole } from "@/lib/constants";
 
 interface Props {
   models: ModelWithCurrentPrice[];
   initial: CrossRegionRow[];
   hasDealer: boolean;
+  staffRole?: StaffRole | null;
 }
 
 const STATUS_LABEL: Record<CrossRegionStatus, string> = {
@@ -53,7 +55,8 @@ const STATUS_LABEL: Record<CrossRegionStatus, string> = {
   REJECTED: "Rejected",
 };
 
-export function CrossRegionClient({ models, initial, hasDealer }: Props) {
+export function CrossRegionClient({ models, initial, hasDealer, staffRole }: Props) {
+  const isSO = staffRole === "so";
   const router = useRouter();
   const [createState, createAction, createPending] = useActionState<CrFormState, FormData>(
     createCrossRegionAction,
@@ -98,8 +101,13 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
   const handleDelete = (id: string) => {
     if (!confirm("Delete this cross-region row and any auto-created purchases? This cannot be undone.")) return;
     startTransition(async () => {
-      await deleteCrossRegionAction(id);
-      toast.success("Deleted");
+      try {
+        await deleteCrossRegionAction(id);
+        toast.success("Deleted");
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Delete failed");
+      }
     });
   };
 
@@ -110,7 +118,9 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
       <div>
         <h1 className="text-2xl font-semibold">Cross-Region transfers</h1>
         <p className="text-sm text-muted-foreground">
-          Report stock that OPPO has sent (or is about to send) into your dealer ID from another region.
+          {isSO
+            ? "Submit cross-region transfer requests for owner approval."
+            : "Report stock that OPPO has sent (or is about to send) into your dealer ID from another region."}
         </p>
       </div>
 
@@ -197,65 +207,50 @@ export function CrossRegionClient({ models, initial, hasDealer }: Props) {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
+                          {isSO ? (
+                            // SO: can only edit their pending submissions; no approve/reject/delete
+                            status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
+                              <span className="text-xs text-muted-foreground">Awaiting owner approval</span>
+                            ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
+                              <span className="text-xs text-muted-foreground">
+                                <CheckCircle2 className="mr-1 inline size-3.5" /> Approved
+                              </span>
+                            ) : status === CROSS_REGION_STATUS.REJECTED ? (
+                              <span className="text-xs text-destructive">Rejected</span>
+                            ) : null
+                          ) : (
                             <>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Edit"
-                                onClick={() => setEditRow(t)}
-                              >
-                                <Pencil className="size-4" />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Mark shifted"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.SHIFTED_TO_MY_ID)}
-                              >
-                                <ArrowRightCircle className="size-4" />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Mark rejected"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.REJECTED)}
-                              >
-                                <XCircle className="size-4" />
+                              {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
+                                <>
+                                  <Button size="icon-sm" variant="ghost" aria-label="Edit" onClick={() => setEditRow(t)}>
+                                    <Pencil className="size-4" />
+                                  </Button>
+                                  <Button size="icon-sm" variant="ghost" aria-label="Mark shifted" onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.SHIFTED_TO_MY_ID)}>
+                                    <ArrowRightCircle className="size-4" />
+                                  </Button>
+                                  <Button size="icon-sm" variant="ghost" aria-label="Mark rejected" onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.REJECTED)}>
+                                    <XCircle className="size-4" />
+                                  </Button>
+                                </>
+                              ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
+                                <>
+                                  <Button size="icon-sm" variant="ghost" aria-label="Approve — shift stock to dealer ID" onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.SHIFTED_TO_MY_ID)}>
+                                    <CheckCircle2 className="size-4 text-green-600" />
+                                  </Button>
+                                  <Button size="icon-sm" variant="ghost" aria-label="Reject" onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.REJECTED)}>
+                                    <XCircle className="size-4 text-destructive" />
+                                  </Button>
+                                </>
+                              ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
+                                <span className="text-xs text-muted-foreground">
+                                  <CheckCircle2 className="mr-1 inline size-3.5" /> Done
+                                </span>
+                              ) : null}
+                              <Button size="icon-sm" variant="ghost" aria-label="Delete" onClick={() => handleDelete(t.id)}>
+                                <Trash2 className="size-4" />
                               </Button>
                             </>
-                          ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
-                            <>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Approve — shift stock to dealer ID"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.SHIFTED_TO_MY_ID)}
-                              >
-                                <CheckCircle2 className="size-4 text-green-600" />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label="Reject"
-                                onClick={() => handleStatus(t.id, CROSS_REGION_STATUS.REJECTED)}
-                              >
-                                <XCircle className="size-4 text-destructive" />
-                              </Button>
-                            </>
-                          ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
-                            <span className="text-xs text-muted-foreground">
-                              <CheckCircle2 className="mr-1 inline size-3.5" /> Done
-                            </span>
-                          ) : null}
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label="Delete"
-                            onClick={() => handleDelete(t.id)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

@@ -1,69 +1,51 @@
-import { getDealerIdsAction, setActiveDealerAction } from "./actions";
-import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
+import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle } from "lucide-react";
+import { getTenantFeaturesById } from "@/lib/admin/dealers";
+import { isFeatureEnabled } from "@/lib/dealer-features";
+import { FeatureDisabled } from "@/components/dealer/feature-disabled";
+import { listDealerIdsForTenant } from "@/lib/dealer-tenant";
+import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
+import { listStockForDealer } from "@/lib/db/queries/purchases";
+import { listInterIdTransfers } from "@/lib/db/queries/transfers";
+import { getDealerIdStatsAction } from "./actions";
+import { DealerIdsClient } from "./dealer-ids-client";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 
 export default async function DealerIdsPage() {
   const session = await getDealerSession();
-  if (!session) return null;
+  if (!session) redirect("/dealer/login");
 
-  const [ids, activeId] = await Promise.all([
-    getDealerIdsAction(),
-    getActiveDealerIdForTenant(session.tenantId),
+  const features = await getTenantFeaturesById(session.tenantId);
+  if (!isFeatureEnabled(features, "ids")) return <FeatureDisabled />;
+
+  const { tenantId } = session;
+
+  const dealers = await listDealerIdsForTenant(tenantId);
+  const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
+
+  const [stats, stockData, allTransfersNested] = await Promise.all([
+    getDealerIdStatsAction(tenantId, dealers.map((d) => d.id)),
+    Promise.all(dealers.map((d) => listStockForDealer(tenantId, d.id, OWNER_TENANT_ID))),
+    Promise.all(dealers.map((d) => listInterIdTransfers(tenantId, d.id))),
   ]);
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Dealer IDs</h1>
-        <p className="text-sm text-muted-foreground">
-          Select the active dealer ID for this session.
-        </p>
-      </div>
+  const stockByDealer: Record<string, string[]> = {};
+  dealers.forEach((d, i) => {
+    stockByDealer[d.id] = stockData[i].map((s) => s.modelId);
+  });
 
-      <div className="space-y-2">
-        {ids.map((d) => {
-          const isActive = d.id === activeId;
-          return (
-            <div
-              key={d.id}
-              className="flex items-center justify-between rounded-lg border bg-card px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                {isActive ? (
-                  <CheckCircle2 className="size-5 text-primary" />
-                ) : (
-                  <Circle className="size-5 text-muted-foreground" />
-                )}
-                <div>
-                  <p className="text-sm font-medium">{d.name}</p>
-                  {d.note && (
-                    <p className="text-xs text-muted-foreground">{d.note}</p>
-                  )}
-                </div>
-              </div>
-              {!isActive && (
-                <form
-                  action={async () => {
-                    "use server";
-                    await setActiveDealerAction(d.id);
-                  }}
-                >
-                  <Button type="submit" variant="outline" size="sm">
-                    Select
-                  </Button>
-                </form>
-              )}
-            </div>
-          );
-        })}
-        {ids.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No dealer IDs found. The administrator must add dealer IDs for your account.
-          </p>
-        )}
-      </div>
-    </div>
+  const transferMap = new Map(allTransfersNested.flat().map((t) => [t.id, t]));
+  const transfers = [...transferMap.values()].sort((a, b) =>
+    a.transferDate < b.transferDate ? 1 : -1,
+  );
+
+  return (
+    <DealerIdsClient
+      dealers={dealers.map((d) => ({ id: d.id, name: d.name, note: d.note }))}
+      models={models}
+      stats={stats}
+      transfers={transfers}
+      stockByDealer={stockByDealer}
+    />
   );
 }

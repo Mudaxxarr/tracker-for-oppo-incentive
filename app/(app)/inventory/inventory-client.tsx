@@ -18,7 +18,7 @@ import {
 import {
   Smartphone, ArrowRightCircle, Package2, TrendingDown,
   History, Search, ArrowUpDown, ShoppingCart, ArrowDownLeft,
-  ArrowUpRight, Zap, LayoutGrid, List, Check, X, Clock, ShieldAlert,
+  ArrowUpRight, Zap, LayoutGrid, List, Check, X, Clock, ShieldAlert, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -39,7 +39,7 @@ interface Props {
   pendingTransfers: PendingTransferRow[];
 }
 type SortKey = "name" | "qty_desc" | "qty_asc" | "value_desc";
-type ViewMode = "grid" | "list";
+type ViewMode = "grid" | "list" | "aging";
 
 // ─── Dominant source → accent color ───────────────────────────────────────────
 function dominantAccent(row: InventoryModelRow): {
@@ -263,6 +263,96 @@ function StockListRow({
   );
 }
 
+// ─── AGING / RISK ROW ─────────────────────────────────────────────────────────
+function AgingRiskRow({
+  row, onActivate, onMove, onHistory, onCaught,
+}: {
+  row: InventoryModelRow;
+  onActivate: (r: InventoryModelRow) => void;
+  onMove:     (r: InventoryModelRow) => void;
+  onHistory:  (r: InventoryModelRow) => void;
+  onCaught:   (r: InventoryModelRow) => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const daysInStock = row.earliestPurchaseDate
+    ? Math.floor((Date.parse(today) - Date.parse(row.earliestPurchaseDate)) / 86400000)
+    : null;
+  const crRatio = row.totalStock > 0 ? row.crossRegionQty / row.totalStock : 0;
+
+  const risk: "high" | "medium" | "low" =
+    crRatio > 0.5 || (daysInStock !== null && daysInStock > 60) ? "high"
+    : crRatio > 0.2 || (daysInStock !== null && daysInStock > 30) ? "medium"
+    : "low";
+
+  const rc = {
+    high:   { border: "border-l-red-500",     badge: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",         dot: "bg-red-500",     label: "High Risk" },
+    medium: { border: "border-l-amber-400",   badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", dot: "bg-amber-400",   label: "Review"    },
+    low:    { border: "border-l-emerald-400", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400", dot: "bg-emerald-400", label: "OK" },
+  }[risk];
+
+  const value = row.dealerPrice ? row.totalStock * row.dealerPrice : null;
+
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm border-l-4 ${rc.border} transition-[transform,box-shadow] duration-200 hover:-translate-y-px hover:shadow-md`}>
+      <span className={`size-2.5 shrink-0 rounded-full ${rc.dot}`} />
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{row.modelName}</p>
+        {value !== null && (
+          <p className="text-xs text-muted-foreground tabular-nums">{formatPKR(value)}</p>
+        )}
+      </div>
+
+      <div className="hidden w-16 shrink-0 text-center sm:block">
+        {daysInStock !== null ? (
+          <>
+            <p className="text-sm font-bold tabular-nums">{daysInStock}d</p>
+            <p className="text-[9px] text-muted-foreground">in stock</p>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">—</p>
+        )}
+      </div>
+
+      {row.totalStock > 0 && (
+        <div className="hidden w-14 shrink-0 sm:block">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-rose-500 transition-all duration-500"
+              style={{ width: `${Math.round(crRatio * 100)}%` }}
+            />
+          </div>
+          <p className="mt-0.5 text-center text-[9px] text-muted-foreground">{Math.round(crRatio * 100)}% CR</p>
+        </div>
+      )}
+
+      <span className="w-8 shrink-0 text-right text-sm font-bold tabular-nums">{row.totalStock}</span>
+
+      <span className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline ${rc.badge}`}>
+        {rc.label}
+      </span>
+
+      <div className="flex shrink-0 items-center gap-0.5">
+        {([
+          [Smartphone,       "Activate",  onActivate],
+          [ArrowRightCircle, "Move",      onMove    ],
+          [History,          "History",   onHistory ],
+          [ShieldAlert,      "CR Caught", onCaught  ],
+        ] as const).map(([Icon, title, action]) => (
+          <button
+            key={title}
+            title={title}
+            onClick={() => action(row)}
+            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Icon className="size-3.5" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── ACTIVATE SHEET ───────────────────────────────────────────────────────────
 function ActivateSheet({ row, open, onClose }: { row: InventoryModelRow | null; open: boolean; onClose: () => void }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -469,8 +559,12 @@ function CrCaughtSheet({ row, open, onClose }: { row: InventoryModelRow | null; 
   const today = new Date().toISOString().slice(0, 10);
   const [state, action, pending] = useActionState<InvActionState, FormData>(crCaughtAction, {});
   useEffect(() => {
-    if (state.ok) { toast.success("Marked as CR caught — removed from inventory"); onClose(); }
-    else if (state.error) toast.error(state.error);
+    if (state.ok) {
+      toast.success(state.pendingApproval
+        ? "CR caught submitted — awaiting owner approval"
+        : "Marked as CR caught — removed from inventory");
+      onClose();
+    } else if (state.error) toast.error(state.error);
   }, [state, onClose]);
 
   return (
@@ -707,12 +801,28 @@ export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfer
     let list = search.trim()
       ? rows.filter((r) => r.modelName.toLowerCase().includes(search.toLowerCase()))
       : [...rows];
-    if      (sortKey === "name")       list.sort((a, b) => a.modelName.localeCompare(b.modelName));
-    else if (sortKey === "qty_desc")   list.sort((a, b) => b.totalStock - a.totalStock);
-    else if (sortKey === "qty_asc")    list.sort((a, b) => a.totalStock - b.totalStock);
-    else if (sortKey === "value_desc") list.sort((a, b) => ((b.dealerPrice ?? 0) * b.totalStock) - ((a.dealerPrice ?? 0) * a.totalStock));
+    if (viewMode === "aging") {
+      const today = new Date().toISOString().slice(0, 10);
+      const riskScore = (r: InventoryModelRow) => {
+        const days = r.earliestPurchaseDate ? Math.floor((Date.parse(today) - Date.parse(r.earliestPurchaseDate)) / 86400000) : 0;
+        const cr = r.totalStock > 0 ? r.crossRegionQty / r.totalStock : 0;
+        return cr > 0.5 || days > 60 ? 2 : cr > 0.2 || days > 30 ? 1 : 0;
+      };
+      list.sort((a, b) => {
+        const diff = riskScore(b) - riskScore(a);
+        if (diff !== 0) return diff;
+        const dA = a.earliestPurchaseDate ? Date.parse(today) - Date.parse(a.earliestPurchaseDate) : 0;
+        const dB = b.earliestPurchaseDate ? Date.parse(today) - Date.parse(b.earliestPurchaseDate) : 0;
+        return dB - dA;
+      });
+    } else {
+      if      (sortKey === "name")       list.sort((a, b) => a.modelName.localeCompare(b.modelName));
+      else if (sortKey === "qty_desc")   list.sort((a, b) => b.totalStock - a.totalStock);
+      else if (sortKey === "qty_asc")    list.sort((a, b) => a.totalStock - b.totalStock);
+      else if (sortKey === "value_desc") list.sort((a, b) => ((b.dealerPrice ?? 0) * b.totalStock) - ((a.dealerPrice ?? 0) * a.totalStock));
+    }
     return list;
-  }, [rows, search, sortKey]);
+  }, [rows, search, sortKey, viewMode]);
 
   const totalUnits  = rows.reduce((s, r) => s + r.totalStock,  0);
   const totalValue  = rows.reduce((s, r) => s + (r.dealerPrice ? r.totalStock * r.dealerPrice : 0), 0);
@@ -838,17 +948,19 @@ export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfer
 
           {/* View toggle */}
           <div className="flex overflow-hidden rounded-lg border">
-            {([["grid", LayoutGrid], ["list", List]] as const).map(([mode, Icon]) => (
+            {([["grid", LayoutGrid, "Grid"], ["list", List, "List"], ["aging", AlertTriangle, "Risk"]] as const).map(([mode, Icon, label]) => (
               <button
                 key={mode}
+                title={label}
                 onClick={() => setViewMode(mode)}
-                className={`flex items-center justify-center px-2.5 transition-colors ${
+                className={`flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                   viewMode === mode
                     ? "bg-primary text-primary-foreground"
                     : "bg-background text-muted-foreground hover:bg-muted"
                 }`}
               >
-                <Icon className="size-4" />
+                <Icon className="size-3.5" />
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
@@ -881,7 +993,7 @@ export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfer
             ))}
           </AnimatePresence>
         </div>
-      ) : (
+      ) : viewMode === "list" ? (
         <div className="space-y-2">
           <AnimatePresence mode="popLayout">
             {filtered.map((row, i) => (
@@ -894,6 +1006,21 @@ export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfer
               />
             ))}
           </AnimatePresence>
+        </div>
+      ) : (
+        <div className="space-y-1.5 animate-page-in">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Sorted by risk — high CR ratio &amp; slow-movers first
+          </p>
+          {filtered.map((row) => (
+            <AgingRiskRow
+              key={row.modelId} row={row}
+              onActivate={setActivateRow}
+              onMove={setMoveRow}
+              onHistory={setHistoryRow}
+              onCaught={setCaughtRow}
+            />
+          ))}
         </div>
       )}
 

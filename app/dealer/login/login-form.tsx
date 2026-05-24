@@ -24,17 +24,17 @@ export function LoginForm() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="email">
-              Email
+            <label className="text-sm font-medium" htmlFor="dealerId">
+              Dealer ID
             </label>
             <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
+              id="dealerId"
+              name="dealerId"
+              type="text"
+              autoComplete="username"
               autoFocus
               disabled={pending}
-              placeholder="you@example.com"
+              placeholder="Enter your Dealer ID"
             />
           </div>
           <div className="space-y-1">

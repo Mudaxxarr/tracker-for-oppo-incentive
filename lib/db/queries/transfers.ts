@@ -33,10 +33,11 @@ export async function countPendingCrossRegion(tenantId: string, dealerId: string
 
 export async function createCrossRegion(input: {
   tenantId: string; dealerId: string; modelId: string; quantity: number;
-  reportedDate: string; sourceRegionNote: string | null;
+  reportedDate: string; sourceRegionNote: string | null; initialStatus?: string;
 }) {
   const id = randomUUID();
-  await db.insert(schema.crossRegionTransfers).values({ id, ...input, shiftedToIdDate: null, status: CROSS_REGION_STATUS.PENDING_REPORT });
+  const { initialStatus, ...rest } = input;
+  await db.insert(schema.crossRegionTransfers).values({ id, ...rest, shiftedToIdDate: null, status: initialStatus ?? CROSS_REGION_STATUS.PENDING_REPORT });
   return id;
 }
 
@@ -67,8 +68,9 @@ export async function updateCrossRegionStatus(input: {
   const today = new Date().toISOString().slice(0, 10);
 
   if (input.status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID) {
-    if (transfer.status !== CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL) {
-      return { ok: false, message: "Transfer must be pending owner approval before it can be approved" };
+    const approvable = [CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL, CROSS_REGION_STATUS.PENDING_REPORT];
+    if (!approvable.includes(transfer.status as typeof approvable[number])) {
+      return { ok: false, message: "Transfer must be pending or awaiting approval before it can be approved" };
     }
     const price = await getPriceOnDate(input.priceTenantId ?? input.tenantId, transfer.modelId, today);
     if (!price) return { ok: false, message: "No dealer price defined for this model" };

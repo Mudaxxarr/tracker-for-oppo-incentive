@@ -287,6 +287,45 @@ export async function resetDealerUserPassword(
   return { email: rows[0].email, tempPassword };
 }
 
+export interface DealerSettings {
+  backdateDays: number;
+  purchaseApprovalThreshold: number | null;
+}
+
+export async function getDealerSettings(tenantId: string): Promise<DealerSettings | null> {
+  const rows = await db
+    .select({
+      backdateDays: schema.dealerTenants.backdateDays,
+      purchaseApprovalThreshold: schema.dealerTenants.purchaseApprovalThreshold,
+    })
+    .from(schema.dealerTenants)
+    .where(eq(schema.dealerTenants.id, tenantId))
+    .limit(1);
+  if (rows.length === 0) return null;
+  return rows[0];
+}
+
+export async function updateDealerSettings(
+  tenantId: string,
+  settings: DealerSettings,
+): Promise<void> {
+  await db
+    .update(schema.dealerTenants)
+    .set({
+      backdateDays: settings.backdateDays,
+      purchaseApprovalThreshold: settings.purchaseApprovalThreshold,
+    })
+    .where(eq(schema.dealerTenants.id, tenantId));
+
+  await logAudit({
+    action: "admin_dealer_settings_updated",
+    summary: `Updated policy settings for tenant ${tenantId}`,
+    entityType: "dealer_tenant",
+    entityId: tenantId,
+    payload: settings,
+  });
+}
+
 export async function getTenantFeaturesById(tenantId: string): Promise<DealerFeatures> {
   const rows = await db
     .select({ features: schema.dealerTenants.features })
@@ -301,6 +340,78 @@ function generateTempPassword(): string {
   const arr = new Uint8Array(16);
   crypto.getRandomValues(arr);
   return Array.from(arr).map((b) => chars[b % chars.length]).join("");
+}
+
+// ── Dealer Team Management ────────────────────────────────────────────────────
+
+export { DEALER_TEAM_LIMIT } from "@/lib/constants";
+import { DEALER_TEAM_LIMIT } from "@/lib/constants";
+
+export interface DealerTeamMember {
+  id: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export async function listDealerTeamMembers(tenantId: string): Promise<DealerTeamMember[]> {
+  const rows = await db
+    .select({ id: schema.dealerUsers.id, email: schema.dealerUsers.email, role: schema.dealerUsers.role, isActive: schema.dealerUsers.isActive, createdAt: schema.dealerUsers.createdAt })
+    .from(schema.dealerUsers)
+    .where(eq(schema.dealerUsers.tenantId, tenantId))
+    .orderBy(schema.dealerUsers.createdAt);
+  return rows.map((r) => ({ ...r, createdAt: String(r.createdAt) }));
+}
+
+export async function addDealerTeamMember(
+  tenantId: string,
+  email: string,
+  password: string,
+): Promise<{ ok: true; tempPassword: string } | { ok: false; error: string }> {
+  const [{ total }] = await db.select({ total: count() }).from(schema.dealerUsers).where(eq(schema.dealerUsers.tenantId, tenantId));
+  if (Number(total) >= DEALER_TEAM_LIMIT) return { ok: false, error: `Maximum ${DEALER_TEAM_LIMIT} team members allowed per dealer` };
+
+  const normalEmail = email.trim().toLowerCase();
+  const existing = await db.select({ id: schema.dealerUsers.id }).from(schema.dealerUsers).where(eq(schema.dealerUsers.email, normalEmail)).limit(1);
+  if (existing.length > 0) return { ok: false, error: "Email already in use" };
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const userId = randomUUID();
+  await db.insert(schema.dealerUsers).values({ id: userId, tenantId, email: normalEmail, passwordHash, role: "exec", isActive: true });
+
+  await logAudit({
+    action: "admin_dealer_team_member_added",
+    summary: `Added exec team member ${normalEmail} to tenant ${tenantId}`,
+    entityType: "dealer_user",
+    entityId: userId,
+    payload: { email: normalEmail, tenantId },
+  });
+
+  return { ok: true, tempPassword: password };
+}
+
+export async function toggleDealerTeamMemberActive(userId: string, isActive: boolean): Promise<void> {
+  await db.update(schema.dealerUsers).set({ isActive }).where(eq(schema.dealerUsers.id, userId));
+}
+
+export async function deleteDealerTeamMember(
+  userId: string,
+  tenantId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rows = await db.select({ role: schema.dealerUsers.role }).from(schema.dealerUsers).where(eq(schema.dealerUsers.id, userId)).limit(1);
+  if (rows.length === 0) return { ok: false, error: "User not found" };
+  if (rows[0].role === "admin") return { ok: false, error: "Cannot delete the dealer admin account" };
+
+  await db.delete(schema.dealerUsers).where(eq(schema.dealerUsers.id, userId));
+  await logAudit({
+    action: "admin_dealer_team_member_deleted",
+    summary: `Deleted exec team member ${userId} from tenant ${tenantId}`,
+    entityType: "dealer_user",
+    entityId: userId,
+    payload: { tenantId },
+  });
+  return { ok: true };
 }
 
 function addMonths(dateStr: string, months: number): string {

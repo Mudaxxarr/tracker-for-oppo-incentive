@@ -100,9 +100,10 @@ export async function buildPolicyAchievements(
   }
 
   for (const p of dealerIncentivePolicies) {
-    const actualQty = report.dealerIncentive.policyId === p.id ? report.dealerIncentive.actualTotal : 0;
-    const eligible = report.dealerIncentive.policyId === p.id ? report.dealerIncentive.eligible : false;
-    const earned = eligible ? report.totals.dealerIncentiveEarned : 0;
+    const outcome = report.dealerIncentives.find((d) => d.policyId === p.id);
+    const actualQty = outcome?.actualTotal ?? 0;
+    const eligible = outcome?.eligible ?? false;
+    const earned = outcome?.earned ?? 0;
     entries.push({ type: "dealer-incentive", modelName: p.modelName ?? null, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetTotalActivations, perUnitAmount: p.perUnitAmount, actualQty, earned, eligible });
   }
 

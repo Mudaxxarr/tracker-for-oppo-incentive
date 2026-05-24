@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "../client";
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 export interface CrCaughtRow {
@@ -11,6 +11,7 @@ export interface CrCaughtRow {
   caughtDate: string;
   dealerPriceSnapshot: number;
   note: string | null;
+  status: string;
 }
 
 export async function listCrCaught(tenantId: string, dealerId: string): Promise<CrCaughtRow[]> {
@@ -23,6 +24,7 @@ export async function listCrCaught(tenantId: string, dealerId: string): Promise<
       caughtDate: schema.crCaught.caughtDate,
       dealerPriceSnapshot: schema.crCaught.dealerPriceSnapshot,
       note: schema.crCaught.note,
+      status: schema.crCaught.status,
     })
     .from(schema.crCaught)
     .innerJoin(schema.models, eq(schema.models.id, schema.crCaught.modelId))
@@ -38,9 +40,10 @@ export async function createCrCaught(input: {
   caughtDate: string;
   dealerPriceSnapshot: number;
   note: string | null;
+  status?: string;
 }): Promise<string> {
   const id = randomUUID();
-  await db.insert(schema.crCaught).values({ id, ...input });
+  await db.insert(schema.crCaught).values({ id, ...input, status: input.status ?? "active" });
   return id;
 }
 
@@ -79,7 +82,8 @@ export async function getCrCaughtForStockCalc(tenantId: string, dealerId: string
       and(
         eq(schema.crCaught.tenantId, tenantId),
         eq(schema.crCaught.dealerId, dealerId),
-        eq(schema.crCaught.modelId, modelId)
+        eq(schema.crCaught.modelId, modelId),
+        ne(schema.crCaught.status, "pending_owner_approval")
       )
     );
   return Number(qty);
@@ -94,8 +98,17 @@ export async function getCrCaughtAsOf(tenantId: string, dealerId: string, modelI
         eq(schema.crCaught.tenantId, tenantId),
         eq(schema.crCaught.dealerId, dealerId),
         eq(schema.crCaught.modelId, modelId),
-        lte(schema.crCaught.caughtDate, asOf)
+        lte(schema.crCaught.caughtDate, asOf),
+        ne(schema.crCaught.status, "pending_owner_approval")
       )
     );
   return Number(qty);
+}
+
+export async function approveCrCaught(id: string): Promise<void> {
+  await db.update(schema.crCaught).set({ status: "active" }).where(eq(schema.crCaught.id, id));
+}
+
+export async function rejectCrCaught(id: string): Promise<void> {
+  await db.delete(schema.crCaught).where(eq(schema.crCaught.id, id));
 }

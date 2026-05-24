@@ -22,6 +22,12 @@ export async function switchDealerAction(id: string): Promise<void> {
 }
 
 export async function lockAction(): Promise<void> {
+  const { getStaffSession, endStaffSession } = await import("@/lib/staff-auth");
+  const staffSession = await getStaffSession();
+  if (staffSession) {
+    await endStaffSession();
+    redirect("/staff/login");
+  }
   await logAudit({ action: "auth.logout", summary: "Admin signed out" });
   await endSession();
   redirect("/login");

@@ -38,6 +38,7 @@ import {
   Zap,
   Calendar,
   Briefcase,
+  RefreshCw,
 } from "lucide-react";
 import { formatPKR } from "@/lib/format";
 import Link from "next/link";
@@ -67,6 +68,7 @@ interface Props {
   initialReport: IncentiveReport;
   initialModelSales: ModelSaleRow[];
   initialCrLoss: { lostIncentive: number; totalUnits: number };
+  initialRebateTotal: number;
   sixMonths: MonthRow[];
   stock: StockItem[];
   movedTo: Record<string, string[]>;
@@ -205,6 +207,94 @@ export function DashboardAnalytics({
   );
 }
 
+// ─── Policy Progress Card ────────────────────────────────────────────────────
+function PolicyProgressCard({ report, rebateTotal }: { report: IncentiveReport; rebateTotal: number }) {
+  const tb = report.targetBonus;
+
+  const policies = [
+    {
+      label: `Base ${report.baseIncentivePercent}% Incentive`,
+      sub: `${report.totalActivations} activations`,
+      earned: report.totals.basePercentEarned,
+      pct: 100,
+      color: "#8b5cf6",
+    },
+    ...(tb.targetQty != null ? [{
+      label: `Target Bonus ${tb.bonusPercent}%`,
+      sub: `${tb.actualQty} / ${tb.targetQty} purchased`,
+      earned: report.totals.bonusPercentEarned,
+      pct: Math.min(100, (tb.actualQty / tb.targetQty) * 100),
+      color: tb.eligible ? "#10b981" : "#3b82f6",
+    }] : []),
+    ...(report.totals.stockInEarned > 0 ? [{
+      label: "Stock-In Earned",
+      sub: "Regular stock purchased",
+      earned: report.totals.stockInEarned,
+      pct: 100,
+      color: "#10b981",
+    }] : []),
+    ...report.dealerIncentives.filter((di) => di.targetTotal > 0).map((di) => ({
+      label: "Dealer Incentive",
+      sub: `${di.actualTotal} / ${di.targetTotal} activations`,
+      earned: di.earned,
+      pct: Math.min(100, (di.actualTotal / di.targetTotal) * 100),
+      color: di.eligible ? "#10b981" : "#f59e0b",
+    })),
+    ...(report.totals.activationIncentiveEarned > 0 ? [{
+      label: "Activation Incentive",
+      sub: "Per-model policy",
+      earned: report.totals.activationIncentiveEarned,
+      pct: 100,
+      color: "#f59e0b",
+    }] : []),
+    ...(rebateTotal > 0 ? [{
+      label: "Price-Drop Rebates",
+      sub: "Unsold stock at drop date",
+      earned: rebateTotal,
+      pct: 100,
+      color: "#06b6d4",
+    }] : []),
+  ].filter((p) => p.earned > 0);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <Award className="size-3.5" /> Policy Progress
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {policies.length === 0 ? (
+          <div className="p-4 text-center text-xs text-muted-foreground">No active policies this period.</div>
+        ) : (
+          <div className="divide-y">
+            {policies.map((p, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                <div className="size-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[11px] font-medium">{p.label}</p>
+                    <p className="shrink-0 text-[11px] font-semibold tabular-nums">{formatPKR(p.earned)}</p>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${p.pct}%`, backgroundColor: p.color }}
+                      />
+                    </div>
+                    <p className="shrink-0 text-[9px] text-muted-foreground">{p.sub}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DashboardClient({
   dealerName,
   initialFrom,
@@ -212,6 +302,7 @@ export function DashboardClient({
   initialReport,
   initialModelSales,
   initialCrLoss,
+  initialRebateTotal,
   sixMonths,
   stock,
   movedTo,
@@ -224,6 +315,7 @@ export function DashboardClient({
   const [report, setReport] = useState<IncentiveReport>(initialReport);
   const [modelSales, setModelSales] = useState<ModelSaleRow[]>(initialModelSales);
   const [crLoss, setCrLoss] = useState(initialCrLoss);
+  const [rebateTotal, setRebateTotal] = useState(initialRebateTotal);
   const [pending, startTransition] = useTransition();
 
   const load = (f: string, t: string) => {
@@ -233,6 +325,7 @@ export function DashboardClient({
         setReport(data.report);
         setModelSales(data.modelSales);
         setCrLoss(data.crLoss);
+        setRebateTotal(data.rebateTotal);
       }
     });
   };
@@ -275,6 +368,8 @@ export function DashboardClient({
       `Activation Incentive,"${formatPKR(report.totals.activationIncentiveEarned)}"`,
       `Dealer Incentive,"${formatPKR(report.totals.dealerIncentiveEarned)}"`,
       `Total from OPPO,"${formatPKR(report.totals.grandTotal)}"`,
+      `Price-Drop Rebates,"${formatPKR(rebateTotal)}"`,
+      `Net Receivable from OPPO,"${formatPKR(report.totals.grandTotal + rebateTotal - crLoss.lostIncentive)}"`,
       `CR Caught Loss,"${formatPKR(crLoss.lostIncentive)}"`,
       `CR Caught Units,${crLoss.totalUnits}`,
       `Target Progress,"${tb.actualQty} / ${tb.targetQty ?? "—"}"`,
@@ -314,7 +409,7 @@ export function DashboardClient({
   // ── Shared section renderers ──────────────────────────────────────────────
 
   const kpiCards = (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
       <KpiCard
         label="Active phones"
         value={report.totalActivations}
@@ -350,6 +445,13 @@ export function DashboardClient({
         value={report.totals.grandTotal}
         format="currency"
         icon={<Wallet className="size-4" />}
+      />
+      <KpiCard
+        label="Rebates receivable"
+        value={rebateTotal}
+        format="currency"
+        icon={<RefreshCw className="size-4" />}
+        helper={rebateTotal > 0 ? "Price-drop rebates" : "No rebates this period"}
       />
       <KpiCard
         label="CR Caught Loss"
@@ -508,6 +610,7 @@ export function DashboardClient({
       { label: "Stock-In", amount: report.totals.stockInEarned },
       { label: "Activation Incentive", amount: report.totals.activationIncentiveEarned },
       { label: "Dealer Incentive", amount: report.totals.dealerIncentiveEarned },
+      { label: "Price-Drop Rebates", amount: rebateTotal },
     ].filter((s) => s.amount > 0);
     const maxEarning = Math.max(...earningsStreams.map((s) => s.amount), 1);
     const streamColors = ["bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500"];
@@ -579,11 +682,10 @@ export function DashboardClient({
                       { label: "Stock-In Earned", value: report.totals.stockInEarned, color: "#10b981" },
                       { label: "Activation Incentive", value: report.totals.activationIncentiveEarned, color: "#f59e0b" },
                       { label: "Dealer Incentive", value: report.totals.dealerIncentiveEarned, color: "#ef4444" },
+                      { label: "Price-Drop Rebates", value: rebateTotal, color: "#06b6d4" },
                     ].map((s) => {
-                      const pct =
-                        report.totals.grandTotal > 0
-                          ? (s.value / report.totals.grandTotal) * 100
-                          : 0;
+                      const totalBase = report.totals.grandTotal + rebateTotal;
+                      const pct = totalBase > 0 ? (s.value / totalBase) * 100 : 0;
                       return (
                         <div key={s.label} className="flex items-center gap-2">
                           <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
@@ -600,6 +702,14 @@ export function DashboardClient({
                         </div>
                       );
                     })}
+                    {rebateTotal > 0 && (
+                      <div className="flex items-center justify-between border-t pt-1.5">
+                        <span className="text-[11px] font-semibold text-muted-foreground">Net receivable from OPPO</span>
+                        <span className="text-[11px] font-bold tabular-nums text-cyan-600 dark:text-cyan-400">
+                          {formatPKR(report.totals.grandTotal + rebateTotal)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {/* Right: donut chart */}
@@ -622,7 +732,7 @@ export function DashboardClient({
                             fill={
                               earningsStreams.length === 0
                                 ? "hsl(var(--muted))"
-                                : (["#8b5cf6","#3b82f6","#10b981","#f59e0b","#ef4444"])[idx % 5]
+                                : (["#8b5cf6","#3b82f6","#10b981","#f59e0b","#ef4444","#06b6d4"])[idx % 6]
                             }
                           />
                         ))}
@@ -854,6 +964,9 @@ export function DashboardClient({
             </CardContent>
           </Card>
 
+          {/* Card 7a — Policy Progress */}
+          <PolicyProgressCard report={report} rebateTotal={rebateTotal} />
+
           {/* Card 7 — CR Risk Monitor */}
           <Card className={crLoss.totalUnits > 3 ? "border-red-500/40" : crLoss.totalUnits > 0 ? "border-amber-500/40" : ""}>
             <CardHeader className="pb-2">
@@ -998,13 +1111,14 @@ export function DashboardClient({
   const renderCharts = () => (
     <div className="space-y-6">
       {/* Slim KPI strip */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {[
           { label: "Phones", value: report.totalActivations, currency: false },
           { label: `${report.baseIncentivePercent}% earned`, value: report.totals.basePercentEarned, currency: true },
           { label: `Bonus ${tb.bonusPercent}%`, value: report.totals.bonusPercentEarned, currency: true },
           { label: "Stock-In", value: report.totals.stockInEarned, currency: true },
           { label: "Total", value: report.totals.grandTotal, currency: true },
+          { label: "Rebates", value: rebateTotal, currency: true },
           { label: "CR Loss", value: crLoss.lostIncentive, currency: true },
         ].map((k) => (
           <Card key={k.label} className="p-3">
@@ -1029,19 +1143,22 @@ export function DashboardClient({
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y text-sm">
-              {[
-                ["Active Phones", report.totalActivations.toLocaleString()],
-                [`Base Incentive (${report.baseIncentivePercent}%)`, formatPKR(report.totals.basePercentEarned)],
-                [`Target Bonus (${tb.bonusPercent}%)`, formatPKR(report.totals.bonusPercentEarned)],
-                ["Stock-In Earned", formatPKR(report.totals.stockInEarned)],
-                ["Activation Incentive", formatPKR(report.totals.activationIncentiveEarned)],
-                ["Dealer Incentive", formatPKR(report.totals.dealerIncentiveEarned)],
-                ["Total from OPPO", formatPKR(report.totals.grandTotal)],
-                ["CR Caught Loss", formatPKR(crLoss.lostIncentive)],
-              ].map(([k, v]) => (
+              {(
+                [
+                  ["Active Phones", report.totalActivations.toLocaleString(), false],
+                  [`Base Incentive (${report.baseIncentivePercent}%)`, formatPKR(report.totals.basePercentEarned), false],
+                  [`Target Bonus (${tb.bonusPercent}%)`, formatPKR(report.totals.bonusPercentEarned), false],
+                  ["Stock-In Earned", formatPKR(report.totals.stockInEarned), false],
+                  ["Activation Incentive", formatPKR(report.totals.activationIncentiveEarned), false],
+                  ["Dealer Incentive", formatPKR(report.totals.dealerIncentiveEarned), false],
+                  ["Total from OPPO", formatPKR(report.totals.grandTotal), false],
+                  ["Price-Drop Rebates", formatPKR(rebateTotal), true],
+                  ["CR Caught Loss", formatPKR(crLoss.lostIncentive), false],
+                ] as [string, string, boolean][]
+              ).map(([k, v, highlight]) => (
                 <div key={k} className="flex justify-between px-4 py-2.5">
-                  <span className="text-muted-foreground">{k}</span>
-                  <span className="font-medium tabular-nums">{v}</span>
+                  <span className={highlight ? "text-cyan-700 dark:text-cyan-400 font-medium" : "text-muted-foreground"}>{k}</span>
+                  <span className={`font-medium tabular-nums ${highlight ? "text-cyan-700 dark:text-cyan-400" : ""}`}>{v}</span>
                 </div>
               ))}
             </div>
@@ -1091,7 +1208,7 @@ export function DashboardClient({
 
   const renderCompact = () => (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <KpiCard
           label="Active phones"
           value={report.totalActivations}
@@ -1123,6 +1240,13 @@ export function DashboardClient({
           value={report.totals.grandTotal}
           format="currency"
           icon={<Wallet className="size-4" />}
+        />
+        <KpiCard
+          label="Rebates"
+          value={rebateTotal}
+          format="currency"
+          icon={<RefreshCw className="size-4" />}
+          helper={rebateTotal > 0 ? "Price-drop rebates" : "No rebates"}
         />
         <KpiCard
           label="CR Loss"
@@ -1199,7 +1323,7 @@ export function DashboardClient({
       { label: "Activation Incentive", amount: report.totals.activationIncentiveEarned, note: "Per-activation bonus" },
       { label: "Dealer Incentive", amount: report.totals.dealerIncentiveEarned, note: "Dealer program bonus" },
     ].filter((s) => s.amount > 0);
-    const netTotal = report.totals.grandTotal - crLoss.lostIncentive;
+    const netTotal = report.totals.grandTotal + rebateTotal - crLoss.lostIncentive;
 
     return (
       <div className="space-y-4">
@@ -1228,6 +1352,22 @@ export function DashboardClient({
                 <div className="font-semibold text-sm">Gross Total</div>
                 <div className="font-bold tabular-nums">{formatPKR(report.totals.grandTotal)}</div>
               </div>
+              {rebateTotal > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-cyan-50/60 dark:bg-cyan-950/20 border-t border-b border-cyan-200 dark:border-cyan-800">
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-cyan-700 dark:text-cyan-400">Receivables (Owed by OPPO)</div>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-2.5 border-b bg-cyan-50/40 dark:bg-cyan-950/10">
+                    <div>
+                      <div className="text-sm text-cyan-700 dark:text-cyan-400">Price-Drop Rebates</div>
+                      <div className="text-[10px] text-muted-foreground">Stock on hand × price reduction</div>
+                    </div>
+                    <div className="text-sm font-semibold tabular-nums text-cyan-700 dark:text-cyan-400">
+                      +{formatPKR(rebateTotal)}
+                    </div>
+                  </div>
+                </>
+              )}
               {crLoss.lostIncentive > 0 && (
                 <>
                   <div className="px-4 py-2 bg-muted/40 border-t border-b">
@@ -1242,11 +1382,13 @@ export function DashboardClient({
                       −{formatPKR(crLoss.lostIncentive)}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-t-2">
-                    <div className="font-semibold text-sm">Net Incentive</div>
-                    <div className="font-bold tabular-nums text-primary">{formatPKR(netTotal)}</div>
-                  </div>
                 </>
+              )}
+              {(rebateTotal > 0 || crLoss.lostIncentive > 0) && (
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-t-2">
+                  <div className="font-semibold text-sm">Net Receivable from OPPO</div>
+                  <div className="font-bold tabular-nums text-primary">{formatPKR(netTotal)}</div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1523,16 +1665,20 @@ export function DashboardClient({
         </Card>
 
         {/* Key metrics strip */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
-            { label: "Base Incentive", value: formatPKR(report.totals.basePercentEarned), sub: `${report.baseIncentivePercent}% rate`, danger: false },
-            { label: "Target Bonus", value: formatPKR(report.totals.bonusPercentEarned), sub: `${tb.bonusPercent}% bonus rate`, danger: false },
-            { label: "Stock-In Earned", value: formatPKR(report.totals.stockInEarned), sub: "Inventory incentive", danger: false },
-            { label: "CR Risk Loss", value: formatPKR(crLoss.lostIncentive), sub: `${crLoss.totalUnits} unit(s) caught`, danger: crLoss.totalUnits > 0 },
+            { label: "Base Incentive", value: formatPKR(report.totals.basePercentEarned), sub: `${report.baseIncentivePercent}% rate`, variant: "default" as const },
+            { label: "Target Bonus", value: formatPKR(report.totals.bonusPercentEarned), sub: `${tb.bonusPercent}% bonus rate`, variant: "default" as const },
+            { label: "Stock-In Earned", value: formatPKR(report.totals.stockInEarned), sub: "Inventory incentive", variant: "default" as const },
+            { label: "Rebates Receivable", value: formatPKR(rebateTotal), sub: "Price-drop rebates from OPPO", variant: "rebate" as const },
+            { label: "CR Risk Loss", value: formatPKR(crLoss.lostIncentive), sub: `${crLoss.totalUnits} unit(s) caught`, variant: "danger" as const },
           ].map((k) => (
-            <Card key={k.label} className={`p-4 ${k.danger ? "border-red-500/30" : ""}`}>
+            <Card
+              key={k.label}
+              className={`p-4 ${k.variant === "danger" ? "border-red-500/30" : k.variant === "rebate" ? "border-cyan-500/30 bg-cyan-50/40 dark:bg-cyan-950/10" : ""}`}
+            >
               <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{k.label}</div>
-              <div className={`text-xl font-bold tabular-nums mt-1 ${k.danger ? "text-red-600 dark:text-red-400" : ""}`}>
+              <div className={`text-xl font-bold tabular-nums mt-1 ${k.variant === "danger" ? "text-red-600 dark:text-red-400" : k.variant === "rebate" ? "text-cyan-700 dark:text-cyan-400" : ""}`}>
                 {k.value}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</div>

@@ -1,8 +1,56 @@
-export default function DealerPurchasesPage() {
+import { redirect } from "next/navigation";
+import { getDealerSession } from "@/lib/dealer-auth";
+import { getTenantFeaturesById } from "@/lib/admin/dealers";
+import { isFeatureEnabled } from "@/lib/dealer-features";
+import { FeatureDisabled } from "@/components/dealer/feature-disabled";
+import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
+import { listPurchases } from "@/lib/db/queries/purchases";
+import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
+import { DealerPurchasesClient } from "./dealer-purchases-client";
+import { PURCHASE_SOURCE } from "@/lib/constants";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
+
+interface SearchParams {
+  modelId?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+}
+
+export default async function DealerPurchasesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const session = await getDealerSession();
+  if (!session) redirect("/dealer/login");
+
+  const features = await getTenantFeaturesById(session.tenantId);
+  if (!isFeatureEnabled(features, "purchases")) return <FeatureDisabled />;
+
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  const sp = await searchParams;
+
+  const [models, purchases] = await Promise.all([
+    listModelsWithCurrentPrice(OWNER_TENANT_ID),
+    dealerId
+      ? listPurchases({
+          tenantId: session.tenantId,
+          dealerId,
+          modelId: sp.modelId || undefined,
+          source: (sp.source as typeof PURCHASE_SOURCE[keyof typeof PURCHASE_SOURCE] | undefined) || undefined,
+          from: sp.from || undefined,
+          to: sp.to || undefined,
+        })
+      : Promise.resolve([]),
+  ]);
+
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Purchases</h1>
-      <p className="text-sm text-muted-foreground">Coming soon.</p>
-    </div>
+    <DealerPurchasesClient
+      models={models}
+      initialPurchases={purchases}
+      initialFilters={sp}
+      hasDealer={!!dealerId}
+    />
   );
 }

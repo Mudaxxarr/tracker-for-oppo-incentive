@@ -13,6 +13,7 @@ import {
   bulkCreateActivationsByDateAction,
   type ActivationFormState,
 } from "./actions";
+import { getPriceOnDateAction } from "./data-actions";
 import { formatPKR } from "@/lib/format";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
@@ -42,13 +43,14 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const [activationDate, setActivationDate] = useState<string>(today);
   const [rows, setRows] = useState<Row[]>([emptyRow(0)]);
+  // modelId → dealer price effective on activationDate (null = no price defined)
+  const [prices, setPrices] = useState<Map<string, number | null>>(new Map());
+
   const nextKey = useMemo(
     () => rows.reduce((m, r) => Math.max(m, r.key), 0) + 1,
     [rows]
   );
 
-  // Models already chosen in earlier rows are filtered out of later dropdowns to
-  // keep the picker tidy. Same-model bulk goes in one row by raising the qty.
   const usedModelIds = useMemo(
     () => new Set(rows.map((r) => r.modelId).filter(Boolean)),
     [rows]
@@ -60,13 +62,46 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
     return m;
   }, [stock]);
 
+  // When date changes, re-resolve prices for every already-selected model.
+  useEffect(() => {
+    const selectedIds = rows.map((r) => r.modelId).filter(Boolean);
+    if (selectedIds.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      selectedIds.map((id) =>
+        getPriceOnDateAction(id, activationDate).then(
+          (p) => [id, p?.dealerPrice ?? null] as const
+        )
+      )
+    ).then((entries) => {
+      if (!cancelled)
+        setPrices((prev) => {
+          const next = new Map(prev);
+          for (const [id, price] of entries) next.set(id, price);
+          return next;
+        });
+    });
+    return () => { cancelled = true; };
+  }, [activationDate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch price for a newly selected model on the current date.
+  const resolveModelPrice = (modelId: string) => {
+    if (!modelId) return;
+    let cancelled = false;
+    getPriceOnDateAction(modelId, activationDate).then((p) => {
+      if (!cancelled)
+        setPrices((prev) => new Map(prev).set(modelId, p?.dealerPrice ?? null));
+    });
+    return () => { cancelled = true; };
+  };
+
   useEffect(() => {
     if (state.ok) {
       toast.success(
         `Activated ${state.inserted ?? 0} unit(s) — total ${formatPKR(state.pricedAt ?? 0)}`
       );
-      // Defer to a microtask so the reset doesn't run synchronously inside the effect.
       queueMicrotask(() => setRows([emptyRow(0)]));
+      setPrices(new Map());
       onSuccess?.();
     } else if (state.error) {
       toast.error(state.error);
@@ -76,7 +111,6 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
   const updateRow = (key: number, patch: Partial<Row>) => {
     setRows((prev) => {
       const next = prev.map((r) => (r.key === key ? { ...r, ...patch } : r));
-      // Auto-append a blank trailing row once the current last row is filled.
       const last = next[next.length - 1];
       const lastFilled = !!last.modelId && Number(last.qty) > 0;
       const hasAvailableModels = stock.some(
@@ -97,8 +131,6 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
     });
   };
 
-  // Trailing blank rows are silently dropped — the user shouldn't be blocked
-  // from submitting just because the "next" slot is empty by design.
   const submittableRows = rows
     .map((r) => ({
       modelId: r.modelId,
@@ -109,8 +141,8 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
 
   const totalUnits = submittableRows.reduce((sum, r) => sum + r.quantity, 0);
   const totalValue = submittableRows.reduce((sum, r) => {
-    const s = stockById.get(r.modelId);
-    return sum + (s?.dealerPrice ?? 0) * r.quantity;
+    const p = prices.get(r.modelId);
+    return sum + (p ?? 0) * r.quantity;
   }, 0);
 
   const overStockRow = rows.find((r) => {
@@ -121,8 +153,13 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
     return !!s && q > s.quantity;
   });
 
+  // Block submit if any selected model has no price on the chosen date.
+  const missingPriceRow = submittableRows.find(
+    (r) => prices.get(r.modelId) === null
+  );
+
   const canSubmit =
-    !pending && submittableRows.length > 0 && !overStockRow && !!activationDate;
+    !pending && submittableRows.length > 0 && !overStockRow && !missingPriceRow && !!activationDate;
 
   return (
     <form action={action} className="space-y-4">
@@ -139,7 +176,7 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
           required
         />
         <p className="text-xs text-muted-foreground">
-          All rows below post on this date. Price is snapshotted per model.
+          Prices are resolved per model from the price history on this date.
         </p>
       </div>
 
@@ -155,6 +192,7 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
               const selected = row.modelId ? stockById.get(row.modelId) : undefined;
               const q = Number(row.qty);
               const isOver = !!selected && Number.isFinite(q) && q > selected.quantity;
+              const resolvedPrice = row.modelId ? prices.get(row.modelId) : undefined;
               const options = stock.filter(
                 (s) => s.modelId === row.modelId || !usedModelIds.has(s.modelId)
               );
@@ -166,9 +204,11 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
                   <div className="flex-1 space-y-1">
                     <Select
                       value={row.modelId}
-                      onValueChange={(v) =>
-                        typeof v === "string" && updateRow(row.key, { modelId: v })
-                      }
+                      onValueChange={(v) => {
+                        if (typeof v !== "string") return;
+                        updateRow(row.key, { modelId: v });
+                        resolveModelPrice(v);
+                      }}
                     >
                       <SelectTrigger className="w-full">
                         <span className={selected ? "" : "text-muted-foreground"}>
@@ -182,27 +222,43 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
                               <span>{s.modelName}</span>
                               <span className="text-xs text-muted-foreground tabular-nums">
                                 {s.quantity} in stock
-                                {s.dealerPrice != null
-                                  ? ` · ${formatPKR(s.dealerPrice)}`
-                                  : ""}
                               </span>
                             </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+
                     {row.modelId ? (
-                      <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-                        <input
-                          type="checkbox"
-                          className="size-3.5"
-                          checked={row.isCrossRegion}
-                          onChange={(e) =>
-                            updateRow(row.key, { isCrossRegion: e.target.checked })
-                          }
-                        />
-                        <span>Cross-region transfer</span>
-                      </label>
+                      <>
+                        {resolvedPrice !== undefined ? (
+                          resolvedPrice !== null ? (
+                            <p className="px-1 text-xs text-muted-foreground">
+                              Price on {activationDate}:{" "}
+                              <strong className="text-foreground">{formatPKR(resolvedPrice)}</strong>
+                            </p>
+                          ) : (
+                            <p className="px-1 text-xs text-destructive">
+                              No price defined on this date — add a price entry in Models.
+                            </p>
+                          )
+                        ) : (
+                          <p className="px-1 text-xs text-muted-foreground animate-pulse">
+                            Looking up price…
+                          </p>
+                        )}
+                        <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            className="size-3.5"
+                            checked={row.isCrossRegion}
+                            onChange={(e) =>
+                              updateRow(row.key, { isCrossRegion: e.target.checked })
+                            }
+                          />
+                          <span>Cross-region transfer</span>
+                        </label>
+                      </>
                     ) : null}
                   </div>
 
@@ -249,6 +305,13 @@ export function BulkActivationForm({ stock, onSuccess }: Props) {
           </span>
           <span className="tabular-nums font-medium">{formatPKR(totalValue)}</span>
         </div>
+      ) : null}
+
+      {missingPriceRow ? (
+        <p className="text-xs text-destructive">
+          One or more models have no price defined on {activationDate}. Add price entries in
+          Models first.
+        </p>
       ) : null}
 
       <Button type="submit" className="w-full" disabled={!canSubmit}>

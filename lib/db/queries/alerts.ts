@@ -52,3 +52,25 @@ export async function markAllAlertsRead(tenantId: string): Promise<void> {
     .set({ isRead: true })
     .where(and(eq(schema.ownerAlerts.tenantId, tenantId), eq(schema.ownerAlerts.isRead, false)));
 }
+
+export async function listAllOwnerAlerts(unreadOnly = false) {
+  const where = unreadOnly ? [eq(schema.ownerAlerts.isRead, false)] : [];
+  return db
+    .select()
+    .from(schema.ownerAlerts)
+    .where(where.length ? and(...where) : undefined)
+    .orderBy(desc(schema.ownerAlerts.createdAt))
+    .limit(200);
+}
+
+export async function countAllUnreadAlerts(): Promise<number> {
+  const [{ n }] = await db
+    .select({ n: sql<number>`COUNT(*)` })
+    .from(schema.ownerAlerts)
+    .where(eq(schema.ownerAlerts.isRead, false));
+  return Number(n);
+}
+
+export async function markAllAlertsReadGlobal(): Promise<void> {
+  await db.update(schema.ownerAlerts).set({ isRead: true }).where(eq(schema.ownerAlerts.isRead, false));
+}

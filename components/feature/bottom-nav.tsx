@@ -5,19 +5,28 @@ import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
-import { PRIMARY_MOBILE_NAV, SECONDARY_MOBILE_NAV } from "./nav-config";
+import { NAV_ITEMS, PRIMARY_MOBILE_NAV, SECONDARY_MOBILE_NAV } from "./nav-config";
+import type { StaffRole } from "@/lib/constants";
 
-export function BottomNav() {
+export function BottomNav({ staffRole }: { staffRole?: StaffRole | null }) {
   const pathname = usePathname();
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
+  const filterItem = (item: (typeof NAV_ITEMS)[0]) => {
+    if (!staffRole) return true;
+    return item.roles?.includes(staffRole) ?? false;
+  };
+
+  const primaryItems = PRIMARY_MOBILE_NAV.filter(filterItem).slice(0, 5);
+  const secondaryItems = SECONDARY_MOBILE_NAV.filter(filterItem);
+
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t bg-background/95 backdrop-blur md:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed inset-x-0 bottom-0 z-30 grid border-t bg-background/95 backdrop-blur md:hidden"
+      style={{ gridTemplateColumns: `repeat(${primaryItems.length + 1}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {PRIMARY_MOBILE_NAV.map((item) => {
+      {primaryItems.map((item) => {
         const Icon = item.icon;
         return (
           <Link
@@ -47,7 +56,7 @@ export function BottomNav() {
             <SheetTitle>More</SheetTitle>
           </SheetHeader>
           <div className="grid grid-cols-3 gap-3 p-4">
-            {SECONDARY_MOBILE_NAV.map((item) => {
+            {secondaryItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link

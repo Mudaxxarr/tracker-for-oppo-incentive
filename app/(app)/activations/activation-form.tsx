@@ -10,6 +10,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { createActivationAction, type ActivationFormState } from "./actions";
+import { getPriceOnDateAction } from "./data-actions";
 import { formatPKR } from "@/lib/format";
 import { toast } from "sonner";
 import type { StockRow } from "@/lib/db/queries/purchases";
@@ -24,9 +25,11 @@ export function ActivationForm({ stock, onSuccess }: Props) {
     createActivationAction,
     {}
   );
+  const today = new Date().toISOString().slice(0, 10);
   const [modelId, setModelId] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("1");
-  const today = new Date().toISOString().slice(0, 10);
+  const [activationDate, setActivationDate] = useState<string>(today);
+  const [resolvedPrice, setResolvedPrice] = useState<number | null>(null);
 
   const selected = useMemo(
     () => (modelId ? stock.find((s) => s.modelId === modelId) : undefined),
@@ -34,6 +37,19 @@ export function ActivationForm({ stock, onSuccess }: Props) {
   );
   const qtyNum = Math.max(1, Number(quantity) || 1);
   const overStock = !!selected && qtyNum > selected.quantity;
+
+  // Whenever model or date changes, fetch the price effective on that date.
+  useEffect(() => {
+    if (!modelId || !activationDate) {
+      setResolvedPrice(null);
+      return;
+    }
+    let cancelled = false;
+    getPriceOnDateAction(modelId, activationDate).then((p) => {
+      if (!cancelled) setResolvedPrice(p?.dealerPrice ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [modelId, activationDate]);
 
   useEffect(() => {
     if (state.ok) {
@@ -45,11 +61,13 @@ export function ActivationForm({ stock, onSuccess }: Props) {
       );
       setModelId("");
       setQuantity("1");
+      setActivationDate(today);
+      setResolvedPrice(null);
       onSuccess?.();
     } else if (state.error) {
       toast.error(state.error);
     }
-  }, [state, onSuccess]);
+  }, [state, onSuccess, today]);
 
   return (
     <form action={action} className="space-y-4">
@@ -75,7 +93,6 @@ export function ActivationForm({ stock, onSuccess }: Props) {
                     <span>{s.modelName}</span>
                     <span className="text-xs text-muted-foreground tabular-nums">
                       {s.quantity} in stock
-                      {s.dealerPrice != null ? ` · ${formatPKR(s.dealerPrice)}` : ""}
                     </span>
                   </span>
                 </SelectItem>
@@ -100,7 +117,14 @@ export function ActivationForm({ stock, onSuccess }: Props) {
         </div>
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Activation date</label>
-          <Input name="activationDate" type="date" defaultValue={today} max={today} required />
+          <Input
+            name="activationDate"
+            type="date"
+            value={activationDate}
+            max={today}
+            onChange={(e) => setActivationDate(e.target.value)}
+            required
+          />
         </div>
       </div>
 
@@ -112,10 +136,18 @@ export function ActivationForm({ stock, onSuccess }: Props) {
       ) : null}
 
       {selected ? (
-        <p className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-          Price snapshot will use the dealer price effective on the activation date — currently
-          <strong className="text-foreground"> {formatPKR(selected.dealerPrice ?? 0)}</strong>.
-        </p>
+        resolvedPrice !== null ? (
+          <p className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+            Price on <strong className="text-foreground">{activationDate}</strong>:
+            {" "}<strong className="text-foreground">{formatPKR(resolvedPrice)}</strong>
+            {" "}— this will be snapshotted on the activation.
+          </p>
+        ) : (
+          <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+            No dealer price defined for this model on {activationDate}. Add a price entry in
+            Models first.
+          </p>
+        )
       ) : null}
 
       {overStock ? (
@@ -129,7 +161,11 @@ export function ActivationForm({ stock, onSuccess }: Props) {
         <span>This phone arrived via cross-region transfer</span>
       </label>
 
-      <Button type="submit" className="w-full" disabled={pending || !modelId || overStock}>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={pending || !modelId || overStock || resolvedPrice === null}
+      >
         {pending ? "Saving…" : qtyNum > 1 ? `Save ${qtyNum} Activations` : "Save Activation"}
       </Button>
     </form>

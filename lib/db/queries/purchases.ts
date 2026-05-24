@@ -1,7 +1,7 @@
 import "server-only";
 import { db, schema } from "../client";
 import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
-import { INTER_ID_STATUS } from "@/lib/constants";
+import { INTER_ID_STATUS, PURCHASE_SOURCE } from "@/lib/constants";
 import { randomUUID } from "node:crypto";
 import type { PurchaseSource } from "@/lib/constants";
 import { getCrCaughtForStockCalc, getCrCaughtAsOf } from "./cr-caught";
@@ -123,6 +123,49 @@ export async function getStockForModelAsOf(tenantId: string, dealerId: string, m
   return Number(pq) - Number(aq) - Number(tq) - crcQty;
 }
 
+export interface CrStockRow {
+  modelId: string;
+  modelName: string;
+  crPurchased: number;
+  crActivated: number;
+  crRemaining: number;
+}
+
+/** Returns models that have CR-sourced stock, with qty purchased via CR vs how many have been activated as CR. */
+export async function getCrStockSummary(tenantId: string, dealerId: string): Promise<CrStockRow[]> {
+  const [purchased, activated] = await Promise.all([
+    db
+      .select({ modelId: schema.purchases.modelId, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.source, PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN)))
+      .groupBy(schema.purchases.modelId),
+    db
+      .select({ modelId: schema.activations.modelId, qty: sql<number>`COUNT(*)` })
+      .from(schema.activations)
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.isCrossRegion, true)))
+      .groupBy(schema.activations.modelId),
+  ]);
+
+  if (purchased.length === 0) return [];
+
+  const activatedMap = new Map(activated.map((r) => [r.modelId, Number(r.qty)]));
+  const modelIds = purchased.map((r) => r.modelId);
+  const meta = await db
+    .select({ id: schema.models.id, name: schema.models.name })
+    .from(schema.models)
+    .where(sql`${schema.models.id} IN (${sql.join(modelIds.map((id) => sql`${id}`), sql`, `)})`);
+  const nameMap = new Map(meta.map((m) => [m.id, m.name]));
+
+  return purchased
+    .map((r) => {
+      const crPurchased = Number(r.qty);
+      const crActivated = activatedMap.get(r.modelId) ?? 0;
+      return { modelId: r.modelId, modelName: nameMap.get(r.modelId) ?? r.modelId, crPurchased, crActivated, crRemaining: Math.max(0, crPurchased - crActivated) };
+    })
+    .filter((r) => r.crPurchased > 0)
+    .sort((a, b) => a.modelName.localeCompare(b.modelName));
+}
+
 export interface PurchaseRow {
   id: string; modelId: string; modelName: string; quantity: number;
   unitDealerPrice: number; unitInvoicePrice: number; purchaseDate: string;
@@ -208,4 +251,55 @@ export async function getPurchaseById(id: string, dealerId: string, tenantId: st
 
 export async function deletePurchase(id: string, dealerId: string, tenantId: string): Promise<void> {
   await db.delete(schema.purchases).where(and(eq(schema.purchases.id, id), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.tenantId, tenantId)));
+}
+
+export interface CrShiftedValueResult {
+  totalUnits: number;
+  totalValue: number;
+  byModel: { modelId: string; modelName: string; qty: number; dealerPrice: number; totalValue: number }[];
+}
+
+export async function getCrShiftedValue(
+  tenantId: string,
+  dealerId: string,
+  from: string,
+  to: string
+): Promise<CrShiftedValueResult> {
+  const rows = await db
+    .select({
+      modelId: schema.purchases.modelId,
+      modelName: schema.models.name,
+      qty: schema.purchases.quantity,
+      dealerPrice: schema.purchases.unitDealerPrice,
+    })
+    .from(schema.purchases)
+    .innerJoin(schema.models, eq(schema.models.id, schema.purchases.modelId))
+    .where(
+      and(
+        eq(schema.purchases.tenantId, tenantId),
+        eq(schema.purchases.dealerId, dealerId),
+        eq(schema.purchases.source, PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN),
+        gte(schema.purchases.purchaseDate, from),
+        lte(schema.purchases.purchaseDate, to)
+      )
+    );
+
+  const byModelMap = new Map<string, { modelId: string; modelName: string; qty: number; dealerPrice: number; totalValue: number }>();
+  let totalUnits = 0;
+  let totalValue = 0;
+
+  for (const r of rows) {
+    totalUnits += r.qty;
+    const rowValue = r.qty * r.dealerPrice;
+    totalValue += rowValue;
+    const existing = byModelMap.get(r.modelId);
+    if (existing) {
+      existing.qty += r.qty;
+      existing.totalValue += rowValue;
+    } else {
+      byModelMap.set(r.modelId, { modelId: r.modelId, modelName: r.modelName, qty: r.qty, dealerPrice: r.dealerPrice, totalValue: rowValue });
+    }
+  }
+
+  return { totalUnits, totalValue, byModel: [...byModelMap.values()] };
 }

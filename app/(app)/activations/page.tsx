@@ -2,6 +2,7 @@ import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
 import { listActivations } from "@/lib/db/queries/activations";
 import { listStockForDealer } from "@/lib/db/queries/purchases";
+import { getStaffSession } from "@/lib/staff-auth";
 import { ActivationsClient } from "./activations-client";
 
 interface SearchParams {
@@ -15,8 +16,11 @@ export default async function ActivationsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const dealerId = await getActiveDealerId();
-  const sp = await searchParams;
+  const [dealerId, staffSession, sp] = await Promise.all([
+    getActiveDealerId(),
+    getStaffSession(),
+    searchParams,
+  ]);
   const allModels = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
   const stock = dealerId ? await listStockForDealer(OWNER_TENANT_ID, dealerId) : [];
   const activations = dealerId
@@ -35,6 +39,7 @@ export default async function ActivationsPage({
       initialActivations={activations}
       initialFilters={sp}
       hasDealer={!!dealerId}
+      staffRole={staffSession?.role ?? null}
     />
   );
 }

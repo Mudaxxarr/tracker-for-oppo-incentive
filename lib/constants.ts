@@ -26,6 +26,8 @@ export type PurchaseReviewStatus = (typeof PURCHASE_REVIEW_STATUS)[keyof typeof 
 export const OWNER_ALERT_TYPE = {
   CR_PENDING_APPROVAL: "cr_pending_approval",
   PURCHASE_PENDING_REVIEW: "purchase_pending_review",
+  CR_CAUGHT_PENDING_APPROVAL: "cr_caught_pending_approval",
+  ACTIVATION_DELETION_REQUEST: "activation_deletion_request",
 } as const;
 
 export const INTER_ID_STATUS = {
@@ -47,3 +49,8 @@ export const SESSION_COOKIE = "oppo_session";
 export const TEAM_SESSION_COOKIE = "oppo_team_session";
 export const DEALER_SESSION_COOKIE = "dealer_session";
 export const DEALER_ACTIVE_ID_COOKIE = "dealer_active_id";
+export const OWNER_STAFF_SESSION_COOKIE = "oppo_staff_session";
+
+export type StaffRole = "so" | "accountant";
+
+export const DEALER_TEAM_LIMIT = 2;

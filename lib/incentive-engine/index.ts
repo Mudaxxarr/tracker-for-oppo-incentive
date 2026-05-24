@@ -9,7 +9,6 @@ import type {
   IncentiveReportRow,
   PriceSubperiod,
   TargetBonusOutcome,
-  DealerIncentiveOutcome,
   ISODate,
 } from "./types";
 
@@ -52,24 +51,6 @@ function pickTargetBonusPolicy(
   return overlapping.sort((a, b) => (a.periodStart < b.periodStart ? 1 : -1))[0];
 }
 
-function pickDealerIncentivePolicy(
-  policies: EngineDealerIncentivePolicy[],
-  periodStart: ISODate,
-  periodEnd: ISODate
-): EngineDealerIncentivePolicy | null {
-  if (policies.length === 0) return null;
-  const covering = policies.filter(
-    (p) => p.periodStart <= periodStart && p.periodEnd >= periodEnd
-  );
-  if (covering.length > 0) {
-    return covering.sort((a, b) => (a.periodStart < b.periodStart ? 1 : -1))[0];
-  }
-  const overlapping = policies.filter(
-    (p) => p.periodStart <= periodEnd && p.periodEnd >= periodStart
-  );
-  if (overlapping.length === 0) return null;
-  return overlapping.sort((a, b) => (a.periodStart < b.periodStart ? 1 : -1))[0];
-}
 
 function findActivationIncentive(
   policies: EngineActivationIncentivePolicy[],
@@ -151,40 +132,38 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
   }
 
   // ----- Target Bonus eligibility -----
-  // Target bonus (1%) is gated on PURCHASE quantity (stock-in), not activations.
-  // The dealer must have purchased >= targetActivationsQty units in the policy window.
+  // Gate: total REGULAR purchases in the policy window must reach targetActivationsQty.
+  // Reward: bonusPercent applied to every activation in the report period.
   const tbp = pickTargetBonusPolicy(targetBonusPolicies, periodStart, periodEnd);
-  const tbpPurchaseQtyInWindow = tbp
+  const tbpPurchaseQty = tbp
     ? purchases
-        .filter(
-          (p) =>
-            p.source === "REGULAR" &&
-            inRange(p.purchaseDate, tbp.periodStart, tbp.periodEnd)
-        )
+        .filter((p) => p.source === "REGULAR" && inRange(p.purchaseDate, tbp.periodStart, tbp.periodEnd))
         .reduce((sum, p) => sum + p.quantity, 0)
     : 0;
-  const tbpEligible = !!tbp && tbpPurchaseQtyInWindow >= tbp.targetActivationsQty;
+  const tbpEligible = !!tbp && tbpPurchaseQty >= tbp.targetActivationsQty;
   const targetBonus: TargetBonusOutcome = {
     policyId: tbp?.id ?? null,
     eligible: tbpEligible,
     targetQty: tbp?.targetActivationsQty ?? null,
-    actualQty: tbpPurchaseQtyInWindow,
+    actualQty: tbpPurchaseQty,
     bonusPercent: tbp?.bonusPercent ?? 0,
   };
 
-  // ----- Dealer Incentive eligibility -----
-  const dip = pickDealerIncentivePolicy(dealerIncentivePolicies, periodStart, periodEnd);
-  const dipActivationsInWindow = dip
-    ? activations.filter((a) => inRange(a.activationDate, dip.periodStart, dip.periodEnd))
-    : [];
-  const dipEligible = !!dip && dipActivationsInWindow.length >= dip.targetTotalActivations;
-  const dealerIncentive: DealerIncentiveOutcome = {
-    policyId: dip?.id ?? null,
-    eligible: dipEligible,
-    targetTotal: dip?.targetTotalActivations ?? null,
-    actualTotal: dipActivationsInWindow.length,
-    perUnitAmount: dip?.perUnitAmount ?? 0,
+  // ----- Dealer Incentive: all policies run simultaneously -----
+  // targetTotalActivations is a global threshold (all activations count toward it).
+  // modelId, when set, restricts which activations EARN the per-unit amount.
+  type DipStatus = {
+    policy: EngineDealerIncentivePolicy;
+    eligible: boolean;
+    actualTotal: number;
+    earned: number;
   };
+  const dipStatuses: DipStatus[] = dealerIncentivePolicies
+    .filter((p) => p.periodStart <= periodEnd && p.periodEnd >= periodStart)
+    .map((p) => {
+      const actualTotal = activations.filter((a) => inRange(a.activationDate, p.periodStart, p.periodEnd)).length;
+      return { policy: p, eligible: actualTotal >= p.targetTotalActivations, actualTotal, earned: 0 };
+    });
 
   // ----- Filter activations to report window -----
   const reportActivations = activations.filter((a) =>
@@ -294,16 +273,40 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
         activationEarned += aip.perUnit;
       }
 
-      if (dipEligible) {
-        dealerIncEarned += dip!.perUnitAmount;
+      for (const ds of dipStatuses) {
+        if (!ds.eligible) continue;
+        if (!inRange(act.activationDate, ds.policy.periodStart, ds.policy.periodEnd)) continue;
+        if (ds.policy.modelId && act.modelId !== ds.policy.modelId) continue;
+        dealerIncEarned += ds.policy.perUnitAmount;
+        ds.earned += ds.policy.perUnitAmount;
       }
     }
 
-    // Stock-in: ONLY on REGULAR purchases, never on CROSS_REGION_TRANSFER_IN.
-    // Inter-ID outbound transfers reduce the effective stock at the source ID.
-    const effectiveStockInQty = Math.max(0, bucket.regularQty - bucket.interIdOutQty);
-    let stockInEarned = 0;
+    // Stock-in: only REGULAR purchases whose purchaseDate falls inside the policy's own
+    // date window (sip.periodStart … sip.periodEnd) count. Purchases outside that window
+    // do not earn stock-in even if they are within the report period.
     const sip = applicableStockInPolicy(stockInPolicies, modelId, periodStart, periodEnd);
+    let sipRegularQty = 0;
+    let sipInterIdOutQty = 0;
+    if (sip) {
+      sipRegularQty = purchases
+        .filter(
+          (p) =>
+            p.modelId === modelId &&
+            p.source === "REGULAR" &&
+            inRange(p.purchaseDate, sip.periodStart, sip.periodEnd)
+        )
+        .reduce((sum, p) => sum + p.quantity, 0);
+      sipInterIdOutQty = interIdOut
+        .filter(
+          (t) =>
+            t.modelId === modelId &&
+            inRange(t.transferDate, sip.periodStart, sip.periodEnd)
+        )
+        .reduce((sum, t) => sum + t.quantity, 0);
+    }
+    const effectiveStockInQty = Math.max(0, sipRegularQty - sipInterIdOutQty);
+    let stockInEarned = 0;
     if (sip) {
       const minQty = sip.minQty ?? 0;
       if (effectiveStockInQty >= minQty && effectiveStockInQty > 0) {
@@ -332,9 +335,9 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       bonusPercentEarned: round2(bonusEarned),
       activationIncentiveEarned: round2(activationEarned),
       dealerIncentiveEarned: round2(dealerIncEarned),
-      stockInRegularQty: bucket.regularQty,
+      stockInRegularQty: sipRegularQty,
       stockInCrossRegionQty: bucket.crossRegionQty,
-      interIdOutQty: bucket.interIdOutQty,
+      interIdOutQty: sipInterIdOutQty,
       effectiveStockInQty,
       stockInEarned: round2(stockInEarned),
       total: round2(total),
@@ -364,7 +367,15 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     totalRegularPurchaseQty: totalRegular,
     totalCrossRegionPurchaseQty: totalCross,
     targetBonus,
-    dealerIncentive,
+    dealerIncentives: dipStatuses.map((ds) => ({
+      policyId: ds.policy.id,
+      modelId: ds.policy.modelId ?? null,
+      eligible: ds.eligible,
+      targetTotal: ds.policy.targetTotalActivations,
+      actualTotal: ds.actualTotal,
+      perUnitAmount: ds.policy.perUnitAmount,
+      earned: round2(ds.earned),
+    })),
     rows,
     totals: {
       basePercentEarned: round2(totalsBase),
