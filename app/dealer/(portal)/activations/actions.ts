@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant, getTenantById } from "@/lib/dealer-tenant";
-import { listActivations, createActivation, deleteActivation } from "@/lib/db/queries/activations";
+import { listActivations, createActivation, deleteActivation, getActivationById } from "@/lib/db/queries/activations";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { listModelsWithCurrentPrice, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf, listStockForDealer } from "@/lib/db/queries/purchases";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
@@ -156,6 +157,7 @@ export async function createDealerActivationAction(
 
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
+  await reEvaluateRebatesForDealer(tenantId, dealerId, d.modelId, d.activationDate).catch(() => {});
   return { ok: true, inserted: qty, pricedAt };
 }
 
@@ -247,6 +249,9 @@ export async function bulkCreateDealerActivationsByDateAction(
 
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
+  for (const row of rowData) {
+    await reEvaluateRebatesForDealer(tenantId, dealerId, row.modelId, activationDate).catch(() => {});
+  }
   return { ok: true, inserted, pricedAt };
 }
 
@@ -258,6 +263,7 @@ export async function deleteDealerActivationAction(id: string): Promise<void> {
   const dealerId = await getActiveDealerIdForTenant(tenantId);
   if (!dealerId) throw new Error("No active dealer ID.");
 
+  const activation = await getActivationById(id, dealerId, tenantId);
   await deleteActivation(id, dealerId, tenantId);
   await logAudit({
     action: "dealer_activation_deleted",
@@ -266,6 +272,9 @@ export async function deleteDealerActivationAction(id: string): Promise<void> {
   });
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
+  if (activation) {
+    await reEvaluateRebatesForDealer(tenantId, dealerId, activation.modelId, activation.activationDate).catch(() => {});
+  }
 }
 
 export async function bulkDeleteDealerActivationsAction(
@@ -277,6 +286,10 @@ export async function bulkDeleteDealerActivationsAction(
 
   const dealerId = await getActiveDealerIdForTenant(tenantId);
   if (!dealerId) throw new Error("No active dealer ID.");
+
+  const activationRecords = (
+    await Promise.all(ids.map((id) => getActivationById(id, dealerId, tenantId)))
+  ).filter((a): a is NonNullable<typeof a> => a !== null && a !== undefined);
 
   let deleted = 0;
   for (const id of ids) {
@@ -295,6 +308,16 @@ export async function bulkDeleteDealerActivationsAction(
   });
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
+
+  const byModel = new Map<string, string>();
+  for (const a of activationRecords) {
+    const existing = byModel.get(a.modelId);
+    if (!existing || a.activationDate < existing) byModel.set(a.modelId, a.activationDate);
+  }
+  for (const [modelId, fromDate] of byModel) {
+    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, fromDate).catch(() => {});
+  }
+
   return { deleted };
 }
 
