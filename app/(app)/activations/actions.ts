@@ -15,6 +15,7 @@ import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
 
@@ -120,6 +121,7 @@ export async function createActivationAction(
       });
       revalidatePath("/activations");
       revalidatePath("/dashboard");
+      await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, data.activationDate).catch(() => {});
       return { ok: true, pricedAt: singleResult.pricedAt };
     }
 
@@ -168,6 +170,7 @@ export async function createActivationAction(
     });
     revalidatePath("/activations");
     revalidatePath("/dashboard");
+    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, data.activationDate).catch(() => {});
     return { ok: true, pricedAt: price.dealerPrice, inserted };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to add activation";
@@ -302,6 +305,9 @@ export async function bulkCreateActivationsByDateAction(
 
     revalidatePath("/activations");
     revalidatePath("/dashboard");
+    for (const [modelId] of merged) {
+      await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, parsed.data.activationDate).catch(() => {});
+    }
     return { ok: true, inserted, pricedAt: totalValue };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to bulk-activate";
@@ -376,6 +382,10 @@ export async function updateActivationAction(
     });
     revalidatePath("/activations");
     revalidatePath("/dashboard");
+    const triggerDate = data.activationDate < existing.activationDate
+      ? data.activationDate
+      : existing.activationDate;
+    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, triggerDate).catch(() => {});
     return { ok: true, pricedAt: price.dealerPrice };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update activation";
@@ -387,6 +397,7 @@ export async function deleteActivationAction(id: string): Promise<void> {
   if (!(await isAuthenticated())) return;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return;
+  const activation = await getActivationById(id, dealerId, OWNER_TENANT_ID);
   await deleteActivation(id, dealerId, OWNER_TENANT_ID);
   await logAudit({
     action: "activation.delete",
@@ -396,6 +407,9 @@ export async function deleteActivationAction(id: string): Promise<void> {
   });
   revalidatePath("/activations");
   revalidatePath("/dashboard");
+  if (activation) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, activation.modelId, activation.activationDate).catch(() => {});
+  }
 }
 
 export async function bulkDeleteActivationsAction(
@@ -405,6 +419,11 @@ export async function bulkDeleteActivationsAction(
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { deleted: 0 };
   const tenantId = OWNER_TENANT_ID;
+
+  const activationRecords = (
+    await Promise.all(ids.map((id) => getActivationById(id, dealerId, tenantId)))
+  ).filter((a): a is NonNullable<typeof a> => a !== null && a !== undefined);
+
   let deleted = 0;
   await db.transaction(async () => {
     for (const id of ids) {
@@ -419,6 +438,16 @@ export async function bulkDeleteActivationsAction(
   });
   revalidatePath("/activations");
   revalidatePath("/dashboard");
+
+  const byModel = new Map<string, string>();
+  for (const a of activationRecords) {
+    const existing = byModel.get(a.modelId);
+    if (!existing || a.activationDate < existing) byModel.set(a.modelId, a.activationDate);
+  }
+  for (const [modelId, fromDate] of byModel) {
+    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, fromDate).catch(() => {});
+  }
+
   return { deleted };
 }
 
