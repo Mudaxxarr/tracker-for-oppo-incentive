@@ -2,7 +2,7 @@ import "server-only";
 import { db, schema } from "../client";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { getStockForModel } from "./purchases";
+import { getStockForModelAsOf } from "./purchases";
 
 export interface RebateRow {
   id: string;
@@ -146,7 +146,7 @@ export async function createRebatesForPriceDrop(input: {
 
   for (const { id: dealerId } of dealerIds) {
     // Use the same stock formula as the rest of the app: purchases - activations - transfers_out - cr_caught
-    const eligibleQty = await getStockForModel(input.tenantId, dealerId, input.modelId);
+    const eligibleQty = await getStockForModelAsOf(input.tenantId, dealerId, input.modelId, input.rebateDate);
     if (eligibleQty <= 0) continue;
     const total = eligibleQty * rebatePerUnit;
     await db.insert(schema.rebates).values({
