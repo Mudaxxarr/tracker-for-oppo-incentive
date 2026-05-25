@@ -121,7 +121,7 @@ export async function createActivationAction(
       });
       revalidatePath("/activations");
       revalidatePath("/dashboard");
-      await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, data.activationDate).catch(() => {});
+      await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, data.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
       return { ok: true, pricedAt: singleResult.pricedAt };
     }
 
@@ -170,7 +170,7 @@ export async function createActivationAction(
     });
     revalidatePath("/activations");
     revalidatePath("/dashboard");
-    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, data.activationDate).catch(() => {});
+    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, data.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
     return { ok: true, pricedAt: price.dealerPrice, inserted };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to add activation";
@@ -306,7 +306,7 @@ export async function bulkCreateActivationsByDateAction(
     revalidatePath("/activations");
     revalidatePath("/dashboard");
     for (const [modelId] of merged) {
-      await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, parsed.data.activationDate).catch(() => {});
+      await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, parsed.data.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
     }
     return { ok: true, inserted, pricedAt: totalValue };
   } catch (err) {
@@ -385,7 +385,7 @@ export async function updateActivationAction(
     const triggerDate = data.activationDate < existing.activationDate
       ? data.activationDate
       : existing.activationDate;
-    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, triggerDate).catch(() => {});
+    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, triggerDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
     return { ok: true, pricedAt: price.dealerPrice };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update activation";
@@ -408,7 +408,7 @@ export async function deleteActivationAction(id: string): Promise<void> {
   revalidatePath("/activations");
   revalidatePath("/dashboard");
   if (activation) {
-    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, activation.modelId, activation.activationDate).catch(() => {});
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, activation.modelId, activation.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
 }
 
@@ -445,7 +445,7 @@ export async function bulkDeleteActivationsAction(
     if (!existing || a.activationDate < existing) byModel.set(a.modelId, a.activationDate);
   }
   for (const [modelId, fromDate] of byModel) {
-    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, fromDate).catch(() => {});
+    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, fromDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
 
   return { deleted };

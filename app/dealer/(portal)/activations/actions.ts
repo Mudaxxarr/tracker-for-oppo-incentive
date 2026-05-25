@@ -157,7 +157,7 @@ export async function createDealerActivationAction(
 
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
-  await reEvaluateRebatesForDealer(tenantId, dealerId, d.modelId, d.activationDate).catch(() => {});
+  await reEvaluateRebatesForDealer(tenantId, dealerId, d.modelId, d.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true, inserted: qty, pricedAt };
 }
 
@@ -250,7 +250,7 @@ export async function bulkCreateDealerActivationsByDateAction(
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
   for (const row of rowData) {
-    await reEvaluateRebatesForDealer(tenantId, dealerId, row.modelId, activationDate).catch(() => {});
+    await reEvaluateRebatesForDealer(tenantId, dealerId, row.modelId, activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
   return { ok: true, inserted, pricedAt };
 }
@@ -273,7 +273,7 @@ export async function deleteDealerActivationAction(id: string): Promise<void> {
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
   if (activation) {
-    await reEvaluateRebatesForDealer(tenantId, dealerId, activation.modelId, activation.activationDate).catch(() => {});
+    await reEvaluateRebatesForDealer(tenantId, dealerId, activation.modelId, activation.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
 }
 
@@ -292,14 +292,12 @@ export async function bulkDeleteDealerActivationsAction(
   ).filter((a): a is NonNullable<typeof a> => a !== null && a !== undefined);
 
   let deleted = 0;
-  for (const id of ids) {
-    try {
+  await db.transaction(async () => {
+    for (const id of ids) {
       await deleteActivation(id, dealerId, tenantId);
       deleted++;
-    } catch {
-      // skip individual failures
     }
-  }
+  });
 
   await logAudit({
     action: "dealer_activation_bulk_deleted",
@@ -315,7 +313,7 @@ export async function bulkDeleteDealerActivationsAction(
     if (!existing || a.activationDate < existing) byModel.set(a.modelId, a.activationDate);
   }
   for (const [modelId, fromDate] of byModel) {
-    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, fromDate).catch(() => {});
+    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, fromDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
 
   return { deleted };

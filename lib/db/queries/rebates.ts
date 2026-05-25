@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "../client";
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getStockForModelAsOf } from "./purchases";
 
@@ -194,6 +194,18 @@ export async function reEvaluateRebatesForDealer(
       )
     )
     .orderBy(asc(schema.modelPriceHistory.effectiveFrom));
+
+  // Purge any orphan rebates with no price-history anchor (NULL priceHistoryId)
+  // eq() generates col = value which never matches NULL, so these would survive
+  // the loop's delete passes and permanently over-report rebate income.
+  await db.delete(schema.rebates).where(
+    and(
+      eq(schema.rebates.tenantId, tenantId),
+      eq(schema.rebates.dealerId, dealerId),
+      eq(schema.rebates.modelId, modelId),
+      isNull(schema.rebates.priceHistoryId)
+    )
+  );
 
   const startIdx = allEntries.findIndex((e) => e.effectiveFrom >= fromDate);
   if (startIdx === -1) return;
