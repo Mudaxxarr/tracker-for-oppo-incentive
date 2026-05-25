@@ -170,6 +170,78 @@ export async function createRebatesForPriceDrop(input: {
 }
 
 /**
+ * Re-evaluates rebates for a single dealer+model from `fromDate` forward.
+ * Called whenever an activation is created, updated, or deleted — ensuring
+ * that changing a unit's activation date does not leave stale rebate records.
+ */
+export async function reEvaluateRebatesForDealer(
+  tenantId: string,
+  dealerId: string,
+  modelId: string,
+  fromDate: string
+): Promise<void> {
+  const allEntries = await db
+    .select({
+      id: schema.modelPriceHistory.id,
+      dealerPrice: schema.modelPriceHistory.dealerPrice,
+      effectiveFrom: schema.modelPriceHistory.effectiveFrom,
+    })
+    .from(schema.modelPriceHistory)
+    .where(
+      and(
+        eq(schema.modelPriceHistory.tenantId, tenantId),
+        eq(schema.modelPriceHistory.modelId, modelId)
+      )
+    )
+    .orderBy(asc(schema.modelPriceHistory.effectiveFrom));
+
+  const startIdx = allEntries.findIndex((e) => e.effectiveFrom >= fromDate);
+  if (startIdx === -1) return;
+
+  for (let i = startIdx; i < allEntries.length; i++) {
+    const curr = allEntries[i];
+    const prev = i > 0 ? allEntries[i - 1] : null;
+
+    if (prev !== null && prev.dealerPrice > curr.dealerPrice) {
+      const rebatePerUnit = prev.dealerPrice - curr.dealerPrice;
+      const eligibleQty = await getStockForModelAsOf(tenantId, dealerId, modelId, curr.effectiveFrom);
+
+      await db.delete(schema.rebates).where(
+        and(
+          eq(schema.rebates.tenantId, tenantId),
+          eq(schema.rebates.priceHistoryId, curr.id),
+          eq(schema.rebates.dealerId, dealerId)
+        )
+      );
+
+      if (eligibleQty > 0) {
+        await db.insert(schema.rebates).values({
+          id: randomUUID(),
+          tenantId,
+          dealerId,
+          modelId,
+          oldDealerPrice: prev.dealerPrice,
+          newDealerPrice: curr.dealerPrice,
+          rebatePerUnit,
+          eligibleQty,
+          totalRebateAmount: eligibleQty * rebatePerUnit,
+          rebateDate: curr.effectiveFrom,
+          priceHistoryId: curr.id,
+        });
+      }
+    } else {
+      await db.delete(schema.rebates).where(
+        and(
+          eq(schema.rebates.tenantId, tenantId),
+          eq(schema.rebates.priceHistoryId, curr.id),
+          eq(schema.rebates.dealerId, dealerId)
+        )
+      );
+    }
+  }
+}
+
+/**
  * After editing a price entry at Date X, re-evaluates rebates for every entry
  * from Date X through the current date. Handles three outcomes per entry:
  *   - Drop vs preceding entry and no rebate yet  → create
