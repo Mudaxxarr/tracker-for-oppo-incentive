@@ -14,6 +14,8 @@ import { getMinForwardStock } from "@/lib/db/queries/purchases";
 import { createCrCaught, rejectCrCaught } from "@/lib/db/queries/cr-caught";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { CROSS_REGION_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
+import { getConstants } from "@/lib/settings";
+import { formatPKR } from "@/lib/format";
 import { logAudit } from "@/lib/audit";
 
 const Schema = z.object({
@@ -53,13 +55,19 @@ export async function createCrossRegionAction(
   const m = await getModelById(parsed.data.modelId);
 
   if (!isOwner) {
+    // Expected incentive preview (base% + bonus%) on the inbound units.
+    const price = await getPriceOnDate(tenantId, parsed.data.modelId, parsed.data.reportedDate);
+    const { basePercent, defaultBonusPercent } = await getConstants();
+    const expected = price
+      ? (parsed.data.quantity * price.dealerPrice * (basePercent + defaultBonusPercent)) / 100
+      : 0;
     await createOwnerAlert({
       tenantId,
       type: OWNER_ALERT_TYPE.CR_PENDING_APPROVAL,
       entityType: "cross_region_transfer",
       entityId: id,
       dealerId,
-      message: `SO reported cross-region transfer: ${parsed.data.quantity} × ${m?.name ?? "?"} — awaiting your approval.`,
+      message: `Cross-region INWARD: ${parsed.data.quantity} × ${m?.name ?? "?"} shifting into your ID. Expected incentive ≈ ${formatPKR(expected)} (${basePercent}% + ${defaultBonusPercent}%). Approve to add to stock.`,
     });
   }
 
@@ -217,7 +225,7 @@ export async function crOutwardAction(
       entityType: "cr_caught",
       entityId: id,
       dealerId,
-      message: `SO reported CR-caught: ${quantity} × ${m?.name ?? "?"} on ${caughtDate} — awaiting approval.`,
+      message: `⚠ Cross-region OUTWARD: ${quantity} × ${m?.name ?? "?"} leaving your ID on ${caughtDate}. Investigate why before approving — approval deducts this stock.`,
     });
   }
 

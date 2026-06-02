@@ -1,13 +1,14 @@
 import "server-only";
 import { db, schema } from "../client";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { CROSS_REGION_STATUS, INTER_ID_STATUS, PURCHASE_SOURCE } from "@/lib/constants";
 import { getPriceOnDate } from "./models";
 
 export interface CrossRegionRow {
   id: string; modelId: string; modelName: string; quantity: number;
-  reportedDate: string; shiftedToIdDate: string | null; status: string; sourceRegionNote: string | null;
+  reportedDate: string; shiftedToIdDate: string | null; status: string;
+  sourceRegionNote: string | null; fineAmount: number | null;
 }
 
 export async function listCrossRegion(tenantId: string, dealerId: string): Promise<CrossRegionRow[]> {
@@ -16,7 +17,9 @@ export async function listCrossRegion(tenantId: string, dealerId: string): Promi
       modelName: schema.models.name, quantity: schema.crossRegionTransfers.quantity,
       reportedDate: schema.crossRegionTransfers.reportedDate,
       shiftedToIdDate: schema.crossRegionTransfers.shiftedToIdDate,
-      status: schema.crossRegionTransfers.status, sourceRegionNote: schema.crossRegionTransfers.sourceRegionNote })
+      status: schema.crossRegionTransfers.status,
+      sourceRegionNote: schema.crossRegionTransfers.sourceRegionNote,
+      fineAmount: schema.crossRegionTransfers.fineAmount })
     .from(schema.crossRegionTransfers)
     .innerJoin(schema.models, eq(schema.models.id, schema.crossRegionTransfers.modelId))
     .where(and(eq(schema.crossRegionTransfers.tenantId, tenantId), eq(schema.crossRegionTransfers.dealerId, dealerId)))
@@ -33,12 +36,27 @@ export async function countPendingCrossRegion(tenantId: string, dealerId: string
 
 export async function createCrossRegion(input: {
   tenantId: string; dealerId: string; modelId: string; quantity: number;
-  reportedDate: string; sourceRegionNote: string | null; initialStatus?: string;
+  reportedDate: string; sourceRegionNote: string | null;
+  fineAmount?: number | null; initialStatus?: string;
 }) {
   const id = randomUUID();
   const { initialStatus, ...rest } = input;
-  await db.insert(schema.crossRegionTransfers).values({ id, ...rest, shiftedToIdDate: null, status: initialStatus ?? CROSS_REGION_STATUS.PENDING_REPORT });
+  await db.insert(schema.crossRegionTransfers).values({ id, ...rest, fineAmount: rest.fineAmount ?? 0, shiftedToIdDate: null, status: initialStatus ?? CROSS_REGION_STATUS.PENDING_REPORT });
   return id;
+}
+
+export async function sumCrFinesForPeriod(tenantId: string, dealerId: string, from: string, to: string): Promise<number> {
+  const [{ total }] = await db
+    .select({ total: sql<number>`COALESCE(SUM(${schema.crossRegionTransfers.fineAmount}), 0)` })
+    .from(schema.crossRegionTransfers)
+    .where(and(
+      eq(schema.crossRegionTransfers.tenantId, tenantId),
+      eq(schema.crossRegionTransfers.dealerId, dealerId),
+      gte(schema.crossRegionTransfers.reportedDate, from),
+      lte(schema.crossRegionTransfers.reportedDate, to),
+      sql`${schema.crossRegionTransfers.status} != 'REJECTED'`,
+    ));
+  return Number(total);
 }
 
 export async function submitCrossRegionForApproval(input: {
@@ -65,24 +83,26 @@ export async function updateCrossRegionStatus(input: {
     .limit(1);
   if (rows.length === 0) return { ok: false, message: "Not found" };
   const transfer = rows[0];
-  const today = new Date().toISOString().slice(0, 10);
 
   if (input.status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID) {
     const approvable = [CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL, CROSS_REGION_STATUS.PENDING_REPORT];
     if (!approvable.includes(transfer.status as typeof approvable[number])) {
       return { ok: false, message: "Transfer must be pending or awaiting approval before it can be approved" };
     }
-    const price = await getPriceOnDate(input.priceTenantId ?? input.tenantId, transfer.modelId, today);
+    // Stock lands on the date the units were reported as received, not the approval
+    // date — so stock-in policies for that date count it correctly.
+    const effectiveDate = transfer.reportedDate;
+    const price = await getPriceOnDate(input.priceTenantId ?? input.tenantId, transfer.modelId, effectiveDate);
     if (!price) return { ok: false, message: "No dealer price defined for this model" };
     await db.insert(schema.purchases).values({
       id: randomUUID(), tenantId: input.tenantId, dealerId: transfer.dealerId,
       modelId: transfer.modelId, quantity: transfer.quantity,
       unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
-      purchaseDate: today, source: PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN,
+      purchaseDate: effectiveDate, source: PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN,
       referenceNote: `Cross-region: ${transfer.sourceRegionNote ?? "—"}`,
       crossRegionTransferId: transfer.id,
     });
-    await db.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: today }).where(eq(schema.crossRegionTransfers.id, transfer.id));
+    await db.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: effectiveDate }).where(eq(schema.crossRegionTransfers.id, transfer.id));
     return { ok: true, created: transfer.quantity };
   }
 

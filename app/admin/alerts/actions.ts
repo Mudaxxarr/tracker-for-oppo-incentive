@@ -6,8 +6,10 @@ import { markAlertRead, markAllAlertsReadGlobal } from "@/lib/db/queries/alerts"
 import { approveCrCaught, rejectCrCaught } from "@/lib/db/queries/cr-caught";
 import { deleteActivation, getActivationById } from "@/lib/db/queries/activations";
 import { approvePurchaseReview, rejectPurchaseReview } from "@/lib/db/queries/purchases";
+import { updateCrossRegionStatus } from "@/lib/db/queries/transfers";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
+import { CROSS_REGION_STATUS } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 
 export async function markAlertReadAction(id: string): Promise<void> {
@@ -66,6 +68,37 @@ export async function rejectPurchaseReviewAction(alertId: string, purchaseId: st
   revalidatePath("/admin/alerts");
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function approveCrInwardAction(alertId: string, transferId: string, dealerId: string): Promise<{ ok?: boolean; error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  if (!dealerId) return { error: "Missing dealer" };
+  const result = await updateCrossRegionStatus({
+    id: transferId, tenantId: OWNER_TENANT_ID, dealerId,
+    status: CROSS_REGION_STATUS.SHIFTED_TO_MY_ID, priceTenantId: OWNER_TENANT_ID,
+  });
+  if (!result.ok) return { error: result.message ?? "Approval failed" };
+  await markAlertRead(alertId);
+  await logAudit({ action: "cross_region.approved", entityType: "cross_region_transfer", entityId: transferId, summary: `Owner approved CR inward ${transferId.slice(0, 8)} — shifted into ID` });
+  revalidatePath("/admin/alerts");
+  revalidatePath("/cross-region");
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function rejectCrInwardAction(alertId: string, transferId: string, dealerId: string): Promise<{ ok?: boolean; error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  if (!dealerId) return { error: "Missing dealer" };
+  const result = await updateCrossRegionStatus({
+    id: transferId, tenantId: OWNER_TENANT_ID, dealerId, status: CROSS_REGION_STATUS.REJECTED,
+  });
+  if (!result.ok) return { error: result.message ?? "Rejection failed" };
+  await markAlertRead(alertId);
+  await logAudit({ action: "cross_region.rejected", entityType: "cross_region_transfer", entityId: transferId, summary: `Owner rejected CR inward ${transferId.slice(0, 8)}` });
+  revalidatePath("/admin/alerts");
+  revalidatePath("/cross-region");
   return { ok: true };
 }
 

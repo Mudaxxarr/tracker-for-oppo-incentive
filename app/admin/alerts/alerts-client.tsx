@@ -11,6 +11,8 @@ import {
   approveActivationDeletionAction,
   approvePurchaseReviewAction,
   rejectPurchaseReviewAction,
+  approveCrInwardAction,
+  rejectCrInwardAction,
 } from "./actions";
 import { formatDate } from "@/lib/format";
 import { BellOff, CheckCheck, Clock, CheckCircle2, XCircle } from "lucide-react";
@@ -70,6 +72,33 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
       if (result.ok) {
         setLocalRead((prev) => new Set([...prev, alert.id]));
         toast.success("CR-caught rejected — record removed");
+      } else {
+        toast.error(result.error ?? "Rejection failed");
+      }
+    });
+  };
+
+  const handleApproveCrInward = (alert: OwnerAlert) => {
+    if (!alert.entityId || !alert.dealerId) return;
+    startTransition(async () => {
+      const result = await approveCrInwardAction(alert.id, alert.entityId!, alert.dealerId!);
+      if (result.ok) {
+        setLocalRead((prev) => new Set([...prev, alert.id]));
+        toast.success("Cross-region stock approved — shifted into your ID");
+      } else {
+        toast.error(result.error ?? "Approval failed");
+      }
+    });
+  };
+
+  const handleRejectCrInward = (alert: OwnerAlert) => {
+    if (!alert.entityId || !alert.dealerId) return;
+    if (!confirm("Reject this cross-region inward transfer?")) return;
+    startTransition(async () => {
+      const result = await rejectCrInwardAction(alert.id, alert.entityId!, alert.dealerId!);
+      if (result.ok) {
+        setLocalRead((prev) => new Set([...prev, alert.id]));
+        toast.success("Cross-region inward rejected");
       } else {
         toast.error(result.error ?? "Rejection failed");
       }
@@ -167,7 +196,13 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
               <div
                 key={alert.id}
                 className={`flex items-start justify-between gap-4 rounded-lg border px-4 py-3 transition-colors ${
-                  isRead ? "bg-card opacity-60" : "bg-card border-amber-300/60 bg-amber-50/30"
+                  isRead
+                    ? "bg-card opacity-60"
+                    : alert.type === "cr_caught_pending_approval"
+                    ? "border-red-400/70 bg-red-50/40 dark:bg-red-950/20"
+                    : alert.type === "cr_pending_approval"
+                    ? "border-emerald-400/70 bg-emerald-50/40 dark:bg-emerald-950/20"
+                    : "border-amber-300/60 bg-amber-50/30"
                 }`}
               >
                 <div className="flex-1 space-y-1 min-w-0">
@@ -205,6 +240,25 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
                           variant="outline"
                           className="h-7 gap-1 text-xs text-destructive"
                           onClick={() => handleRejectCrCaught(alert)}
+                        >
+                          <XCircle className="size-3.5" /> Reject
+                        </Button>
+                      </>
+                    ) : alert.type === "cr_pending_approval" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-7 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => handleApproveCrInward(alert)}
+                        >
+                          <CheckCircle2 className="size-3.5" /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs text-destructive"
+                          onClick={() => handleRejectCrInward(alert)}
                         >
                           <XCircle className="size-3.5" /> Reject
                         </Button>

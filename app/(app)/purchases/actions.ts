@@ -198,15 +198,20 @@ export async function createBulkInvoiceAction(
   }
   const { purchaseDate, source, invoiceNumber, notes, lines } = parsed.data;
 
-  // De-duplicate model rows by summing — so the same model can be entered twice safely
-  // — but we keep separate rows when prices differ so per-row pricing is preserved.
+  // #8: non-owner large lines need owner approval before counting.
+  const isOwner = await isAuthenticated();
+  const tenant = await getTenantById(OWNER_TENANT_ID);
+  const threshold = !isOwner && tenant?.purchaseApprovalThreshold != null ? tenant.purchaseApprovalThreshold : null;
+
   let inserted = 0;
+  const pendingAlerts: { id: string; quantity: number }[] = [];
   try {
     // All-or-nothing: a failed line must not leave a half-recorded invoice.
     await db.transaction(async (tx) => {
       for (const line of lines) {
         const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
-        await createPurchase({
+        const isPending = threshold != null && line.quantity >= threshold;
+        const id = await createPurchase({
           tenantId,
           dealerId,
           modelId: line.modelId,
@@ -216,10 +221,22 @@ export async function createBulkInvoiceAction(
           purchaseDate,
           source,
           referenceNote: ref,
+          reviewStatus: isPending ? PURCHASE_REVIEW_STATUS.PENDING_REVIEW : PURCHASE_REVIEW_STATUS.ACTIVE,
         }, tx);
+        if (isPending) pendingAlerts.push({ id, quantity: line.quantity });
         inserted += 1;
       }
     });
+    for (const pa of pendingAlerts) {
+      await createOwnerAlert({
+        tenantId,
+        type: OWNER_ALERT_TYPE.PURCHASE_PENDING_REVIEW,
+        entityType: "purchase",
+        entityId: pa.id,
+        dealerId,
+        message: `[HIGH ALERT] Purchase of ${pa.quantity} units flagged for owner review (exceeds approval threshold)`,
+      });
+    }
     await logAudit({
       action: "purchase.bulk_invoice",
       summary: `Recorded invoice ${invoiceNumber}: ${inserted} line(s) on ${purchaseDate}`,
