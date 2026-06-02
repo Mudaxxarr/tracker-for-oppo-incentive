@@ -1,7 +1,7 @@
 import "server-only";
 import { db, schema } from "../client";
 import { and, asc, desc, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
-import { INTER_ID_STATUS, PURCHASE_SOURCE } from "@/lib/constants";
+import { INTER_ID_STATUS, PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS } from "@/lib/constants";
 import { randomUUID } from "node:crypto";
 import type { PurchaseSource } from "@/lib/constants";
 import { getCrCaughtForStockCalc, getCrCaughtAsOf, getCrCaughtBefore } from "./cr-caught";
@@ -21,7 +21,7 @@ export async function listStockForDealer(tenantId: string, dealerId: string, pri
     db
       .select({ modelId: schema.purchases.modelId, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
-      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW)))
       .groupBy(schema.purchases.modelId),
     db
       .select({ modelId: schema.activations.modelId, qty: sql<number>`COUNT(*)` })
@@ -84,7 +84,7 @@ export async function getStockForModel(tenantId: string, dealerId: string, model
   const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
     db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
-      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId))),
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))),
     db.select({ qty: sql<number>`COUNT(*)` })
       .from(schema.activations)
       .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId))),
@@ -105,7 +105,7 @@ export async function getStockForModelAsOf(tenantId: string, dealerId: string, m
   const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
     db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
-      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lte(schema.purchases.purchaseDate, asOf))),
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lte(schema.purchases.purchaseDate, asOf), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))),
     db.select({ qty: sql<number>`COUNT(*)` })
       .from(schema.activations)
       .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId), lte(schema.activations.activationDate, asOf))),
@@ -146,7 +146,7 @@ export async function getMinForwardStock(
   const [purchases, activations, transfers, crc] = await Promise.all([
     executor.select({ date: schema.purchases.purchaseDate, qty: schema.purchases.quantity })
       .from(schema.purchases)
-      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId))),
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))),
     executor.select({ date: schema.activations.activationDate })
       .from(schema.activations)
       .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId))),
@@ -199,7 +199,7 @@ export async function getClosingStockBeforeDate(tenantId: string, dealerId: stri
   const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
     db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
-      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lt(schema.purchases.purchaseDate, beforeDate))),
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lt(schema.purchases.purchaseDate, beforeDate), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))),
     db.select({ qty: sql<number>`COUNT(*)` })
       .from(schema.activations)
       .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId), lt(schema.activations.activationDate, beforeDate))),
@@ -332,6 +332,49 @@ export async function updatePurchase(
         eq(schema.purchases.tenantId, tenantId)
       )
     );
+}
+
+/**
+ * Owner approves a pending-review purchase: flips reviewStatus to APPROVED so it
+ * starts counting toward stock and incentives. Returns the row's model/dealer/date
+ * for rebate re-evaluation, or null if not found / not pending.
+ */
+export async function approvePurchaseReview(
+  purchaseId: string, tenantId: string
+): Promise<{ modelId: string; dealerId: string; purchaseDate: string } | null> {
+  const rows = await db
+    .select({ modelId: schema.purchases.modelId, dealerId: schema.purchases.dealerId, purchaseDate: schema.purchases.purchaseDate })
+    .from(schema.purchases)
+    .where(and(
+      eq(schema.purchases.id, purchaseId),
+      eq(schema.purchases.tenantId, tenantId),
+      eq(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW)
+    ))
+    .limit(1);
+  if (rows.length === 0) return null;
+  await db.update(schema.purchases)
+    .set({ reviewStatus: PURCHASE_REVIEW_STATUS.APPROVED })
+    .where(and(eq(schema.purchases.id, purchaseId), eq(schema.purchases.tenantId, tenantId)));
+  return rows[0];
+}
+
+/** Owner rejects a pending-review purchase: removes it entirely (it was never in stock). */
+export async function rejectPurchaseReview(
+  purchaseId: string, tenantId: string
+): Promise<{ modelId: string; dealerId: string; purchaseDate: string } | null> {
+  const rows = await db
+    .select({ modelId: schema.purchases.modelId, dealerId: schema.purchases.dealerId, purchaseDate: schema.purchases.purchaseDate })
+    .from(schema.purchases)
+    .where(and(
+      eq(schema.purchases.id, purchaseId),
+      eq(schema.purchases.tenantId, tenantId),
+      eq(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW)
+    ))
+    .limit(1);
+  if (rows.length === 0) return null;
+  await db.delete(schema.purchases)
+    .where(and(eq(schema.purchases.id, purchaseId), eq(schema.purchases.tenantId, tenantId)));
+  return rows[0];
 }
 
 export async function getPurchaseById(id: string, dealerId: string, tenantId: string) {

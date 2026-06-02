@@ -10,6 +10,7 @@ import { getMinForwardStock, listStockForDealer } from "@/lib/db/queries/purchas
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { CROSS_REGION_STATUS, INTER_ID_STATUS } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
+import { todayPKT } from "@/lib/format";
 import { db, schema } from "@/lib/db/client";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -78,8 +79,8 @@ export async function createDealerActivationAction(
   if (qty > 1 && d.imei) return { error: "IMEI can only be set when quantity is 1." };
 
   // H-A: enforce date window — no future dates, no dates beyond backdate allowance
-  const today = new Date().toISOString().slice(0, 10);
-  const minDate = new Date(Date.now() - backdateDays * 86400000).toISOString().slice(0, 10);
+  const today = todayPKT();
+  const minDate = todayPKT(-backdateDays);
   if (d.activationDate > today) return { error: "Activation date cannot be in the future." };
   if (d.activationDate < minDate) return { error: `Activation date cannot be more than ${backdateDays} day(s) in the past.` };
 
@@ -180,8 +181,8 @@ export async function bulkCreateDealerActivationsByDateAction(
   const { activationDate, rows } = parsed.data;
 
   // H-A: enforce date window
-  const today = new Date().toISOString().slice(0, 10);
-  const minDate = new Date(Date.now() - backdateDays * 86400000).toISOString().slice(0, 10);
+  const today = todayPKT();
+  const minDate = todayPKT(-backdateDays);
   if (activationDate > today) return { error: "Activation date cannot be in the future." };
   if (activationDate < minDate) return { error: `Activation date cannot be more than ${backdateDays} day(s) in the past.` };
 

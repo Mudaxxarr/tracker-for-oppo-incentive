@@ -16,7 +16,7 @@ import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
-import { formatPKR } from "@/lib/format";
+import { formatPKR, todayPKT } from "@/lib/format";
 import { db, schema } from "@/lib/db/client";
 import { and, asc, eq, sql } from "drizzle-orm";
 
@@ -41,6 +41,8 @@ export async function quickActivateAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const { modelId, activationDate, quantity } = parsed.data;
+
+  if (activationDate > todayPKT()) return { error: "Activation date cannot be in the future." };
 
   // Forward-minimum stock guards backdating oversell across later dates.
   const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate);

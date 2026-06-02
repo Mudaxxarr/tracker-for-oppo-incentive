@@ -9,6 +9,8 @@ import {
   approveCrCaughtAction,
   rejectCrCaughtAction,
   approveActivationDeletionAction,
+  approvePurchaseReviewAction,
+  rejectPurchaseReviewAction,
 } from "./actions";
 import { formatDate } from "@/lib/format";
 import { BellOff, CheckCheck, Clock, CheckCircle2, XCircle } from "lucide-react";
@@ -68,6 +70,33 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
       if (result.ok) {
         setLocalRead((prev) => new Set([...prev, alert.id]));
         toast.success("CR-caught rejected — record removed");
+      } else {
+        toast.error(result.error ?? "Rejection failed");
+      }
+    });
+  };
+
+  const handleApprovePurchase = (alert: OwnerAlert) => {
+    if (!alert.entityId) return;
+    startTransition(async () => {
+      const result = await approvePurchaseReviewAction(alert.id, alert.entityId!);
+      if (result.ok) {
+        setLocalRead((prev) => new Set([...prev, alert.id]));
+        toast.success("Purchase approved — now counts toward stock & incentives");
+      } else {
+        toast.error(result.error ?? "Approval failed");
+      }
+    });
+  };
+
+  const handleRejectPurchase = (alert: OwnerAlert) => {
+    if (!alert.entityId) return;
+    if (!confirm("Reject and remove this purchase? This cannot be undone.")) return;
+    startTransition(async () => {
+      const result = await rejectPurchaseReviewAction(alert.id, alert.entityId!);
+      if (result.ok) {
+        setLocalRead((prev) => new Set([...prev, alert.id]));
+        toast.success("Purchase rejected — removed");
       } else {
         toast.error(result.error ?? "Rejection failed");
       }
@@ -176,6 +205,25 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
                           variant="outline"
                           className="h-7 gap-1 text-xs text-destructive"
                           onClick={() => handleRejectCrCaught(alert)}
+                        >
+                          <XCircle className="size-3.5" /> Reject
+                        </Button>
+                      </>
+                    ) : alert.type === "purchase_pending_review" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => handleApprovePurchase(alert)}
+                        >
+                          <CheckCircle2 className="size-3.5" /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs text-destructive"
+                          onClick={() => handleRejectPurchase(alert)}
                         >
                           <XCircle className="size-3.5" /> Reject
                         </Button>

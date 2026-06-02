@@ -43,6 +43,16 @@ export function formatMonthLabel(value: Date | string | number): string {
   return format(d, "MMM yyyy");
 }
 
+/**
+ * Date as YYYY-MM-DD in Pakistan time (UTC+5, no DST), optionally offset by days.
+ * Use for business-day guards (future/backdate checks) so they don't drift on a
+ * UTC server. `todayPKT()` = today in PKT; `todayPKT(-3)` = three PKT days ago.
+ */
+export function todayPKT(offsetDays = 0): string {
+  const ms = Date.now() + 5 * 3600 * 1000 + offsetDays * 86400000;
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
 export function maskImei(imei: string | null | undefined): string {
   if (!imei) return "—";
   if (imei.length <= 6) return imei;

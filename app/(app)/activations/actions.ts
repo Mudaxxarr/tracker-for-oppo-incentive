@@ -17,7 +17,7 @@ import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { logAudit } from "@/lib/audit";
-import { formatPKR } from "@/lib/format";
+import { formatPKR, todayPKT } from "@/lib/format";
 
 const ActivationSchema = z.object({
   modelId: z.string().min(1, "Choose a model"),
@@ -78,6 +78,7 @@ export async function createActivationAction(
   if (qty > 1 && data.imei) {
     return { error: "IMEI can only be set when quantity is 1" };
   }
+  if (data.activationDate > todayPKT()) return { error: "Activation date cannot be in the future." };
   try {
     const isCR = data.isCrossRegion === "on" || data.isCrossRegion === "true";
 
@@ -214,6 +215,8 @@ export async function bulkCreateActivationsByDateAction(
     });
     return { error: parsed.error.issues[0].message };
   }
+
+  if (parsed.data.activationDate > todayPKT()) return { error: "Activation date cannot be in the future." };
 
   // Merge duplicate models into a single row so stock checks aggregate properly.
   const merged = new Map<string, { quantity: number; isCrossRegion: boolean }>();

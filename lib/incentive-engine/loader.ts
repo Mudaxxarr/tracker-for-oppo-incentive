@@ -1,9 +1,10 @@
 import "server-only";
 import { db, schema } from "@/lib/db/client";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
-import { and, eq, gte, lte, or, type SQL } from "drizzle-orm";
+import { and, eq, gte, lte, ne, or, type SQL } from "drizzle-orm";
 import { calculateIncentives, type EngineInput, type IncentiveReport } from "./index";
 import { getConstants } from "@/lib/settings";
+import { PURCHASE_REVIEW_STATUS } from "@/lib/constants";
 
 /**
  * Loads everything the engine needs for a (dealerId, period) and produces a report.
@@ -88,7 +89,8 @@ export async function buildIncentiveReport(input: {
           eq(schema.purchases.tenantId, dataTenantId),
           eq(schema.purchases.dealerId, dealerId),
           gte(schema.purchases.purchaseDate, minStart),
-          lte(schema.purchases.purchaseDate, maxEnd)
+          lte(schema.purchases.purchaseDate, maxEnd),
+          ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW)
         ) as SQL
       ),
     db
@@ -213,7 +215,7 @@ export async function buildLastSixMonths(
       and(eq(schema.activations.tenantId, effectiveDataTenantId), eq(schema.activations.dealerId, dealerId), gte(schema.activations.activationDate, minStart), lte(schema.activations.activationDate, maxEnd))
     ),
     db.select().from(schema.purchases).where(
-      and(eq(schema.purchases.tenantId, effectiveDataTenantId), eq(schema.purchases.dealerId, dealerId), gte(schema.purchases.purchaseDate, minStart), lte(schema.purchases.purchaseDate, maxEnd))
+      and(eq(schema.purchases.tenantId, effectiveDataTenantId), eq(schema.purchases.dealerId, dealerId), gte(schema.purchases.purchaseDate, minStart), lte(schema.purchases.purchaseDate, maxEnd), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))
     ),
     db.select().from(schema.interIdTransfers).where(
       and(eq(schema.interIdTransfers.tenantId, effectiveDataTenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), gte(schema.interIdTransfers.transferDate, minStart), lte(schema.interIdTransfers.transferDate, maxEnd))

@@ -8,7 +8,9 @@ import { db } from "@/lib/db/client";
 import { createPurchase, deletePurchase, getPurchaseById, updatePurchase, getStockForModel, getStockForModelAsOf } from "@/lib/db/queries/purchases";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
-import { PURCHASE_SOURCE } from "@/lib/constants";
+import { PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
+import { getTenantById } from "@/lib/dealer-tenant";
+import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
 
@@ -57,6 +59,15 @@ export async function createPurchaseAction(
   const updateMaster =
     data.updateMasterPrice === "on" || data.updateMasterPrice === "true";
 
+  // #8: non-owner (team/staff) large purchases need owner approval before they
+  // count toward stock/incentives. Owner's own purchases are active immediately.
+  const isOwner = await isAuthenticated();
+  const tenant = await getTenantById(OWNER_TENANT_ID);
+  const reviewStatus =
+    !isOwner && tenant?.purchaseApprovalThreshold != null && data.quantity >= tenant.purchaseApprovalThreshold
+      ? PURCHASE_REVIEW_STATUS.PENDING_REVIEW
+      : PURCHASE_REVIEW_STATUS.ACTIVE;
+
   try {
     const id = await createPurchase({
       tenantId,
@@ -68,7 +79,19 @@ export async function createPurchaseAction(
       purchaseDate: data.purchaseDate,
       source: data.source,
       referenceNote: data.referenceNote ?? null,
+      reviewStatus,
     });
+
+    if (reviewStatus === PURCHASE_REVIEW_STATUS.PENDING_REVIEW) {
+      await createOwnerAlert({
+        tenantId,
+        type: OWNER_ALERT_TYPE.PURCHASE_PENDING_REVIEW,
+        entityType: "purchase",
+        entityId: id,
+        dealerId,
+        message: `[HIGH ALERT] Purchase of ${data.quantity} units flagged for owner review (exceeds approval threshold)`,
+      });
+    }
 
     if (updateMaster) {
       const today = new Date().toISOString().slice(0, 10);
