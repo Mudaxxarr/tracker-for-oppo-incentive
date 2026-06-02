@@ -5,8 +5,8 @@ import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { db } from "@/lib/db/client";
-import { createPurchase, deletePurchase, getPurchaseById, updatePurchase } from "@/lib/db/queries/purchases";
-import { getStockForModel, getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { createPurchase, deletePurchase, getPurchaseById, updatePurchase, getStockForModel, getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -111,6 +111,7 @@ export async function createPurchaseAction(
 
     revalidatePath("/purchases");
     revalidatePath("/dashboard");
+    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, data.purchaseDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
     return { ok: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create purchase";
@@ -178,21 +179,24 @@ export async function createBulkInvoiceAction(
   // — but we keep separate rows when prices differ so per-row pricing is preserved.
   let inserted = 0;
   try {
-    for (const line of lines) {
-      const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
-      await createPurchase({
-        tenantId,
-        dealerId,
-        modelId: line.modelId,
-        quantity: line.quantity,
-        unitDealerPrice: line.unitDealerPrice,
-        unitInvoicePrice: line.unitInvoicePrice,
-        purchaseDate,
-        source,
-        referenceNote: ref,
-      });
-      inserted += 1;
-    }
+    // All-or-nothing: a failed line must not leave a half-recorded invoice.
+    await db.transaction(async (tx) => {
+      for (const line of lines) {
+        const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
+        await createPurchase({
+          tenantId,
+          dealerId,
+          modelId: line.modelId,
+          quantity: line.quantity,
+          unitDealerPrice: line.unitDealerPrice,
+          unitInvoicePrice: line.unitInvoicePrice,
+          purchaseDate,
+          source,
+          referenceNote: ref,
+        }, tx);
+        inserted += 1;
+      }
+    });
     await logAudit({
       action: "purchase.bulk_invoice",
       summary: `Recorded invoice ${invoiceNumber}: ${inserted} line(s) on ${purchaseDate}`,
@@ -200,6 +204,10 @@ export async function createBulkInvoiceAction(
     });
     revalidatePath("/purchases");
     revalidatePath("/dashboard");
+    const uniqueModels = [...new Set(lines.map((l) => l.modelId))];
+    for (const modelId of uniqueModels) {
+      await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, purchaseDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+    }
     return { ok: true, inserted };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to record invoice";
@@ -270,8 +278,10 @@ export async function updatePurchaseAction(
       entityId: data.id,
       summary: `Updated purchase ${data.id.slice(0, 8)}: qty=${data.quantity}, ${formatPKR(data.unitDealerPrice)}, date=${data.purchaseDate}`,
     });
+    const triggerDate = data.purchaseDate < existing.purchaseDate ? data.purchaseDate : existing.purchaseDate;
     revalidatePath("/purchases");
     revalidatePath("/dashboard");
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, existing.modelId, triggerDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
     return { ok: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update purchase";
@@ -285,6 +295,7 @@ export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ delete
   if (!dealerId) return { deleted: 0 };
   let deleted = 0;
   const blocked: string[] = [];
+  const deletedPurchases: { modelId: string; purchaseDate: string }[] = [];
   await db.transaction(async () => {
     for (const id of ids) {
       const purchase = await getPurchaseById(id, dealerId, OWNER_TENANT_ID);
@@ -295,6 +306,7 @@ export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ delete
         continue;
       }
       await deletePurchase(id, dealerId, OWNER_TENANT_ID);
+      deletedPurchases.push({ modelId: purchase.modelId, purchaseDate: purchase.purchaseDate });
       deleted++;
     }
   });
@@ -314,6 +326,15 @@ export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ delete
   });
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
+  // Fire rebate re-eval at the earliest date per model
+  const byModel = new Map<string, string>();
+  for (const { modelId, purchaseDate } of deletedPurchases) {
+    const existing = byModel.get(modelId);
+    if (!existing || purchaseDate < existing) byModel.set(modelId, purchaseDate);
+  }
+  for (const [modelId, fromDate] of byModel) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
   return { deleted };
 }
 
@@ -338,5 +359,6 @@ export async function deletePurchaseAction(id: string): Promise<{ error?: string
   });
   revalidatePath("/purchases");
   revalidatePath("/dashboard");
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, purchase.modelId, purchase.purchaseDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return {};
 }

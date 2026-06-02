@@ -87,6 +87,9 @@ export async function createStockInAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (parsed.data.periodEnd < parsed.data.periodStart)
     return { error: "End date must be on/after start date" };
+  const overlap = await Q.findOverlappingStockInPolicy(c.tenantId, c.dealerId, parsed.data.modelId, parsed.data.periodStart, parsed.data.periodEnd);
+  if (overlap)
+    return { error: `A stock-in policy for this model already covers ${overlap.periodStart} → ${overlap.periodEnd}. Overlapping periods are not allowed.` };
   const id = await Q.createStockInPolicy({
     tenantId: c.tenantId,
     dealerId: c.dealerId,
@@ -177,6 +180,49 @@ export async function createDealerIncentiveAction(
   return { ok: true };
 }
 
+const BulkDealerIncentiveSchema = z.object({
+  periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  targetTotalActivations: z.coerce.number().int().min(1, "Target must be ≥ 1"),
+  rows: z.array(z.object({
+    modelId: z.string().min(1, "Model required"),
+    perUnitAmount: z.coerce.number().min(0, "Rate must be ≥ 0"),
+  })).min(1, "Add at least one model"),
+});
+
+export async function bulkCreateDealerIncentivesAction(
+  input: z.infer<typeof BulkDealerIncentiveSchema>
+): Promise<PolicyFormState> {
+  const c = await ctx();
+  if (!c) return { error: "Not authenticated or no active Dealer ID" };
+  const parsed = BulkDealerIncentiveSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { periodStart, periodEnd, targetTotalActivations, rows } = parsed.data;
+  if (periodEnd < periodStart) return { error: "End date must be on/after start date" };
+
+  for (const row of rows) {
+    const id = await Q.createDealerIncentivePolicy({
+      tenantId: c.tenantId,
+      dealerId: c.dealerId,
+      modelId: row.modelId,
+      periodStart,
+      periodEnd,
+      targetTotalActivations,
+      perUnitAmount: row.perUnitAmount,
+    });
+    await logAudit({
+      action: "policy.dealer_incentive.create",
+      entityType: "dealer_incentive_policy",
+      entityId: id,
+      summary: `Dealer Incentive (${row.modelId}): ${formatPKR(row.perUnitAmount)}/unit if ${targetTotalActivations} total (${periodStart} → ${periodEnd})`,
+      payload: { ...row, periodStart, periodEnd, targetTotalActivations },
+    });
+  }
+  revalidatePath("/policies");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function updateTargetBonusAction(_prev: PolicyFormState, fd: FormData): Promise<PolicyFormState> {
   const c = await ctx();
   if (!c) return { error: "Not authenticated" };
@@ -194,6 +240,9 @@ export async function updateStockInAction(_prev: PolicyFormState, fd: FormData):
   const id = fd.get("id") as string;
   const parsed = StockInSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const overlap = await Q.findOverlappingStockInPolicy(c.tenantId, c.dealerId, parsed.data.modelId, parsed.data.periodStart, parsed.data.periodEnd, id);
+  if (overlap)
+    return { error: `A stock-in policy for this model already covers ${overlap.periodStart} → ${overlap.periodEnd}. Overlapping periods are not allowed.` };
   await Q.updateStockInPolicy(id, c.tenantId, c.dealerId, { periodStart: parsed.data.periodStart, periodEnd: parsed.data.periodEnd, perUnitAmount: parsed.data.perUnitAmount, minQty: parsed.data.minQty ?? null });
   revalidatePath("/policies"); revalidatePath("/dashboard");
   return { ok: true };

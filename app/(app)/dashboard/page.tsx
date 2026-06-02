@@ -1,9 +1,11 @@
 import { getActiveDealer, listDealerIds, OWNER_TENANT_ID } from "@/lib/dealer";
 import { buildIncentiveReport, buildLastSixMonths } from "@/lib/incentive-engine/loader";
-import { countPendingCrossRegion, listInterIdTransfers } from "@/lib/db/queries/transfers";
+import { countPendingCrossRegion, listInterIdTransfers, sumCrFinesForPeriod } from "@/lib/db/queries/transfers";
 import { listStockForDealer, getCrStockSummary } from "@/lib/db/queries/purchases";
-import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
-import { sumRebatesForPeriod } from "@/lib/db/queries/rebates";
+import { getCrCaughtLoss, listCrCaughtForPeriod } from "@/lib/db/queries/cr-caught";
+import { sumRebatesForPeriod, listRebatesForDealerInPeriod } from "@/lib/db/queries/rebates";
+import { db, schema } from "@/lib/db/client";
+import { and, eq, sql } from "drizzle-orm";
 import { getConstants } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardClient } from "./dashboard-analytics";
@@ -12,14 +14,15 @@ import Link from "next/link";
 import { ArrowLeftRight } from "lucide-react";
 import { formatPKR } from "@/lib/format";
 
+function fmtLocal(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function monthBounds() {
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), 1);
   const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  return {
-    startStr: start.toISOString().slice(0, 10),
-    endStr: end.toISOString().slice(0, 10),
-  };
+  return { startStr: fmtLocal(start), endStr: fmtLocal(end) };
 }
 
 export default async function DashboardPage() {
@@ -42,7 +45,7 @@ export default async function DashboardPage() {
   const { startStr, endStr } = monthBounds();
   const constants = await getConstants();
 
-  const [report, sixMonths, pendingCount, stock, transfers, allDealers, initialSales, crLoss, crStock, initialRebateTotal] =
+  const [report, sixMonths, pendingCount, stock, transfers, allDealers, initialSales, crLoss, crStock, initialRebateTotal, initialRebateRowsFull, stockOldestRaw, initialCrFineTotal, initialCrCaughtRows] =
     await Promise.all([
       buildIncentiveReport({ dealerId: dealer.id, periodStart: startStr, periodEnd: endStr }),
       buildLastSixMonths(dealer.id),
@@ -54,7 +57,23 @@ export default async function DashboardPage() {
       getCrCaughtLoss(OWNER_TENANT_ID, dealer.id, startStr, endStr, constants.basePercent),
       getCrStockSummary(OWNER_TENANT_ID, dealer.id),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealer.id, startStr, endStr),
+      listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealer.id, startStr, endStr),
+      db.select({ modelId: schema.purchases.modelId, oldest: sql<string>`MIN(${schema.purchases.purchaseDate})` })
+        .from(schema.purchases)
+        .where(and(eq(schema.purchases.tenantId, OWNER_TENANT_ID), eq(schema.purchases.dealerId, dealer.id)))
+        .groupBy(schema.purchases.modelId),
+      sumCrFinesForPeriod(OWNER_TENANT_ID, dealer.id, startStr, endStr),
+      listCrCaughtForPeriod(OWNER_TENANT_ID, dealer.id, startStr, endStr),
     ]);
+
+  const initialRebateRows = initialRebateRowsFull.map((r) => ({
+    modelName: r.modelName,
+    eligibleQty: r.eligibleQty,
+    rebatePerUnit: r.rebatePerUnit,
+  }));
+  const stockOldestDate: Record<string, string> = Object.fromEntries(
+    stockOldestRaw.map((r) => [r.modelId, r.oldest])
+  );
 
   // Pre-compute transfer destinations as a plain object (serializable across server/client)
   const dealerNameById = new Map(allDealers.map((d) => [d.id, d.name]));
@@ -108,10 +127,14 @@ export default async function DashboardPage() {
         initialModelSales={initialSales}
         initialCrLoss={crLoss}
         initialRebateTotal={initialRebateTotal}
+        initialRebateRows={initialRebateRows}
+        stockOldestDate={stockOldestDate}
         sixMonths={sixMonths}
         stock={stock}
         movedTo={movedTo}
         pendingCount={pendingCount}
+        initialCrFineTotal={initialCrFineTotal}
+        initialCrCaughtRows={initialCrCaughtRows}
       />
     </div>
   );

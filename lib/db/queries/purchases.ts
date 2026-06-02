@@ -1,10 +1,10 @@
 import "server-only";
 import { db, schema } from "../client";
-import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
 import { INTER_ID_STATUS, PURCHASE_SOURCE } from "@/lib/constants";
 import { randomUUID } from "node:crypto";
 import type { PurchaseSource } from "@/lib/constants";
-import { getCrCaughtForStockCalc, getCrCaughtAsOf } from "./cr-caught";
+import { getCrCaughtForStockCalc, getCrCaughtAsOf, getCrCaughtBefore } from "./cr-caught";
 
 export interface StockRow {
   modelId: string;
@@ -123,6 +123,100 @@ export async function getStockForModelAsOf(tenantId: string, dealerId: string, m
   return Number(pq) - Number(aq) - Number(tq) - crcQty;
 }
 
+/**
+ * Minimum net stock over the window [fromDate, ∞) for one model.
+ *
+ * The point-in-time `getStockForModelAsOf` is NOT sufficient to guard a backdated
+ * consuming event: inserting a sale on a past date subtracts from stock on every
+ * later date too, so it can push an intermediate day negative even when both the
+ * as-of-date stock and the current stock look fine. This walks the full
+ * purchase/activation/transfer/CR timeline and returns the lowest the running
+ * balance ever reaches on or after `fromDate`. A consuming event of qty is safe
+ * iff this value >= qty.
+ */
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export async function getMinForwardStock(
+  tenantId: string,
+  dealerId: string,
+  modelId: string,
+  fromDate: string,
+  executor: Executor = db
+): Promise<number> {
+  const [purchases, activations, transfers, crc] = await Promise.all([
+    executor.select({ date: schema.purchases.purchaseDate, qty: schema.purchases.quantity })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId))),
+    executor.select({ date: schema.activations.activationDate })
+      .from(schema.activations)
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId))),
+    executor.select({ date: schema.interIdTransfers.transferDate, qty: schema.interIdTransfers.quantity })
+      .from(schema.interIdTransfers)
+      .where(and(
+        eq(schema.interIdTransfers.tenantId, tenantId),
+        eq(schema.interIdTransfers.fromDealerId, dealerId),
+        eq(schema.interIdTransfers.modelId, modelId),
+        ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)
+      )),
+    executor.select({ date: schema.crCaught.caughtDate, qty: schema.crCaught.quantity })
+      .from(schema.crCaught)
+      .where(and(
+        eq(schema.crCaught.tenantId, tenantId),
+        eq(schema.crCaught.dealerId, dealerId),
+        eq(schema.crCaught.modelId, modelId),
+        ne(schema.crCaught.status, "pending_owner_approval")
+      )),
+  ]);
+
+  // Net delta per date: purchases add, everything else consumes.
+  const deltas = new Map<string, number>();
+  for (const p of purchases) deltas.set(p.date, (deltas.get(p.date) ?? 0) + Number(p.qty));
+  for (const a of activations) deltas.set(a.date, (deltas.get(a.date) ?? 0) - 1);
+  for (const t of transfers) deltas.set(t.date, (deltas.get(t.date) ?? 0) - Number(t.qty));
+  for (const c of crc) deltas.set(c.date, (deltas.get(c.date) ?? 0) - Number(c.qty));
+
+  const dates = [...deltas.keys()].sort();
+  // Running balance up to and including fromDate = stock as-of fromDate.
+  let running = 0;
+  for (const d of dates) if (d <= fromDate) running += deltas.get(d)!;
+  let min = running;
+  // Walk forward; stock only dips at later consuming events.
+  for (const d of dates) {
+    if (d > fromDate) {
+      running += deltas.get(d)!;
+      if (running < min) min = running;
+    }
+  }
+  return min;
+}
+
+/**
+ * Closing stock strictly before `beforeDate` — i.e., end-of-day snapshot of (beforeDate - 1).
+ * Used by the rebate engine so that units activated ON the price-drop date do not reduce
+ * the eligible quantity. All four stock components use strict < to enforce the midnight boundary.
+ */
+export async function getClosingStockBeforeDate(tenantId: string, dealerId: string, modelId: string, beforeDate: string): Promise<number> {
+  const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
+    db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+      .from(schema.purchases)
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lt(schema.purchases.purchaseDate, beforeDate))),
+    db.select({ qty: sql<number>`COUNT(*)` })
+      .from(schema.activations)
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId), lt(schema.activations.activationDate, beforeDate))),
+    db.select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+      .from(schema.interIdTransfers)
+      .where(and(
+        eq(schema.interIdTransfers.tenantId, tenantId),
+        eq(schema.interIdTransfers.fromDealerId, dealerId),
+        eq(schema.interIdTransfers.modelId, modelId),
+        lt(schema.interIdTransfers.transferDate, beforeDate),
+        ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)
+      )),
+    getCrCaughtBefore(tenantId, dealerId, modelId, beforeDate),
+  ]);
+  return Number(pq) - Number(aq) - Number(tq) - crcQty;
+}
+
 export interface CrStockRow {
   modelId: string;
   modelName: string;
@@ -200,9 +294,9 @@ export async function createPurchase(input: {
   unitDealerPrice: number; unitInvoicePrice: number; purchaseDate: string;
   source: PurchaseSource; referenceNote: string | null; crossRegionTransferId?: string | null;
   reviewStatus?: string;
-}): Promise<string> {
+}, executor: Executor = db): Promise<string> {
   const id = randomUUID();
-  await db.insert(schema.purchases).values({
+  await executor.insert(schema.purchases).values({
     id, ...input,
     crossRegionTransferId: input.crossRegionTransferId ?? null,
     reviewStatus: input.reviewStatus ?? "active",

@@ -76,11 +76,9 @@ async function computeAchievements(
 
   const dealerIncentive: Record<string, number> = {};
   for (const p of di) {
+    // target is total activations across ALL models in the period
     dealerIncentive[p.id] = allActivations.filter(
-      (a) =>
-        (p.modelId == null || a.modelId === p.modelId) &&
-        a.activationDate >= p.periodStart &&
-        a.activationDate <= p.periodEnd
+      (a) => a.activationDate >= p.periodStart && a.activationDate <= p.periodEnd
     ).length;
   }
 

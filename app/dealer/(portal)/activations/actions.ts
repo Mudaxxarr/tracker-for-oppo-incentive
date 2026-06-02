@@ -6,12 +6,12 @@ import { getActiveDealerIdForTenant, getTenantById } from "@/lib/dealer-tenant";
 import { listActivations, createActivation, deleteActivation, getActivationById } from "@/lib/db/queries/activations";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { listModelsWithCurrentPrice, getPriceOnDate } from "@/lib/db/queries/models";
-import { getStockForModelAsOf, listStockForDealer } from "@/lib/db/queries/purchases";
+import { getMinForwardStock, listStockForDealer } from "@/lib/db/queries/purchases";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { CROSS_REGION_STATUS, INTER_ID_STATUS } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { db, schema } from "@/lib/db/client";
-import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
@@ -101,9 +101,9 @@ export async function createDealerActivationAction(
     }
   }
 
-  // Pre-check stock for fast UX feedback
-  const stock = await getStockForModelAsOf(tenantId, dealerId, d.modelId, d.activationDate);
-  if (stock < qty) return { error: `Only ${stock} unit(s) available as of ${d.activationDate}.` };
+  // Pre-check stock for fast UX feedback (forward-minimum guards backdating oversell)
+  const stock = await getMinForwardStock(tenantId, dealerId, d.modelId, d.activationDate);
+  if (stock < qty) return { error: `Only ${stock} unit(s) available from ${d.activationDate} onward.` };
 
   const priceData = await getPriceOnDate(OWNER_TENANT_ID, d.modelId, d.activationDate);
   const pricedAt = priceData?.dealerPrice ?? 0;
@@ -111,30 +111,9 @@ export async function createDealerActivationAction(
   // CR-3: wrap stock re-check + inserts in a transaction to prevent TOCTOU
   try {
     await db.transaction(async (tx) => {
-      const [[{ pq }], [{ aq }], [{ tq }]] = await Promise.all([
-        tx.select({ pq: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
-          .from(schema.purchases)
-          .where(and(
-            eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId),
-            eq(schema.purchases.modelId, d.modelId), lte(schema.purchases.purchaseDate, d.activationDate),
-          )),
-        tx.select({ aq: sql<number>`COUNT(*)` })
-          .from(schema.activations)
-          .where(and(
-            eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId),
-            eq(schema.activations.modelId, d.modelId), lte(schema.activations.activationDate, d.activationDate),
-          )),
-        tx.select({ tq: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
-          .from(schema.interIdTransfers)
-          .where(and(
-            eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.fromDealerId, dealerId),
-            eq(schema.interIdTransfers.modelId, d.modelId), lte(schema.interIdTransfers.transferDate, d.activationDate),
-            ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED),
-          )),
-      ]);
-      const txStock = Number(pq) - Number(aq) - Number(tq);
+      const txStock = await getMinForwardStock(tenantId, dealerId, d.modelId, d.activationDate, tx);
       if (txStock < qty) {
-        throw new Error(`Only ${txStock} unit(s) available as of ${d.activationDate}.`);
+        throw new Error(`Only ${txStock} unit(s) available from ${d.activationDate} onward.`);
       }
       for (let i = 0; i < qty; i++) {
         await tx.insert(schema.activations).values({
@@ -157,7 +136,7 @@ export async function createDealerActivationAction(
 
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
-  await reEvaluateRebatesForDealer(tenantId, dealerId, d.modelId, d.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, d.modelId, d.activationDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true, inserted: qty, pricedAt };
 }
 
@@ -206,16 +185,23 @@ export async function bulkCreateDealerActivationsByDateAction(
   if (activationDate > today) return { error: "Activation date cannot be in the future." };
   if (activationDate < minDate) return { error: `Activation date cannot be more than ${backdateDays} day(s) in the past.` };
 
-  // Pre-check all rows for stock and collect prices
+  // Aggregate requested qty per model so duplicate rows share one stock check.
+  const perModel = new Map<string, number>();
+  for (const row of rows) perModel.set(row.modelId, (perModel.get(row.modelId) ?? 0) + row.quantity);
+
+  // Pre-check each model's forward-minimum stock for fast UX feedback.
+  for (const [modelId, totalQty] of perModel) {
+    const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate);
+    if (stock < totalQty) {
+      return { error: `Insufficient stock for a model from ${activationDate} onward.` };
+    }
+  }
+
+  // Collect prices per row.
   type RowData = { modelId: string; quantity: number; isCrossRegion: boolean; price: number };
   const rowData: RowData[] = [];
   let pricedAt = 0;
-
   for (const row of rows) {
-    const stock = await getStockForModelAsOf(tenantId, dealerId, row.modelId, activationDate);
-    if (stock < row.quantity) {
-      return { error: `Insufficient stock for a model as of ${activationDate}.` };
-    }
     const priceData = await getPriceOnDate(OWNER_TENANT_ID, row.modelId, activationDate);
     const price = priceData?.dealerPrice ?? 0;
     pricedAt += price * row.quantity;
@@ -223,9 +209,15 @@ export async function bulkCreateDealerActivationsByDateAction(
   }
 
   let inserted = 0;
-  // H-E: wrap all inserts in a single transaction (all-or-nothing)
+  // H-E: wrap stock re-check + all inserts in a single transaction (all-or-nothing, TOCTOU-safe)
   try {
     await db.transaction(async (tx) => {
+      for (const [modelId, totalQty] of perModel) {
+        const txStock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate, tx);
+        if (txStock < totalQty) {
+          throw new Error(`Insufficient stock for a model from ${activationDate} onward.`);
+        }
+      }
       for (const row of rowData) {
         for (let i = 0; i < row.quantity; i++) {
           await tx.insert(schema.activations).values({
@@ -250,7 +242,7 @@ export async function bulkCreateDealerActivationsByDateAction(
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
   for (const row of rowData) {
-    await reEvaluateRebatesForDealer(tenantId, dealerId, row.modelId, activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, row.modelId, activationDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
   return { ok: true, inserted, pricedAt };
 }
@@ -273,7 +265,7 @@ export async function deleteDealerActivationAction(id: string): Promise<void> {
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/dashboard");
   if (activation) {
-    await reEvaluateRebatesForDealer(tenantId, dealerId, activation.modelId, activation.activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, activation.modelId, activation.activationDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
 }
 
@@ -313,7 +305,7 @@ export async function bulkDeleteDealerActivationsAction(
     if (!existing || a.activationDate < existing) byModel.set(a.modelId, a.activationDate);
   }
   for (const [modelId, fromDate] of byModel) {
-    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, fromDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
 
   return { deleted };

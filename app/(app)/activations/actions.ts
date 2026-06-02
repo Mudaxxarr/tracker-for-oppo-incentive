@@ -12,7 +12,7 @@ import {
   updateActivation,
 } from "@/lib/db/queries/activations";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
-import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { getMinForwardStock } from "@/lib/db/queries/purchases";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
@@ -85,10 +85,10 @@ export async function createActivationAction(
       let stockError: string | null = null;
       let singleResult: { id: string; pricedAt: number; isCrossRegion: boolean } | undefined;
       await db.transaction(async () => {
-        const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
+        const stock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate);
         if (stock < 1) {
           const m = await getModelById(data.modelId);
-          stockError = `Only ${stock} ${m?.name ?? "unit(s)"} available as of ${data.activationDate} — cannot activate 1`;
+          stockError = `Only ${stock} ${m?.name ?? "unit(s)"} available from ${data.activationDate} onward — cannot activate 1`;
           return;
         }
         singleResult = await createActivation({
@@ -134,10 +134,10 @@ export async function createActivationAction(
     let inserted = 0;
     let bulkStockError: string | null = null;
     await db.transaction(async () => {
-      const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
+      const stock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate);
       if (qty > stock) {
         const m = await getModelById(data.modelId);
-        bulkStockError = `Only ${stock} ${m?.name ?? "unit(s)"} available as of ${data.activationDate} — cannot activate ${qty}`;
+        bulkStockError = `Only ${stock} ${m?.name ?? "unit(s)"} available from ${data.activationDate} onward — cannot activate ${qty}`;
         return;
       }
       for (let i = 0; i < qty; i++) {
@@ -246,11 +246,11 @@ export async function bulkCreateActivationsByDateAction(
   try {
     await db.transaction(async () => {
       for (const [modelId, r] of merged) {
-        const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, parsed.data.activationDate);
+        const stock = await getMinForwardStock(tenantId, dealerId, modelId, parsed.data.activationDate);
         const model = await getModelById(modelId);
         if (r.quantity > stock) {
           throw new Error(
-            `Only ${stock} ${model?.name ?? "unit(s)"} available as of ${parsed.data.activationDate} — cannot activate ${r.quantity}`,
+            `Only ${stock} ${model?.name ?? "unit(s)"} available from ${parsed.data.activationDate} onward — cannot activate ${r.quantity}`,
           );
         }
         const price = await getPriceOnDate(tenantId, modelId, parsed.data.activationDate);
@@ -351,14 +351,6 @@ export async function updateActivationAction(
   const existing = await getActivationById(data.id, dealerId, tenantId);
   if (!existing) return { error: "Activation not found" };
 
-  if (data.activationDate < existing.activationDate) {
-    const stock = await getStockForModelAsOf(tenantId, dealerId, data.modelId, data.activationDate);
-    if (stock < 1) {
-      const m = await getModelById(data.modelId);
-      return { error: `Only ${stock} ${m?.name ?? "unit(s)"} available as of ${data.activationDate} — cannot move activation to this date` };
-    }
-  }
-
   const price = await getPriceOnDate(tenantId, data.modelId, data.activationDate);
   if (!price) {
     return { error: `No dealer price defined for this model on ${data.activationDate}` };
@@ -366,31 +358,43 @@ export async function updateActivationAction(
 
   const isCR = data.isCrossRegion === "on" || data.isCrossRegion === "true";
 
+  // Apply the move inside a transaction, then assert stock stays >= 0 on every
+  // date from the new date onward. If it would oversell, throw to roll back.
+  let guardError: string | null = null;
   try {
-    await updateActivation(data.id, dealerId, tenantId, {
-      activationDate: data.activationDate,
-      imei: data.imei || null,
-      isCrossRegion: isCR,
-      dealerPriceSnapshot: price.dealerPrice,
+    await db.transaction(async () => {
+      await updateActivation(data.id, dealerId, tenantId, {
+        activationDate: data.activationDate,
+        imei: data.imei || null,
+        isCrossRegion: isCR,
+        dealerPriceSnapshot: price.dealerPrice,
+      });
+      const minStock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate);
+      if (minStock < 0) {
+        const m = await getModelById(data.modelId);
+        guardError = `Cannot move activation to ${data.activationDate} — it would oversell ${m?.name ?? "this model"} (stock goes negative).`;
+        throw new Error("GUARD_ROLLBACK");
+      }
     });
-    const m = await getModelById(data.modelId);
-    await logAudit({
-      action: "activation.update",
-      entityType: "activation",
-      entityId: data.id,
-      summary: `Updated activation ${data.id.slice(0, 8)}: date=${data.activationDate}, ${m?.name ?? "?"} @ ${formatPKR(price.dealerPrice)}`,
-    });
-    revalidatePath("/activations");
-    revalidatePath("/dashboard");
-    const triggerDate = data.activationDate < existing.activationDate
-      ? data.activationDate
-      : existing.activationDate;
-    await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, triggerDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
-    return { ok: true, pricedAt: price.dealerPrice };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to update activation";
-    return { error: msg };
+    if (guardError) return { error: guardError };
+    return { error: err instanceof Error ? err.message : "Failed to update activation" };
   }
+
+  const m = await getModelById(data.modelId);
+  await logAudit({
+    action: "activation.update",
+    entityType: "activation",
+    entityId: data.id,
+    summary: `Updated activation ${data.id.slice(0, 8)}: date=${data.activationDate}, ${m?.name ?? "?"} @ ${formatPKR(price.dealerPrice)}`,
+  });
+  revalidatePath("/activations");
+  revalidatePath("/dashboard");
+  const triggerDate = data.activationDate < existing.activationDate
+    ? data.activationDate
+    : existing.activationDate;
+  await reEvaluateRebatesForDealer(tenantId, dealerId, data.modelId, triggerDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return { ok: true, pricedAt: price.dealerPrice };
 }
 
 export async function deleteActivationAction(id: string): Promise<void> {

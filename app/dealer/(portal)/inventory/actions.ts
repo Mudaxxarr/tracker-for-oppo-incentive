@@ -12,7 +12,7 @@ import {
   rejectInterIdTransfer,
 } from "@/lib/db/queries/transfers";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
-import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { getStockForModelAsOf, getMinForwardStock } from "@/lib/db/queries/purchases";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
@@ -57,8 +57,8 @@ export async function dealerQuickActivateAction(
   const { modelId, activationDate, quantity } = parsed.data;
   const tenantId = session.tenantId;
 
-  const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, activationDate);
-  if (stock < quantity) return { error: `Only ${stock} unit(s) available as of ${activationDate}` };
+  const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate);
+  if (stock < quantity) return { error: `Only ${stock} unit(s) available from ${activationDate} onward` };
 
   const price = await getPriceOnDate(OWNER_TENANT_ID, modelId, activationDate);
   if (!price) return { error: "No dealer price defined for this model on or before the activation date" };
@@ -115,8 +115,8 @@ export async function dealerQuickMoveAction(
 
   if (toDealerId === dealerId) return { error: "Source and destination must be different" };
 
-  const stockAsOf = await getStockForModelAsOf(tenantId, dealerId, modelId, transferDate);
-  if (stockAsOf < quantity) return { error: `Only ${stockAsOf} unit(s) available as of ${transferDate}` };
+  const stockAsOf = await getMinForwardStock(tenantId, dealerId, modelId, transferDate);
+  if (stockAsOf < quantity) return { error: `Only ${stockAsOf} unit(s) available from ${transferDate} onward` };
 
   try {
     const id = await createInterIdTransfer({
@@ -238,8 +238,8 @@ export async function dealerCrCaughtAction(
   const { modelId, quantity, caughtDate, note } = parsed.data;
   const tenantId = session.tenantId;
 
-  const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, caughtDate);
-  if (stock < quantity) return { error: `Only ${stock} unit(s) available as of ${caughtDate}` };
+  const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
+  if (stock < quantity) return { error: `Only ${stock} unit(s) available from ${caughtDate} onward` };
 
   const priceInfo = await getPriceOnDate(OWNER_TENANT_ID, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;

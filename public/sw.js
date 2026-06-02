@@ -37,8 +37,8 @@ self.addEventListener("fetch", (event) => {
   // API routes — always network
   if (url.pathname.startsWith("/api/")) return;
 
-  // Static next.js assets — cache first
-  if (url.pathname.startsWith("/_next/static/")) {
+  // Static next.js assets — cache first (production only; dev chunks are mutable so skip cache)
+  if (url.pathname.startsWith("/_next/static/") && !url.pathname.includes("/_next/dev/")) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;

@@ -9,7 +9,9 @@ import {
   deleteCrossRegion,
   updateCrossRegionStatus,
 } from "@/lib/db/queries/transfers";
-import { getModelById } from "@/lib/db/queries/models";
+import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
+import { getMinForwardStock } from "@/lib/db/queries/purchases";
+import { createCrCaught, rejectCrCaught } from "@/lib/db/queries/cr-caught";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { CROSS_REGION_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -31,6 +33,10 @@ export async function createCrossRegionAction(
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
   const tenantId = OWNER_TENANT_ID;
+  // Physical Floor Test — CR Inward is a pure stock receipt; fines are impossible
+  const rawFine = Number(fd.get("fineAmount") ?? 0);
+  if (rawFine > 0) return { error: "Logic Violation: Fines cannot be applied to inward stock receipts." };
+
   const parsed = Schema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -40,6 +46,7 @@ export async function createCrossRegionAction(
     dealerId,
     ...parsed.data,
     sourceRegionNote: parsed.data.sourceRegionNote ?? null,
+    fineAmount: 0,
     // SO-created transfers go straight to pending owner approval
     initialStatus: isOwner ? CROSS_REGION_STATUS.PENDING_REPORT : CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL,
   });
@@ -129,12 +136,17 @@ export async function editCrossRegionAction(
     return { error: "Only pending transfers can be edited" };
   }
 
+  // Physical Floor Test — fineAmount stays 0 on all CR Inward edits
+  const rawFineEdit = Number(fd.get("fineAmount") ?? 0);
+  if (rawFineEdit > 0) return { error: "Logic Violation: Fines cannot be applied to inward stock receipts." };
+
   await db
     .update(schema.crossRegionTransfers)
     .set({
       quantity: parsed.data.quantity,
       reportedDate: parsed.data.reportedDate,
       sourceRegionNote: parsed.data.sourceRegionNote ?? null,
+      fineAmount: 0,
     })
     .where(and(eq(schema.crossRegionTransfers.tenantId, tenantId), eq(schema.crossRegionTransfers.id, parsed.data.id)));
 
@@ -146,6 +158,113 @@ export async function editCrossRegionAction(
     payload: parsed.data,
   });
   revalidatePath("/cross-region");
+  return { ok: true };
+}
+
+// ── CR Outward (Penalties) ───────────────────────────────────────────────────
+
+export type OutwardState = { error?: string; ok?: boolean; pendingApproval?: boolean };
+
+const OutwardSchema = z.object({
+  modelId: z.string().min(1),
+  quantity: z.coerce.number().int().min(0),
+  fineAmount: z.coerce.number().min(0).optional(),
+  caughtDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().max(500).optional().nullable(),
+}).refine((d) => d.quantity > 0 || (d.fineAmount ?? 0) > 0, {
+  message: "Enter a quantity caught or a fine amount (or both)",
+});
+
+export async function crOutwardAction(
+  _prev: OutwardState,
+  fd: FormData
+): Promise<OutwardState> {
+  if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
+
+  const parsed = OutwardSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { modelId, quantity, fineAmount, caughtDate, note } = parsed.data;
+
+  const isOwner = await isAuthenticated();
+
+  // Cash-only fines are owner-only
+  if (quantity === 0 && !isOwner) return { error: "Only the owner can log cash-only fines" };
+
+  if (quantity > 0) {
+    const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
+    if (stock < quantity) return { error: `Only ${stock} unit(s) in stock from ${caughtDate} onward` };
+  }
+
+  const priceInfo = quantity > 0 ? await getPriceOnDate(tenantId, modelId, caughtDate) : null;
+  const priceSnap = priceInfo?.dealerPrice ?? 0;
+  const status = isOwner ? "active" : "pending_owner_approval";
+
+  const m = await getModelById(modelId);
+  const id = await createCrCaught({
+    tenantId, dealerId, modelId,
+    quantity, fineAmount: fineAmount ?? 0,
+    caughtDate, dealerPriceSnapshot: priceSnap,
+    note: note ?? null, status,
+  });
+
+  if (!isOwner && quantity > 0) {
+    await createOwnerAlert({
+      tenantId,
+      type: OWNER_ALERT_TYPE.CR_CAUGHT_PENDING_APPROVAL,
+      entityType: "cr_caught",
+      entityId: id,
+      dealerId,
+      message: `SO reported CR-caught: ${quantity} × ${m?.name ?? "?"} on ${caughtDate} — awaiting approval.`,
+    });
+  }
+
+  await logAudit({
+    action: quantity === 0 ? "cr.cash_fine" : "cr.caught",
+    entityType: "cr_caught",
+    entityId: id,
+    summary: `CR Outward${!isOwner ? " (pending)" : ""}: qty=${quantity} fine=${fineAmount ?? 0} model=${m?.name ?? "?"}`,
+    payload: { modelId, quantity, fineAmount, caughtDate, status },
+  });
+
+  revalidatePath("/cross-region");
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true, pendingApproval: !isOwner };
+}
+
+export async function deleteCrCaughtAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isAuthenticated())) return { ok: false, error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { ok: false, error: "No active Dealer ID" };
+  await rejectCrCaught(id);
+  await logAudit({
+    action: "cr.caught.delete",
+    entityType: "cr_caught",
+    entityId: id,
+    summary: `Deleted CR-caught entry ${id.slice(0, 8)} — stock restored`,
+  });
+  revalidatePath("/cross-region");
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function approveCrCaughtAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isAuthenticated())) return { ok: false, error: "Not authenticated" };
+  const { approveCrCaught } = await import("@/lib/db/queries/cr-caught");
+  await approveCrCaught(id);
+  await logAudit({
+    action: "cr.caught.approve",
+    entityType: "cr_caught",
+    entityId: id,
+    summary: `Approved CR-caught entry ${id.slice(0, 8)} — now active`,
+  });
+  revalidatePath("/cross-region");
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
   return { ok: true };
 }
 

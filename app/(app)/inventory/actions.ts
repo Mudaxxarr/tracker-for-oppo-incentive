@@ -11,7 +11,7 @@ import {
   rejectInterIdTransfer,
 } from "@/lib/db/queries/transfers";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
-import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { getStockForModelAsOf, getMinForwardStock } from "@/lib/db/queries/purchases";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
@@ -42,10 +42,10 @@ export async function quickActivateAction(
 
   const { modelId, activationDate, quantity } = parsed.data;
 
-  // Validate against stock available on the activation date, not current stock.
-  const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, activationDate);
+  // Forward-minimum stock guards backdating oversell across later dates.
+  const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate);
   if (stock < quantity) {
-    return { error: `Only ${stock} unit(s) available as of ${activationDate}` };
+    return { error: `Only ${stock} unit(s) available from ${activationDate} onward` };
   }
 
   for (let i = 0; i < quantity; i++) {
@@ -98,11 +98,11 @@ export async function quickMoveAction(
 
   if (toDealerId === dealerId) return { error: "Source and destination must be different" };
 
-  // Validate against stock available on the transfer date (not just current stock).
-  const stockAsOf = await getStockForModelAsOf(tenantId, dealerId, modelId, transferDate);
+  // Forward-minimum stock guards backdating oversell across later dates.
+  const stockAsOf = await getMinForwardStock(tenantId, dealerId, modelId, transferDate);
   if (stockAsOf < quantity) {
     return {
-      error: `Only ${stockAsOf} unit(s) available as of ${transferDate}`,
+      error: `Only ${stockAsOf} unit(s) available from ${transferDate} onward`,
     };
   }
 
@@ -209,6 +209,7 @@ export async function getStockAsOfAction(modelId: string, date: string): Promise
 const CrCaughtSchema = z.object({
   modelId: z.string().min(1),
   quantity: z.coerce.number().int().positive(),
+  fineAmount: z.coerce.number().min(0).optional(),
   caughtDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   note: z.string().max(500).optional().nullable(),
 });
@@ -224,10 +225,10 @@ export async function crCaughtAction(
 
   const parsed = CrCaughtSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { modelId, quantity, caughtDate, note } = parsed.data;
+  const { modelId, quantity, fineAmount, caughtDate, note } = parsed.data;
 
-  const stock = await getStockForModelAsOf(tenantId, dealerId, modelId, caughtDate);
-  if (stock < quantity) return { error: `Only ${stock} unit(s) available as of ${caughtDate}` };
+  const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
+  if (stock < quantity) return { error: `Only ${stock} unit(s) available from ${caughtDate} onward` };
 
   const priceInfo = await getPriceOnDate(tenantId, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;
@@ -236,7 +237,7 @@ export async function crCaughtAction(
   // SO-submitted CR-caught requires owner approval before stock is deducted
   const status = isOwner ? "active" : "pending_owner_approval";
 
-  const id = await createCrCaught({ tenantId, dealerId, modelId, quantity, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null, status });
+  const id = await createCrCaught({ tenantId, dealerId, modelId, quantity, fineAmount: fineAmount ?? 0, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null, status });
   const m = await getModelById(modelId);
 
   if (!isOwner) {
@@ -260,6 +261,42 @@ export async function crCaughtAction(
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
   return { ok: true, pendingApproval: !isOwner };
+}
+
+const CashFineSchema = z.object({
+  modelId: z.string().min(1),
+  fineAmount: z.coerce.number().positive(),
+  caughtDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().max(500).optional().nullable(),
+});
+
+export async function cashFineAction(
+  _prev: InvActionState,
+  fd: FormData
+): Promise<InvActionState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = OWNER_TENANT_ID;
+
+  const parsed = CashFineSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { modelId, fineAmount, caughtDate, note } = parsed.data;
+
+  const m = await getModelById(modelId);
+  const id = await createCrCaught({ tenantId, dealerId, modelId, quantity: 0, fineAmount, caughtDate, dealerPriceSnapshot: 0, note: note ?? null, status: "active" });
+
+  await logAudit({
+    action: "cr.cash_fine",
+    entityType: "cr_caught",
+    entityId: id,
+    summary: `Cash fine recorded: ${formatPKR(fineAmount)} for ${m?.name ?? "?"} on ${caughtDate}`,
+    payload: { modelId, fineAmount, caughtDate },
+  });
+
+  revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true };
 }
 
 // ---- History ----

@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "../client";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 // ===== Target Bonus =====
@@ -48,6 +48,30 @@ export async function listStockInPolicies(tenantId: string, dealerId: string): P
     .innerJoin(schema.models, eq(schema.models.id, schema.stockInPolicies.modelId))
     .where(and(eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId)))
     .orderBy(desc(schema.stockInPolicies.periodStart), asc(schema.models.name));
+}
+
+/**
+ * Returns an existing stock-in policy for the same model whose date window overlaps
+ * [periodStart, periodEnd], or null. Two ranges overlap iff existingStart <= newEnd
+ * AND existingEnd >= newStart. `excludeId` skips the row being edited.
+ */
+export async function findOverlappingStockInPolicy(
+  tenantId: string, dealerId: string, modelId: string,
+  periodStart: string, periodEnd: string, excludeId?: string
+): Promise<{ id: string; periodStart: string; periodEnd: string } | null> {
+  const rows = await db
+    .select({ id: schema.stockInPolicies.id, periodStart: schema.stockInPolicies.periodStart, periodEnd: schema.stockInPolicies.periodEnd })
+    .from(schema.stockInPolicies)
+    .where(and(
+      eq(schema.stockInPolicies.tenantId, tenantId),
+      eq(schema.stockInPolicies.dealerId, dealerId),
+      eq(schema.stockInPolicies.modelId, modelId),
+      lte(schema.stockInPolicies.periodStart, periodEnd),
+      gte(schema.stockInPolicies.periodEnd, periodStart),
+      ...(excludeId ? [ne(schema.stockInPolicies.id, excludeId)] : []),
+    ))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function createStockInPolicy(input: {
