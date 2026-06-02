@@ -6,7 +6,7 @@ import { markAlertRead, markAllAlertsReadGlobal } from "@/lib/db/queries/alerts"
 import { approveCrCaught, rejectCrCaught } from "@/lib/db/queries/cr-caught";
 import { deleteActivation, getActivationById } from "@/lib/db/queries/activations";
 import { approvePurchaseReview, rejectPurchaseReview } from "@/lib/db/queries/purchases";
-import { updateCrossRegionStatus } from "@/lib/db/queries/transfers";
+import { updateCrossRegionStatus, getCrossRegionById } from "@/lib/db/queries/transfers";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { CROSS_REGION_STATUS } from "@/lib/constants";
@@ -71,11 +71,13 @@ export async function rejectPurchaseReviewAction(alertId: string, purchaseId: st
   return { ok: true };
 }
 
-export async function approveCrInwardAction(alertId: string, transferId: string, dealerId: string): Promise<{ ok?: boolean; error?: string }> {
+export async function approveCrInwardAction(alertId: string, transferId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
-  if (!dealerId) return { error: "Missing dealer" };
+  // Derive dealerId from the transfer row server-side — never trust the client.
+  const transfer = await getCrossRegionById(transferId, OWNER_TENANT_ID);
+  if (!transfer) return { error: "Transfer not found" };
   const result = await updateCrossRegionStatus({
-    id: transferId, tenantId: OWNER_TENANT_ID, dealerId,
+    id: transferId, tenantId: OWNER_TENANT_ID, dealerId: transfer.dealerId,
     status: CROSS_REGION_STATUS.SHIFTED_TO_MY_ID, priceTenantId: OWNER_TENANT_ID,
   });
   if (!result.ok) return { error: result.message ?? "Approval failed" };
@@ -88,11 +90,12 @@ export async function approveCrInwardAction(alertId: string, transferId: string,
   return { ok: true };
 }
 
-export async function rejectCrInwardAction(alertId: string, transferId: string, dealerId: string): Promise<{ ok?: boolean; error?: string }> {
+export async function rejectCrInwardAction(alertId: string, transferId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
-  if (!dealerId) return { error: "Missing dealer" };
+  const transfer = await getCrossRegionById(transferId, OWNER_TENANT_ID);
+  if (!transfer) return { error: "Transfer not found" };
   const result = await updateCrossRegionStatus({
-    id: transferId, tenantId: OWNER_TENANT_ID, dealerId, status: CROSS_REGION_STATUS.REJECTED,
+    id: transferId, tenantId: OWNER_TENANT_ID, dealerId: transfer.dealerId, status: CROSS_REGION_STATUS.REJECTED,
   });
   if (!result.ok) return { error: result.message ?? "Rejection failed" };
   await markAlertRead(alertId);

@@ -79,9 +79,9 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
   };
 
   const handleApproveCrInward = (alert: OwnerAlert) => {
-    if (!alert.entityId || !alert.dealerId) return;
+    if (!alert.entityId) return;
     startTransition(async () => {
-      const result = await approveCrInwardAction(alert.id, alert.entityId!, alert.dealerId!);
+      const result = await approveCrInwardAction(alert.id, alert.entityId!);
       if (result.ok) {
         setLocalRead((prev) => new Set([...prev, alert.id]));
         toast.success("Cross-region stock approved — shifted into your ID");
@@ -92,10 +92,10 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
   };
 
   const handleRejectCrInward = (alert: OwnerAlert) => {
-    if (!alert.entityId || !alert.dealerId) return;
+    if (!alert.entityId) return;
     if (!confirm("Reject this cross-region inward transfer?")) return;
     startTransition(async () => {
-      const result = await rejectCrInwardAction(alert.id, alert.entityId!, alert.dealerId!);
+      const result = await rejectCrInwardAction(alert.id, alert.entityId!);
       if (result.ok) {
         setLocalRead((prev) => new Set([...prev, alert.id]));
         toast.success("Cross-region inward rejected");

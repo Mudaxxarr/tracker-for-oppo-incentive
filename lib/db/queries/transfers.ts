@@ -74,6 +74,13 @@ export async function submitCrossRegionForApproval(input: {
 }
 
 // Owner-only: approve (PENDING_OWNER_APPROVAL → SHIFTED_TO_MY_ID) or reject
+export async function getCrossRegionById(id: string, tenantId: string) {
+  const rows = await db.select().from(schema.crossRegionTransfers)
+    .where(and(eq(schema.crossRegionTransfers.id, id), eq(schema.crossRegionTransfers.tenantId, tenantId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function updateCrossRegionStatus(input: {
   id: string; tenantId: string; dealerId: string; status: "PENDING_REPORT" | "PENDING_OWNER_APPROVAL" | "SHIFTED_TO_MY_ID" | "REJECTED";
   priceTenantId?: string;
