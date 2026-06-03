@@ -6,6 +6,7 @@ import { isAuthenticated } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
 import { setActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { createInterIdTransfer } from "@/lib/db/queries/transfers";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
 import { logAudit } from "@/lib/audit";
@@ -129,6 +130,7 @@ export async function createInterIdTransferAction(
     });
     revalidatePath("/ids");
     revalidatePath("/purchases");
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, fromDealerId, modelId, transferDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
     return { ok: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Transfer failed";
