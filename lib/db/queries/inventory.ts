@@ -1,7 +1,7 @@
 import "server-only";
 import { db, schema } from "../client";
 import { and, eq, gt, isNull, lte, ne, or, sql } from "drizzle-orm";
-import { INTER_ID_STATUS } from "@/lib/constants";
+import { INTER_ID_STATUS, PURCHASE_REVIEW_STATUS } from "@/lib/constants";
 
 export interface InventoryModelRow {
   modelId: string; modelName: string; dealerPrice: number | null;
@@ -10,39 +10,40 @@ export interface InventoryModelRow {
   earliestPurchaseDate: string | null;
 }
 
-export async function listInventoryForDealer(tenantId: string, dealerId: string, priceTenantId?: string): Promise<InventoryModelRow[]> {
-  const today = new Date().toISOString().slice(0, 10);
+export async function listInventoryForDealer(tenantId: string, dealerId: string, priceTenantId?: string, asOf?: string): Promise<InventoryModelRow[]> {
+  // Stock snapshot as of `asOf` (default today). All event tables bounded by their date <= asOf.
+  const today = asOf ?? new Date().toISOString().slice(0, 10);
 
   const [purchaseRows, activationRows, transferOutRows, crCaughtRows, interIdInRows, earliestDateRows] = await Promise.all([
     db
       .select({ modelId: schema.purchases.modelId, source: schema.purchases.source, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
-      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), lte(schema.purchases.purchaseDate, today), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW)))
       .groupBy(schema.purchases.modelId, schema.purchases.source),
     db
       .select({ modelId: schema.activations.modelId, qty: sql<number>`COUNT(*)` })
       .from(schema.activations)
-      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId)))
+      .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), lte(schema.activations.activationDate, today)))
       .groupBy(schema.activations.modelId),
     db
       .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
       .from(schema.interIdTransfers)
-      .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)))
+      .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED), lte(schema.interIdTransfers.transferDate, today)))
       .groupBy(schema.interIdTransfers.modelId),
     db
       .select({ modelId: schema.crCaught.modelId, qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
       .from(schema.crCaught)
-      .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)))
+      .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId), lte(schema.crCaught.caughtDate, today)))
       .groupBy(schema.crCaught.modelId),
     db
       .select({ modelId: schema.interIdTransfers.modelId, qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
       .from(schema.interIdTransfers)
-      .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.toDealerId, dealerId), eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED)))
+      .where(and(eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.toDealerId, dealerId), eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED), lte(schema.interIdTransfers.transferDate, today)))
       .groupBy(schema.interIdTransfers.modelId),
     db
       .select({ modelId: schema.purchases.modelId, minDate: sql<string>`MIN(${schema.purchases.purchaseDate})` })
       .from(schema.purchases)
-      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)))
+      .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), lte(schema.purchases.purchaseDate, today), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW)))
       .groupBy(schema.purchases.modelId),
   ]);
 

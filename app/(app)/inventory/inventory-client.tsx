@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import {
   quickActivateAction, quickMoveAction, getModelHistoryAction,
   acceptTransferAction, rejectTransferAction, getStockAsOfAction,
-  crCaughtAction,
+  crCaughtAction, cashFineAction, getInventoryAsOfAction,
   type InvActionState, type StockEvent,
 } from "./actions";
 import { formatPKR, formatDate } from "@/lib/format";
@@ -590,12 +590,74 @@ function CrCaughtSheet({ row, open, onClose }: { row: InventoryModelRow | null; 
                 <label className="text-sm font-medium">Note (optional)</label>
                 <Input name="note" placeholder="e.g. caught at Karachi" />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Additional fine (PKR) — optional</label>
+                <Input name="fineAmount" type="number" min={0} step={1} placeholder="OPPO penalty amount, if any" className="font-mono text-destructive placeholder:text-muted-foreground/50" />
+                <p className="text-[11px] text-muted-foreground">If OPPO has also imposed a cash fine on top of the stock loss, enter it here.</p>
+              </div>
               <Button type="submit" variant="destructive" className="w-full" disabled={pending}>
                 {pending ? "Recording…" : "Record as CR Caught"}
               </Button>
             </form>
           </div>
         )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── CASH FINE SHEET ─────────────────────────────────────────────────────────
+function CashFineSheet({ models, open, onClose }: { models: { modelId: string; modelName: string }[]; open: boolean; onClose: () => void }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [modelId, setModelId] = useState("");
+  const [state, action, pending] = useActionState<InvActionState, FormData>(cashFineAction, {});
+  useEffect(() => {
+    if (state.ok) { toast.success("Cash fine recorded"); setModelId(""); onClose(); }
+    else if (state.error) toast.error(state.error);
+  }, [state, onClose]);
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
+        <SheetHeader><SheetTitle>Log Cash Fine Only</SheetTitle></SheetHeader>
+        <div className="p-4">
+          <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            Use this for a direct OPPO cash penalty with no stock movement — the fine will be deducted from your net receivable.
+          </div>
+          <form action={action} className="space-y-4">
+            <input type="hidden" name="modelId" value={modelId} />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Model (for reference)</label>
+              <Select value={modelId} onValueChange={(v) => typeof v === "string" && setModelId(v)}>
+                <SelectTrigger className="w-full">
+                  <span className={modelId ? "" : "text-muted-foreground"}>
+                    {models.find((m) => m.modelId === modelId)?.modelName ?? "Choose model…"}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((m) => (
+                    <SelectItem key={m.modelId} value={m.modelId}>{m.modelName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Date fined</label>
+              <Input name="caughtDate" type="date" defaultValue={today} max={today} required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Fine amount (PKR)</label>
+              <Input name="fineAmount" type="number" min={1} step={1} required className="font-mono text-destructive" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Note (optional)</label>
+              <Input name="note" placeholder="e.g. OPPO audit penalty" />
+            </div>
+            <Button type="submit" variant="destructive" className="w-full" disabled={pending || !modelId}>
+              {pending ? "Recording…" : "Record Fine"}
+            </Button>
+          </form>
+        </div>
       </SheetContent>
     </Sheet>
   );
@@ -781,11 +843,26 @@ function SummaryTile({ label, value, sub }: { label: string; value: number | str
 }
 
 // ─── MAIN CLIENT ──────────────────────────────────────────────────────────────
-export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfers }: Props) {
-  const [activateRow, setActivateRow] = useState<InventoryModelRow | null>(null);
-  const [moveRow,     setMoveRow]     = useState<InventoryModelRow | null>(null);
-  const [historyRow,  setHistoryRow]  = useState<InventoryModelRow | null>(null);
-  const [caughtRow,   setCaughtRow]   = useState<InventoryModelRow | null>(null);
+export function InventoryClient({ rows: initialRows, otherDealers, hasDealer, pendingTransfers }: Props) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [rows, setRows] = useState<InventoryModelRow[]>(initialRows);
+  const [viewDate, setViewDate] = useState(todayStr);
+  const [dateLoading, startDateLoad] = useTransition();
+
+  const onViewDateChange = (d: string) => {
+    setViewDate(d);
+    if (!d) return;
+    startDateLoad(async () => {
+      const snap = await getInventoryAsOfAction(d);
+      setRows(snap);
+    });
+  };
+
+  const [activateRow,   setActivateRow]   = useState<InventoryModelRow | null>(null);
+  const [moveRow,       setMoveRow]       = useState<InventoryModelRow | null>(null);
+  const [historyRow,    setHistoryRow]    = useState<InventoryModelRow | null>(null);
+  const [caughtRow,     setCaughtRow]     = useState<InventoryModelRow | null>(null);
+  const [cashFineOpen,  setCashFineOpen]  = useState(false);
   const [search,      setSearch]      = useState("");
   const [sortKey,     setSortKey]     = useState<SortKey>("name");
   const [viewMode,    setViewMode]    = useState<ViewMode>("grid");
@@ -849,11 +926,20 @@ export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfer
           <p className="text-sm text-muted-foreground">Current stock by model and source.</p>
         </div>
         {pendingTransfers.length > 0 && (
-          <span className="ml-auto flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+          <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
             <Clock className="size-3.5" />
             {pendingTransfers.length} incoming
           </span>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto border-destructive/40 text-destructive hover:bg-destructive/5 text-xs"
+          onClick={() => setCashFineOpen(true)}
+        >
+          <AlertTriangle className="size-3.5 mr-1" />
+          Log Cash Fine
+        </Button>
       </div>
 
       {/* ── Incoming transfers ── */}
@@ -920,6 +1006,33 @@ export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfer
       )}
 
       {/* ── Toolbar ── */}
+      {hasDealer && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+          <span className="text-xs font-medium text-muted-foreground">Stock as of</span>
+          <Input
+            type="date"
+            value={viewDate}
+            max={todayStr}
+            onChange={(e) => onViewDateChange(e.target.value)}
+            className="h-8 w-40 text-xs"
+          />
+          {viewDate !== todayStr && (
+            <>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                Snapshot — not live
+              </span>
+              <button
+                onClick={() => onViewDateChange(todayStr)}
+                className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Back to today
+              </button>
+            </>
+          )}
+          {dateLoading && <span className="text-[11px] text-muted-foreground animate-pulse">Loading…</span>}
+        </div>
+      )}
+
       {rows.length > 0 && (
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -1029,6 +1142,11 @@ export function InventoryClient({ rows, otherDealers, hasDealer, pendingTransfer
       <MoveSheet      row={moveRow}     open={!!moveRow}     onClose={() => setMoveRow(null)}     otherDealers={otherDealers} />
       <HistorySheet   row={historyRow}  open={!!historyRow}  onClose={() => setHistoryRow(null)}  />
       <CrCaughtSheet  row={caughtRow}   open={!!caughtRow}   onClose={() => setCaughtRow(null)}   />
+      <CashFineSheet
+        models={rows.map((r) => ({ modelId: r.modelId, modelName: r.modelName }))}
+        open={cashFineOpen}
+        onClose={() => setCashFineOpen(false)}
+      />
     </div>
   );
 }

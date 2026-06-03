@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/queries/transfers";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf, getMinForwardStock } from "@/lib/db/queries/purchases";
+import { listInventoryForDealer, type InventoryModelRow } from "@/lib/db/queries/inventory";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
@@ -27,6 +28,15 @@ const QuickActivateSchema = z.object({
   activationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   quantity: z.coerce.number().int().positive(),
 });
+
+/** Returns the full inventory snapshot as of a given date (for the inventory date filter). */
+export async function getInventoryAsOfAction(date: string): Promise<InventoryModelRow[]> {
+  if (!(await isAnyAuthenticated())) return [];
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return [];
+  return listInventoryForDealer(OWNER_TENANT_ID, dealerId, undefined, date);
+}
 
 export async function quickActivateAction(
   _prev: InvActionState,
