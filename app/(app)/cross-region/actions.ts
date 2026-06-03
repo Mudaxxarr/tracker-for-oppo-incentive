@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/queries/transfers";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getMinForwardStock } from "@/lib/db/queries/purchases";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { createCrCaught, rejectCrCaught } from "@/lib/db/queries/cr-caught";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { CROSS_REGION_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
@@ -108,6 +109,11 @@ export async function updateStatusAction(
   revalidatePath("/purchases");
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Approved CR inward adds back-dated stock → recompute rebates from its reported date
+  // so a price drop after that date includes this unit (and not earlier drops).
+  if (result.ok && result.modelId && result.effectiveDate) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, result.dealerId ?? dealerId, result.modelId, result.effectiveDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
   return { ok: result.ok, message: result.message };
 }
 

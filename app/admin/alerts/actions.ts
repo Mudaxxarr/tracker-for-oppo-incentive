@@ -87,6 +87,8 @@ export async function approveCrInwardAction(alertId: string, transferId: string)
   revalidatePath("/cross-region");
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // New back-dated stock may make it eligible for an earlier price-drop rebate → recompute.
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, transfer.dealerId, transfer.modelId, transfer.reportedDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true };
 }
 

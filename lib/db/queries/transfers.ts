@@ -110,7 +110,7 @@ export async function updateCrossRegionStatus(input: {
       crossRegionTransferId: transfer.id,
     });
     await db.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: effectiveDate }).where(eq(schema.crossRegionTransfers.id, transfer.id));
-    return { ok: true, created: transfer.quantity };
+    return { ok: true, created: transfer.quantity, modelId: transfer.modelId, dealerId: transfer.dealerId, effectiveDate };
   }
 
   await db.update(schema.crossRegionTransfers).set({ status: input.status }).where(eq(schema.crossRegionTransfers.id, transfer.id));
