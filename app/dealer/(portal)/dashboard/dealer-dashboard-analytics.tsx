@@ -2,12 +2,10 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Smartphone } from "lucide-react";
 import { dealerGetModelSalesAction, type ModelSaleRow } from "./actions";
 
-type Preset = "month" | "week" | "today" | "custom";
+type Preset = "month" | "last-month" | "week" | "today";
 
 const MODEL_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6",
@@ -16,7 +14,7 @@ const MODEL_COLORS = [
 
 function presetRange(p: Preset): { from: string; to: string } {
   const today = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   if (p === "today") { const s = fmt(today); return { from: s, to: s }; }
   if (p === "week") {
     const start = new Date(today);
@@ -26,6 +24,11 @@ function presetRange(p: Preset): { from: string; to: string } {
   if (p === "month") {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
     const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { from: fmt(start), to: fmt(end) };
+  }
+  if (p === "last-month") {
+    const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const end = new Date(today.getFullYear(), today.getMonth(), 0);
     return { from: fmt(start), to: fmt(end) };
   }
   return { from: fmt(today), to: fmt(today) };
@@ -53,19 +56,15 @@ export function DealerDashboardAnalytics({ initialRows, initialFrom, initialTo }
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
-    if (p !== "custom") {
-      const { from: f, to: t } = presetRange(p);
-      setFrom(f); setTo(t);
-      load(f, t);
-    }
+    const { from: f, to: t } = presetRange(p);
+    setFrom(f); setTo(t);
+    load(f, t);
   };
 
   useEffect(() => {
-    if (preset !== "custom") {
-      const { from: f, to: t } = presetRange(preset);
-      setFrom(f); setTo(t);
-      load(f, t);
-    }
+    const { from: f, to: t } = presetRange(preset);
+    setFrom(f); setTo(t);
+    load(f, t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -89,7 +88,7 @@ export function DealerDashboardAnalytics({ initialRows, initialFrom, initialTo }
             )}
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            {(["month", "week", "today", "custom"] as Preset[]).map((p) => (
+            {(["month", "last-month", "week", "today"] as Preset[]).map((p) => (
               <button
                 key={p}
                 onClick={() => applyPreset(p)}
@@ -99,17 +98,9 @@ export function DealerDashboardAnalytics({ initialRows, initialFrom, initialTo }
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
-                {p === "month" ? "This Month" : p === "week" ? "This Week" : p === "today" ? "Today" : "Custom"}
+                {p === "month" ? "This Month" : p === "last-month" ? "Last Month" : p === "week" ? "This Week" : "Today"}
               </button>
             ))}
-            {preset === "custom" && (
-              <div className="flex items-center gap-1">
-                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-7 w-32 text-xs" />
-                <span className="text-xs text-muted-foreground">→</span>
-                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-7 w-32 text-xs" />
-                <Button size="sm" className="h-7 text-xs" onClick={() => load(from, to)}>Apply</Button>
-              </div>
-            )}
           </div>
         </div>
       </CardHeader>

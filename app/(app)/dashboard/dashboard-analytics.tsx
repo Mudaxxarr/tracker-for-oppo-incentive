@@ -88,7 +88,7 @@ interface Props {
 
 function presetRange(p: Preset): { from: string; to: string } {
   const today = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   if (p === "today") return { from: fmt(today), to: fmt(today) };
   if (p === "week") {
     const start = new Date(today);
@@ -1894,6 +1894,8 @@ export function DashboardClient({
             >
               {p === "month"
                 ? "This Month"
+                : p === "last-month"
+                ? "Last Month"
                 : p === "week"
                 ? "This Week"
                 : p === "today"
