@@ -166,14 +166,20 @@ export async function buildLastSixMonths(
   const tenantId = OWNER_TENANT_ID;
   const effectiveDataTenantId = dataTenantId ?? OWNER_TENANT_ID;
 
-  const today = new Date();
+  const PKT = 5 * 3600 * 1000;
+  const todayPKT = new Date(Date.now() + PKT);
+  const [yr, mo] = todayPKT.toISOString().slice(0, 7).split("-").map(Number);
+  const pad = (n: number) => String(n).padStart(2, "0");
   const months = Array.from({ length: 6 }, (_, i) => {
-    const start = new Date(today.getFullYear(), today.getMonth() - (5 - i), 1);
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    const offset = 5 - i;
+    const rawMo = mo - offset;
+    const adjMo = ((rawMo - 1 + 120) % 12) + 1;
+    const adjYr = yr + Math.floor((rawMo - 1) / 12);
+    const endDay = new Date(Date.UTC(adjYr, adjMo, 0)).getUTCDate();
     return {
-      label: start.toLocaleString("en-US", { month: "short" }),
-      startStr: start.toISOString().slice(0, 10),
-      endStr: end.toISOString().slice(0, 10),
+      label: new Date(Date.UTC(adjYr, adjMo - 1, 1)).toLocaleString("en-US", { month: "short" }),
+      startStr: `${adjYr}-${pad(adjMo)}-01`,
+      endStr: `${adjYr}-${pad(adjMo)}-${pad(endDay)}`,
     };
   });
 
