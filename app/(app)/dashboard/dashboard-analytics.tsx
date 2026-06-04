@@ -87,25 +87,27 @@ interface Props {
 }
 
 function presetRange(p: Preset): { from: string; to: string } {
-  const today = new Date();
-  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  if (p === "today") return { from: fmt(today), to: fmt(today) };
+  // PKT = UTC+5, hardcoded — matches server-side todayPKT()
+  const PKT = 5 * 3600 * 1000;
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const todayPKT = new Date(Date.now() + PKT);
+  const [yr, mo] = iso(todayPKT).split("-").map(Number);
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  if (p === "today") return { from: iso(todayPKT), to: iso(todayPKT) };
   if (p === "week") {
-    const start = new Date(today);
-    start.setDate(today.getDate() - today.getDay());
-    return { from: fmt(start), to: fmt(today) };
+    const dow = todayPKT.getUTCDay();
+    return { from: iso(new Date(Date.now() + PKT - dow * 86400000)), to: iso(todayPKT) };
   }
   if (p === "month") {
-    const start = new Date(today.getFullYear(), today.getMonth(), 1);
-    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    return { from: fmt(start), to: fmt(end) };
+    return { from: `${yr}-${pad(mo)}-01`, to: iso(new Date(Date.UTC(yr, mo, 0))) };
   }
   if (p === "last-month") {
-    const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const end = new Date(today.getFullYear(), today.getMonth(), 0);
-    return { from: fmt(start), to: fmt(end) };
+    const lm = mo === 1 ? 12 : mo - 1;
+    const ly = mo === 1 ? yr - 1 : yr;
+    return { from: `${ly}-${pad(lm)}-01`, to: iso(new Date(Date.UTC(yr, mo - 1, 0))) };
   }
-  return { from: fmt(today), to: fmt(today) };
+  return { from: iso(todayPKT), to: iso(todayPKT) };
 }
 
 function periodLabel(from: string, to: string): string {
