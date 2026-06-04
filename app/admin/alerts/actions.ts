@@ -26,22 +26,27 @@ export async function markAllReadAction(): Promise<void> {
 
 export async function approveCrCaughtAction(alertId: string, crCaughtId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
-  await approveCrCaught(crCaughtId);
+  const ref = await approveCrCaught(crCaughtId);
   await markAlertRead(alertId);
   await logAudit({ action: "cr.caught_approved", entityType: "cr_caught", entityId: crCaughtId, summary: `Approved CR-caught record ${crCaughtId.slice(0, 8)}` });
   revalidatePath("/admin/alerts");
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Approving deducts stock → recompute rebates.
+  if (ref) await reEvaluateRebatesForDealer(ref.tenantId, ref.dealerId, ref.modelId, ref.caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true };
 }
 
 export async function rejectCrCaughtAction(alertId: string, crCaughtId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
-  await rejectCrCaught(crCaughtId);
+  const ref = await rejectCrCaught(crCaughtId);
   await markAlertRead(alertId);
   await logAudit({ action: "cr.caught_rejected", entityType: "cr_caught", entityId: crCaughtId, summary: `Rejected CR-caught record ${crCaughtId.slice(0, 8)}` });
   revalidatePath("/admin/alerts");
   revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+  // Removing restores stock → recompute rebates.
+  if (ref) await reEvaluateRebatesForDealer(ref.tenantId, ref.dealerId, ref.modelId, ref.caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true };
 }
 

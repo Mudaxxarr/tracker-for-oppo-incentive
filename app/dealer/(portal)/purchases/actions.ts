@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { createPurchase, deletePurchase, getPurchaseById, getStockForModel } from "@/lib/db/queries/purchases";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { OWNER_ALERT_TYPE, PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS } from "@/lib/constants";
@@ -91,6 +92,7 @@ export async function createDealerPurchaseAction(
 
     revalidatePath("/dealer/purchases");
     revalidatePath("/dealer/dashboard");
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, data.modelId, data.purchaseDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
     return { ok: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create purchase";
@@ -184,6 +186,10 @@ export async function createDealerBulkPurchasesAction(
     });
     revalidatePath("/dealer/purchases");
     revalidatePath("/dealer/dashboard");
+    const uniqueModels = [...new Set(lines.map((l) => l.modelId))];
+    for (const modelId of uniqueModels) {
+      await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, purchaseDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+    }
     return { ok: true, inserted };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to record invoice";
@@ -217,5 +223,6 @@ export async function deleteDealerPurchaseAction(id: string): Promise<{ error?: 
   });
   revalidatePath("/dealer/purchases");
   revalidatePath("/dealer/dashboard");
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, purchase.modelId, purchase.purchaseDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return {};
 }

@@ -13,6 +13,7 @@ import {
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf, getMinForwardStock } from "@/lib/db/queries/purchases";
 import { listInventoryForDealer, type InventoryModelRow } from "@/lib/db/queries/inventory";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
@@ -83,6 +84,7 @@ export async function quickActivateAction(
   revalidatePath("/inventory");
   revalidatePath("/activations");
   revalidatePath("/dashboard");
+  await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, activationDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true };
 }
 
@@ -146,6 +148,8 @@ export async function quickMoveAction(
     revalidatePath("/ids");
     revalidatePath("/purchases");
     revalidatePath("/dashboard");
+    // Transfer-out reduces sender stock → recompute rebates from the transfer date.
+    await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, transferDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
     return { ok: true };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Transfer failed" };
@@ -272,6 +276,8 @@ export async function crCaughtAction(
 
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Owner-created CR-caught deducts stock immediately → recompute rebates.
+  if (isOwner && quantity > 0) await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true, pendingApproval: !isOwner };
 }
 
