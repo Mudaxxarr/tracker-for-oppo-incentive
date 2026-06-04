@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,8 @@ interface DealerOpt {
 interface CrCaughtLoss {
   totalUnits: number;
   lostIncentive: number;
+  totalFines: number;
+  priceUnitSum: number;
 }
 
 interface ReportEntry {
@@ -67,11 +69,17 @@ interface Props {
 }
 
 function getMonthRange(offset: number) {
-  const d = new Date();
-  d.setMonth(d.getMonth() + offset);
-  const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
-  return { start, end };
+  const PKT = 5 * 3600 * 1000;
+  const todayPKT = new Date(Date.now() + PKT);
+  const [yr, mo] = todayPKT.toISOString().slice(0, 7).split("-").map(Number);
+  const raw = mo + offset;
+  const adjMo = ((raw - 1 + 120) % 12) + 1;
+  const adjYr = yr + Math.floor((raw - 1) / 12);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    start: `${adjYr}-${pad(adjMo)}-01`,
+    end: `${adjYr}-${pad(adjMo)}-${pad(new Date(Date.UTC(adjYr, adjMo, 0)).getUTCDate())}`,
+  };
 }
 
 export function ReportsClient({
@@ -85,16 +93,15 @@ export function ReportsClient({
   const [start, setStart] = useState(initialStart);
   const [end, setEnd] = useState(initialEnd);
   const [selected, setSelected] = useState<string[]>(initialDealerIds);
-  const [discrepancyByDealer, setDiscrepancyByDealer] = useState<
-    Record<string, string>
-  >({});
+  const [discrepancyByDealer, setDiscrepancyByDealer] = useState<Record<string, string>>({});
+  const [isPending, startTransition] = useTransition();
 
   const apply = () => {
     const sp = new URLSearchParams();
     sp.set("periodStart", start);
     sp.set("periodEnd", end);
     if (selected.length > 0) sp.set("dealerIds", selected.join(","));
-    router.replace(`/reports?${sp.toString()}`);
+    startTransition(() => { router.replace(`/reports?${sp.toString()}`); });
   };
 
   const setPreset = (label: "this" | "last") => {
@@ -154,7 +161,9 @@ export function ReportsClient({
               Last month
             </Button>
             <div className="ml-auto">
-              <Button onClick={apply}>Generate</Button>
+              <Button onClick={apply} disabled={isPending} className="transition-all duration-200 min-w-[90px]">
+                {isPending ? <RefreshCw className="size-3.5 animate-spin" /> : "Generate"}
+              </Button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -162,11 +171,11 @@ export function ReportsClient({
               <button
                 key={d.id}
                 onClick={() => toggle(d.id)}
-                className={
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 ${
                   selected.includes(d.id)
-                    ? "rounded-full border bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-                    : "rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
-                }
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
               >
                 {d.name}
               </button>
@@ -198,9 +207,9 @@ export function ReportsClient({
             setDiscrepancyByDealer((prev) => ({ ...prev, [entry.dealerId]: v }))
           }
           downloads={[
-            { label: "PDF Report", icon: "pdf", href: exportLink(entry, "pdf") },
-            { label: "PDF (Incentive models)", icon: "pdf", href: exportLink(entry, "pdf", true) },
-            { label: "Detailed Breakup PDF", icon: "pdf", href: exportLink(entry, "detailed-pdf") },
+            { label: "Summary Report", icon: "pdf", href: exportLink(entry, "pdf") },
+            { label: "Analytics Report", icon: "pdf", href: exportLink(entry, "analytics-pdf") },
+            { label: "Detailed Breakup", icon: "pdf", href: exportLink(entry, "detailed-pdf") },
             { label: "Excel (Full)", icon: "xlsx", href: exportLink(entry, "xlsx") },
             { label: "Excel (Incentive models)", icon: "xlsx", href: exportLink(entry, "xlsx", true) },
           ]}
@@ -243,7 +252,7 @@ function ReportSection({
   const tb = report.targetBonus;
   const oppoLedger = Number(discrepancy.replace(/[^\d.-]/g, "")) || 0;
   const delta = oppoLedger - report.totals.grandTotal;
-  const netReceivable = report.totals.grandTotal + rebateTotal - crCaughtLoss.lostIncentive;
+  const netReceivable = report.totals.grandTotal + rebateTotal - crCaughtLoss.totalFines;
   const totalStockedUnits = report.rows.reduce((s, r) => s + r.stockInRegularQty, 0);
 
   const earningStreams = [
@@ -277,19 +286,22 @@ function ReportSection({
             {dropOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setDropOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border bg-popover py-1 shadow-lg">
-                  {downloads.map((d) => (
-                    <a
-                      key={d.href}
-                      href={d.href}
-                      target="_blank"
-                      rel="noreferrer"
+                <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border bg-popover shadow-lg overflow-hidden">
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground bg-muted/40 border-b">PDF</div>
+                  {downloads.filter(d => d.icon === "pdf").map((d) => (
+                    <a key={d.href} href={d.href} target="_blank" rel="noreferrer"
                       onClick={() => setDropOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted"
-                    >
-                      {d.icon === "pdf"
-                        ? <FileBarChart2 className="size-3.5 shrink-0 text-rose-500" />
-                        : <FileSpreadsheet className="size-3.5 shrink-0 text-emerald-600" />}
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
+                      <FileBarChart2 className="size-3.5 shrink-0 text-rose-500" />
+                      {d.label}
+                    </a>
+                  ))}
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground bg-muted/40 border-y">Excel</div>
+                  {downloads.filter(d => d.icon === "xlsx").map((d) => (
+                    <a key={d.href} href={d.href} target="_blank" rel="noreferrer"
+                      onClick={() => setDropOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors">
+                      <FileSpreadsheet className="size-3.5 shrink-0 text-emerald-600" />
                       {d.label}
                     </a>
                   ))}
@@ -345,10 +357,12 @@ function ReportSection({
               {formatPKR(netReceivable)}
             </div>
             <div className="text-[11px] text-muted-foreground">
-              {crCaughtLoss.totalUnits > 0
-                ? `After ${crCaughtLoss.totalUnits} CR catch${crCaughtLoss.totalUnits > 1 ? "es" : ""} (−${formatPKR(crCaughtLoss.lostIncentive)} est. loss)`
+              {crCaughtLoss.totalFines > 0
+                ? `After −${formatPKR(crCaughtLoss.totalFines)} fines · ${crCaughtLoss.totalUnits} unit${crCaughtLoss.totalUnits !== 1 ? "s" : ""} caught`
+                : crCaughtLoss.totalUnits > 0
+                ? `${crCaughtLoss.totalUnits} unit${crCaughtLoss.totalUnits !== 1 ? "s" : ""} caught · est. lost ${formatPKR(crCaughtLoss.lostIncentive)}`
                 : rebateTotal > 0
-                ? `Incentive + rebates`
+                ? "Incentive + rebates"
                 : "Total incentive"}
             </div>
           </div>
@@ -605,8 +619,15 @@ function ReportSection({
               <div className="bg-card px-4 py-3">
                 <div className="text-[10px] text-muted-foreground">Est. Lost Incentive</div>
                 <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{formatPKR(crCaughtLoss.lostIncentive)}</div>
-                <div className="text-[10px] text-muted-foreground">dealer price × {report.baseIncentivePercent}% × 1.25</div>
+                <div className="text-[10px] text-muted-foreground">base% × 1.25 on caught units</div>
               </div>
+              {crCaughtLoss.totalFines > 0 && (
+                <div className="bg-card px-4 py-3">
+                  <div className="text-[10px] text-muted-foreground">Cash Fines</div>
+                  <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{formatPKR(crCaughtLoss.totalFines)}</div>
+                  <div className="text-[10px] text-muted-foreground">direct penalty deduction</div>
+                </div>
+              )}
             </div>
           </div>
         )}

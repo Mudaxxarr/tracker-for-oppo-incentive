@@ -23,9 +23,12 @@ export default async function ReportsPage({
   const dealers = await listDealerIds();
   const active = await getActiveDealerId();
 
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const PKT = 5 * 3600 * 1000;
+  const todayPKT = new Date(Date.now() + PKT);
+  const [pktYr, pktMo] = todayPKT.toISOString().slice(0, 7).split("-").map(Number);
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const start = `${pktYr}-${pad2(pktMo)}-01`;
+  const end = `${pktYr}-${pad2(pktMo)}-${pad2(new Date(Date.UTC(pktYr, pktMo, 0)).getUTCDate())}`;
 
   const periodStart = sp.periodStart ?? start;
   const periodEnd = sp.periodEnd ?? end;

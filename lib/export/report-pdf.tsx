@@ -8,6 +8,8 @@ import {
 } from "@react-pdf/renderer";
 import type { IncentiveReport } from "@/lib/incentive-engine";
 import type { PolicyAchievementEntry } from "@/lib/report-types";
+import type { RebateRow } from "@/lib/db/queries/rebates";
+import type { CrCaughtExportRow } from "@/lib/db/queries/cr-caught";
 
 // ─── Brand palette ────────────────────────────────────────────────────────────
 const C = {
@@ -531,5 +533,272 @@ export async function buildPDF(
     </Document>
   );
 
+  return await renderToBuffer(doc);
+}
+
+// ─── Analytics PDF ────────────────────────────────────────────────────────────
+export async function buildAnalyticsPDF(
+  report: IncentiveReport,
+  dealerName: string,
+  opts?: {
+    policies?: PolicyAchievementEntry[];
+    rebateRows?: RebateRow[];
+    crCaughtRows?: CrCaughtExportRow[];
+    crCaughtLoss?: { totalUnits: number; lostIncentive: number; totalFines: number };
+    rebateTotal?: number;
+  }
+): Promise<Buffer> {
+  const { policies = [], rebateRows = [], crCaughtRows = [], crCaughtLoss, rebateTotal = 0 } = opts ?? {};
+  const tb = report.targetBonus;
+  const net = report.totals.grandTotal + rebateTotal - (crCaughtLoss?.totalFines ?? 0);
+  const streams = [
+    { label: `Base ${report.baseIncentivePercent}%`, val: report.totals.basePercentEarned },
+    { label: `Target Bonus ${tb.bonusPercent}%`, val: report.totals.bonusPercentEarned },
+    { label: "Activation Incentive", val: report.totals.activationIncentiveEarned },
+    { label: "Dealer Incentive", val: report.totals.dealerIncentiveEarned },
+    { label: "Stock-In", val: report.totals.stockInEarned },
+  ].filter((s) => s.val > 0);
+  const hasDetail = rebateRows.length > 0 || crCaughtRows.length > 0;
+  const tp = 1 + (hasDetail ? 1 : 0) + (policies.length > 0 ? 1 : 0);
+
+  const PH = 24; // portrait horizontal padding
+  const ph = (n: number) => -n as unknown as number; // neg margin helper
+
+  const AH = StyleSheet.create({
+    page: { paddingHorizontal: PH, paddingTop: 0, paddingBottom: 18, fontSize: 8.5, fontFamily: "Helvetica", color: C.textPrimary, backgroundColor: "#FFFFFF" },
+    heroRow: { flexDirection: "row", gap: 7, marginBottom: 12 },
+    heroBox: { flex: 1, borderRadius: 5, padding: "9 10", borderWidth: 1 },
+    heroLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", letterSpacing: 0.5, marginBottom: 4 },
+    heroVal: { fontSize: 14, fontFamily: "Helvetica-Bold" },
+    heroSub: { fontSize: 6.5, marginTop: 3 },
+  });
+
+  const AnalyticsHeader = ({ sub }: { sub?: string }) => (
+    <>
+      <View style={[S.headerBg, { marginHorizontal: ph(PH) }]}>
+        <Text style={S.headerBrand}>OPPO PAKISTAN</Text>
+        <View style={S.headerRow}>
+          <View>
+            <Text style={S.headerTitle}>Dealer Analytics Report{sub ? ` — ${sub}` : ""}</Text>
+            <Text style={S.headerMeta}>{dealerName} · {report.periodStart} → {report.periodEnd}</Text>
+          </View>
+          <View style={S.headerRight}>
+            <Text style={S.headerDate}>Generated: {today()}</Text>
+            <Text style={[S.headerDate, { marginTop: 2 }]}>CONFIDENTIAL</Text>
+          </View>
+        </View>
+      </View>
+      <View style={[S.accentBar, { marginHorizontal: ph(PH) }]} />
+    </>
+  );
+
+  const doc = (
+    <Document>
+      {/* ══ Page 1: Financial Overview ══ */}
+      <Page size="A4" style={AH.page}>
+        <AnalyticsHeader />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, marginBottom: 10 }}>
+          <Text style={[S.sectionTitle, { color: C.accentBar }]}>FINANCIAL ANALYTICS OVERVIEW</Text>
+          <View style={S.sectionLine} />
+          <Text style={S.sectionTitle}>{report.totalActivations} ACTIVATIONS</Text>
+        </View>
+
+        {/* 3 Hero Boxes */}
+        <View style={AH.heroRow}>
+          <View style={[AH.heroBox, { borderColor: C.kpiBorder, backgroundColor: C.kpiBg }]}>
+            <Text style={[AH.heroLabel, { color: C.kpiLabel }]}>GROSS FROM OPPO</Text>
+            <Text style={[AH.heroVal, { color: C.accentBar }]}>{fmtPKR(report.totals.grandTotal)}</Text>
+            <Text style={[AH.heroSub, { color: C.textMuted }]}>{report.totalActivations} activations · {report.rows.filter(r => r.total > 0).length} models</Text>
+          </View>
+          <View style={[AH.heroBox, { borderColor: rebateTotal > 0 ? "#0891B2" : C.tBorder, backgroundColor: rebateTotal > 0 ? "#ECFEFF" : "#FAFAFA" }]}>
+            <Text style={[AH.heroLabel, { color: rebateTotal > 0 ? "#0E7490" : C.textMuted }]}>REBATES RECEIVABLE</Text>
+            <Text style={[AH.heroVal, { color: rebateTotal > 0 ? "#0E7490" : C.textLight }]}>{rebateTotal > 0 ? fmtPKR(rebateTotal) : "—"}</Text>
+            <Text style={[AH.heroSub, { color: C.textMuted }]}>{rebateRows.length > 0 ? `${rebateRows.length} price-drop event${rebateRows.length !== 1 ? "s" : ""}` : "No price drops this period"}</Text>
+          </View>
+          <View style={[AH.heroBox, { borderColor: C.accentBar, backgroundColor: C.grandBg }]}>
+            <Text style={[AH.heroLabel, { color: C.grandAccent }]}>NET RECEIVABLE</Text>
+            <Text style={[AH.heroVal, { color: C.grandFg }]}>{fmtPKR(net)}</Text>
+            <Text style={[AH.heroSub, { color: (crCaughtLoss?.totalFines ?? 0) > 0 ? "#FCA5A5" : C.grandAccent }]}>
+              {(crCaughtLoss?.totalFines ?? 0) > 0 ? `After −${fmtPKR(crCaughtLoss!.totalFines)} fines` : rebateTotal > 0 ? "Incentive + rebates" : "Total incentive"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Income Streams Table */}
+        <View style={[S.sectionHeader, { marginBottom: 5 }]}>
+          <Text style={S.sectionTitle}>Income Streams Breakdown</Text>
+          <View style={S.sectionLine} />
+        </View>
+        <View style={S.table}>
+          <View style={S.tHeadRow}>
+            <Text style={[S.tHCell, { width: "40%" }]}>Stream</Text>
+            <Text style={[S.tHCell, { width: "30%", textAlign: "right" }]}>Earned (PKR)</Text>
+            <Text style={[S.tHCell, { width: "18%", textAlign: "right" }]}>% of Gross</Text>
+            <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Models</Text>
+          </View>
+          {streams.map((s, i) => {
+            const pct = report.totals.grandTotal > 0 ? (s.val / report.totals.grandTotal) * 100 : 0;
+            const mc = s.label.includes("Stock") ? report.rows.filter(r => r.stockInEarned > 0).length
+              : s.label.includes("Activation") ? report.rows.filter(r => r.activationIncentiveEarned > 0).length
+              : s.label.includes("Dealer") ? report.rows.filter(r => r.dealerIncentiveEarned > 0).length
+              : report.rows.filter(r => r.basePercentEarned > 0).length;
+            return (
+              <View key={s.label} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
+                <Text style={[S.tCellBold, { width: "40%" }]}>{s.label}</Text>
+                <Text style={[S.tCell, { width: "30%", textAlign: "right", fontFamily: "Helvetica-Bold", color: C.accentBar }]}>{fmtPKR(s.val)}</Text>
+                <Text style={[S.tCell, { width: "18%", textAlign: "right" }]}>{pct.toFixed(1)}%</Text>
+                <Text style={[S.tCell, { width: "12%", textAlign: "right", color: C.textMuted }]}>{mc}</Text>
+              </View>
+            );
+          })}
+          <View style={S.tTotalRow}>
+            <Text style={[S.tTotalCell, { width: "40%" }]}>GRAND TOTAL</Text>
+            <Text style={[S.tTotalCell, { width: "30%", textAlign: "right" }]}>{fmtPKR(report.totals.grandTotal)}</Text>
+            <Text style={[S.tTotalCell, { width: "18%", textAlign: "right" }]}>100.0%</Text>
+            <Text style={[S.tTotalCell, { width: "12%" }]}></Text>
+          </View>
+        </View>
+
+        {/* Target Bonus */}
+        <View style={[S.targetRow, { marginTop: 10, borderColor: tb.eligible ? C.greenBorder : C.redBorder, backgroundColor: tb.eligible ? C.greenBg : C.redBg }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[S.targetLabel, { color: tb.eligible ? C.green : C.red }]}>
+              Target Bonus {tb.bonusPercent}% — {tb.eligible ? "TARGET ACHIEVED ✓" : "TARGET NOT REACHED ✗"}
+            </Text>
+            <Text style={S.targetSub}>{tb.actualQty} / {tb.targetQty ?? "—"} units purchased{!tb.eligible && tb.targetQty ? ` · ${tb.targetQty - tb.actualQty} more needed` : ""}</Text>
+          </View>
+          <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: tb.eligible ? C.green : C.red, marginRight: 6 }}>{fmtPKR(report.totals.bonusPercentEarned)}</Text>
+          <View style={[S.badge, tb.eligible ? S.badgeMet : S.badgeNotMet]}><Text>{tb.eligible ? "Met ✓" : "Not Met ✗"}</Text></View>
+        </View>
+
+        {crCaughtLoss && crCaughtLoss.totalUnits > 0 && (
+          <View style={{ marginTop: 8, padding: "6 8", borderRadius: 4, borderWidth: 0.75, borderColor: C.redBorder, backgroundColor: C.redBg, flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <Text style={[S.targetLabel, { color: C.red }]}>CR Caught:</Text>
+            <Text style={[S.targetSub, { color: C.red }]}>{crCaughtLoss.totalUnits} units</Text>
+            {crCaughtLoss.totalFines > 0 && <Text style={[S.targetSub, { color: C.red }]}>· Cash Fines: {fmtPKR(crCaughtLoss.totalFines)}</Text>}
+            <Text style={[S.targetSub, { color: C.red }]}>· Est. Lost Incentive: {fmtPKR(crCaughtLoss.lostIncentive)}</Text>
+          </View>
+        )}
+        <Footer page={1} total={tp} />
+      </Page>
+
+      {/* ══ Page 2: Rebates + CR Caught Detail ══ */}
+      {hasDetail && (
+        <Page size="A4" style={AH.page}>
+          <AnalyticsHeader sub="Detail" />
+          {rebateRows.length > 0 && (
+            <>
+              <View style={[S.sectionHeader, { marginTop: 12 }]}>
+                <Text style={S.sectionTitle}>Price-Drop Rebates</Text>
+                <View style={S.sectionLine} />
+                <Text style={[S.sectionTitle, { color: "#0E7490" }]}>{fmtPKR(rebateTotal)}</Text>
+              </View>
+              <View style={S.table}>
+                <View style={S.tHeadRow}>
+                  <Text style={[S.tHCell, { width: "13%" }]}>Date</Text>
+                  <Text style={[S.tHCell, { width: "26%" }]}>Model</Text>
+                  <Text style={[S.tHCell, { width: "17%", textAlign: "right" }]}>Old Price</Text>
+                  <Text style={[S.tHCell, { width: "17%", textAlign: "right" }]}>New Price</Text>
+                  <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Drop/Unit</Text>
+                  <Text style={[S.tHCell, { width: "7%", textAlign: "right" }]}>Qty</Text>
+                  <Text style={[S.tHCell, { width: "8%", textAlign: "right" }]}>Rebate</Text>
+                </View>
+                {rebateRows.map((r, i) => (
+                  <View key={r.id} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
+                    <Text style={[S.tCell, { width: "13%", fontSize: 7, color: C.textMuted }]}>{r.rebateDate}</Text>
+                    <Text style={[S.tCellBold, { width: "26%" }]}>{r.modelName}</Text>
+                    <Text style={[S.tCell, { width: "17%", textAlign: "right", color: C.textMuted, fontSize: 7 }]}>{fmtPKR(r.oldDealerPrice)}</Text>
+                    <Text style={[S.tCell, { width: "17%", textAlign: "right" }]}>{fmtPKR(r.newDealerPrice)}</Text>
+                    <Text style={[S.tCellBold, { width: "12%", textAlign: "right", color: "#0E7490" }]}>+{fmtPKR(r.rebatePerUnit)}</Text>
+                    <Text style={[S.tCell, { width: "7%", textAlign: "right" }]}>{r.eligibleQty}</Text>
+                    <Text style={[S.tCellBold, { width: "8%", textAlign: "right", color: "#0E7490" }]}>{fmtPKR(r.totalRebateAmount)}</Text>
+                  </View>
+                ))}
+                <View style={S.tTotalRow}>
+                  <Text style={[S.tTotalCell, { width: "92%" }]}>TOTAL REBATES</Text>
+                  <Text style={[S.tTotalCell, { width: "8%", textAlign: "right" }]}>{fmtPKR(rebateTotal)}</Text>
+                </View>
+              </View>
+            </>
+          )}
+          {crCaughtRows.length > 0 && (
+            <>
+              <View style={[S.sectionHeader, { marginTop: rebateRows.length > 0 ? 14 : 12 }]}>
+                <Text style={[S.sectionTitle, { color: C.red }]}>CR Caught — Penalty Log</Text>
+                <View style={S.sectionLine} />
+              </View>
+              <View style={S.table}>
+                <View style={S.tHeadRow}>
+                  <Text style={[S.tHCell, { width: "14%" }]}>Date</Text>
+                  <Text style={[S.tHCell, { width: "28%" }]}>Model</Text>
+                  <Text style={[S.tHCell, { width: "8%", textAlign: "right" }]}>Qty</Text>
+                  <Text style={[S.tHCell, { width: "20%", textAlign: "right" }]}>Price Snapshot</Text>
+                  <Text style={[S.tHCell, { width: "15%", textAlign: "right" }]}>Cash Fine</Text>
+                  <Text style={[S.tHCell, { width: "15%", textAlign: "right" }]}>Est. Lost Inc.</Text>
+                </View>
+                {crCaughtRows.map((r, i) => {
+                  const est = r.quantity > 0 ? Math.round(r.quantity * r.dealerPriceSnapshot * (report.baseIncentivePercent / 100) * 1.25) : 0;
+                  return (
+                    <View key={i} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
+                      <Text style={[S.tCell, { width: "14%", fontSize: 7, color: C.textMuted }]}>{r.caughtDate}</Text>
+                      <Text style={[S.tCellBold, { width: "28%" }]}>{r.modelName}</Text>
+                      <Text style={[S.tCell, { width: "8%", textAlign: "right" }]}>{r.quantity}</Text>
+                      <Text style={[S.tCell, { width: "20%", textAlign: "right" }]}>{r.dealerPriceSnapshot > 0 ? fmtPKR(r.dealerPriceSnapshot) : "—"}</Text>
+                      <Text style={[S.tCell, { width: "15%", textAlign: "right", color: r.fineAmount > 0 ? C.red : C.textLight }]}>{r.fineAmount > 0 ? fmtPKR(r.fineAmount) : "—"}</Text>
+                      <Text style={[S.tCell, { width: "15%", textAlign: "right", color: C.red }]}>{est > 0 ? `−${fmtPKR(est)}` : "—"}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
+          <Footer page={2} total={tp} />
+        </Page>
+      )}
+
+      {/* ══ Last Page: Policies ══ */}
+      {policies.length > 0 && (
+        <Page size="A4" style={AH.page}>
+          <AnalyticsHeader sub="Policies" />
+          <View style={[S.sectionHeader, { marginTop: 12 }]}>
+            <Text style={S.sectionTitle}>Policies &amp; Achievements</Text>
+            <View style={S.sectionLine} />
+            <Text style={[S.sectionTitle, { color: C.green }]}>{policies.filter(p => p.eligible).length} met · </Text>
+            <Text style={[S.sectionTitle, { color: C.red }]}>{policies.filter(p => !p.eligible).length} not met</Text>
+          </View>
+          <View style={S.table}>
+            <View style={S.tHeadRow}>
+              <Text style={[S.tHCell, { width: "20%" }]}>Policy Type</Text>
+              <Text style={[S.tHCell, { width: "20%" }]}>Model</Text>
+              <Text style={[S.tHCell, { width: "18%" }]}>Period</Text>
+              <Text style={[S.tHCell, { width: "10%", textAlign: "right" }]}>Target</Text>
+              <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Rate</Text>
+              <Text style={[S.tHCell, { width: "10%", textAlign: "right" }]}>Actual</Text>
+              <Text style={[S.tHCell, { width: "10%", textAlign: "center" }]}>Status</Text>
+            </View>
+            {policies.map((p, i) => (
+              <View key={i} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
+                <Text style={[S.tCellBold, { width: "20%", fontSize: 7.5 }]}>{POLICY_LABEL[p.type]}</Text>
+                <Text style={[S.tCell, { width: "20%" }]}>{p.modelName ?? "All models"}</Text>
+                <Text style={[S.tCell, { width: "18%", fontSize: 7, color: C.textMuted }]}>{p.periodStart} → {p.periodEnd}</Text>
+                <Text style={[S.tCell, { width: "10%", textAlign: "right" }]}>{p.targetQty ?? "—"}</Text>
+                <Text style={[S.tCell, { width: "12%", textAlign: "right" }]}>{p.type === "target-bonus" ? `${p.perUnitAmount}%` : fmtPKR(p.perUnitAmount)}</Text>
+                <Text style={[S.tCell, { width: "10%", textAlign: "right" }]}>{p.actualQty}</Text>
+                <View style={{ width: "10%", padding: "3.5 4", alignItems: "center" }}>
+                  <View style={[S.badge, p.eligible ? S.badgeMet : S.badgeNotMet]}><Text>{p.eligible ? "Met ✓" : "✗"}</Text></View>
+                </View>
+              </View>
+            ))}
+            <View style={S.tTotalRow}>
+              <Text style={[S.tTotalCell, { width: "70%" }]}>TOTAL ELIGIBLE</Text>
+              <Text style={[S.tTotalCell, { width: "20%" }]}></Text>
+              <Text style={[S.tTotalCell, { width: "10%", textAlign: "right" }]}>{fmtPKR(policies.filter(p => p.eligible).reduce((s, p) => s + p.earned, 0))}</Text>
+            </View>
+          </View>
+          <Footer page={tp} total={tp} />
+        </Page>
+      )}
+    </Document>
+  );
   return await renderToBuffer(doc);
 }

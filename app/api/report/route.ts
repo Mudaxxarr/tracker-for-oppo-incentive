@@ -3,9 +3,12 @@ import { isAuthenticated } from "@/lib/auth";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
 import { getDealerIdById, OWNER_TENANT_ID } from "@/lib/dealer";
 import { buildExcel } from "@/lib/export/report-excel";
-import { buildPDF } from "@/lib/export/report-pdf";
+import { buildPDF, buildAnalyticsPDF } from "@/lib/export/report-pdf";
 import { buildDetailedPDF } from "@/lib/export/report-pdf-detailed";
 import { buildPolicyAchievements } from "@/lib/report-utils";
+import { getConstants } from "@/lib/settings";
+import { listRebatesForDealerInPeriod, sumRebatesForPeriod } from "@/lib/db/queries/rebates";
+import { getCrCaughtLoss, listCrCaughtForPeriod } from "@/lib/db/queries/cr-caught";
 import { logAudit } from "@/lib/audit";
 import { db, schema } from "@/lib/db/client";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
@@ -38,6 +41,32 @@ export async function GET(req: Request) {
   if (!dealer) return NextResponse.json({ error: "Unknown Dealer ID" }, { status: 404 });
 
   const report = await buildIncentiveReport({ dealerId, periodStart, periodEnd });
+
+  if (fmt === "analytics-pdf") {
+    const constants = await getConstants();
+    const [policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal] = await Promise.all([
+      buildPolicyAchievements(dealerId, periodStart, periodEnd, report),
+      listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
+      listCrCaughtForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd, constants.basePercent),
+      sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
+    ]);
+    const buffer = await buildAnalyticsPDF(report, dealer.name, { policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal });
+    const baseName = `OPPO_Analytics_${dealer.name.replace(/\s+/g, "_")}_${periodStart}_${periodEnd}`;
+    await logAudit({
+      action: "report.export",
+      entityType: "report",
+      summary: `Exported Analytics PDF for ${dealer.name} (${periodStart}→${periodEnd})`,
+      payload: { format: "analytics-pdf", periodStart, periodEnd },
+      dealerId,
+    });
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${baseName}.pdf"`,
+      },
+    });
+  }
 
   if (fmt === "detailed-pdf") {
     const policies = await buildPolicyAchievements(dealerId, periodStart, periodEnd, report);
