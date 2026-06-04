@@ -246,6 +246,8 @@ export async function crOutwardAction(
   revalidatePath("/cross-region");
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Owner-created CR-caught deducts stock immediately → recompute rebates.
+  if (quantity > 0) await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true, pendingApproval: !isOwner };
 }
 
@@ -253,7 +255,7 @@ export async function deleteCrCaughtAction(id: string): Promise<{ ok: boolean; e
   if (!(await isAuthenticated())) return { ok: false, error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { ok: false, error: "No active Dealer ID" };
-  await rejectCrCaught(id);
+  const ref = await rejectCrCaught(id);
   await logAudit({
     action: "cr.caught.delete",
     entityType: "cr_caught",
@@ -263,13 +265,15 @@ export async function deleteCrCaughtAction(id: string): Promise<{ ok: boolean; e
   revalidatePath("/cross-region");
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Restoring stock changes closing stock → recompute rebates.
+  if (ref) await reEvaluateRebatesForDealer(ref.tenantId, ref.dealerId, ref.modelId, ref.caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true };
 }
 
 export async function approveCrCaughtAction(id: string): Promise<{ ok: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { ok: false, error: "Not authenticated" };
   const { approveCrCaught } = await import("@/lib/db/queries/cr-caught");
-  await approveCrCaught(id);
+  const ref = await approveCrCaught(id);
   await logAudit({
     action: "cr.caught.approve",
     entityType: "cr_caught",
@@ -279,6 +283,8 @@ export async function approveCrCaughtAction(id: string): Promise<{ ok: boolean; 
   revalidatePath("/cross-region");
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Approving deducts stock → recompute rebates.
+  if (ref) await reEvaluateRebatesForDealer(ref.tenantId, ref.dealerId, ref.modelId, ref.caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true };
 }
 
@@ -286,7 +292,7 @@ export async function deleteCrossRegionAction(id: string): Promise<void> {
   if (!(await isAuthenticated())) return;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return;
-  await deleteCrossRegion(id, OWNER_TENANT_ID, dealerId);
+  const info = await deleteCrossRegion(id, OWNER_TENANT_ID, dealerId);
   await logAudit({
     action: "cross_region.delete",
     entityType: "cross_region_transfer",
@@ -295,5 +301,8 @@ export async function deleteCrossRegionAction(id: string): Promise<void> {
   });
   revalidatePath("/cross-region");
   revalidatePath("/purchases");
+  revalidatePath("/inventory");
   revalidatePath("/dashboard");
+  // Removing CR stock changes closing stock → recompute rebates from its reported date.
+  if (info) await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, info.modelId, info.reportedDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
 }
