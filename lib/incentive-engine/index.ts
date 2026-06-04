@@ -3,11 +3,12 @@ import type {
   EngineActivationIncentivePolicy,
   EngineDealerIncentivePolicy,
   EngineInput,
-  EngineStockInPolicy,
   EngineTargetBonusPolicy,
   IncentiveReport,
   IncentiveReportRow,
   PriceSubperiod,
+  StockInPolicyLedger,
+  ActivationIncentivePolicyLedger,
   TargetBonusOutcome,
   ISODate,
 } from "./types";
@@ -52,49 +53,46 @@ function pickTargetBonusPolicy(
 }
 
 
-function findActivationIncentive(
+/**
+ * Builds a per-policy activation-incentive ledger for one model.
+ * Each overlapping policy is evaluated independently — their earned amounts accumulate (+=).
+ * Threshold check uses ALL dealer activations in the policy window (not just the report slice).
+ * Earning qty is the intersection of the policy window and the report window.
+ */
+function buildActivationIncentiveLedger(
   policies: EngineActivationIncentivePolicy[],
   modelId: string,
-  activationDate: ISODate,
-  allActivationsForDealer: EngineActivation[]
-): {
-  policy: EngineActivationIncentivePolicy;
-  fires: boolean;
-  perUnit: number;
-} | null {
-  const candidates = policies.filter(
-    (p) => p.modelId === modelId && inRange(activationDate, p.periodStart, p.periodEnd)
+  periodStart: ISODate,
+  periodEnd: ISODate,
+  reportWindowActivations: EngineActivation[], // already filtered to report window
+  allActivations: EngineActivation[],           // full input, for threshold gate
+): ActivationIncentivePolicyLedger[] {
+  const overlapping = policies.filter(
+    (p) => p.modelId === modelId && p.periodStart <= periodEnd && p.periodEnd >= periodStart
   );
-  if (candidates.length === 0) return null;
-  // pick the most-specific (latest start) policy
-  const policy = candidates.sort((a, b) => (a.periodStart < b.periodStart ? 1 : -1))[0];
-  if (policy.targetQty == null) {
-    return { policy, fires: true, perUnit: policy.perUnitAmount };
-  }
-  // Count activations of this model inside the policy's window for this dealer
-  const qty = allActivationsForDealer.filter(
-    (a) => a.modelId === modelId && inRange(a.activationDate, policy.periodStart, policy.periodEnd)
-  ).length;
-  const fires = qty >= policy.targetQty;
-  return { policy, fires, perUnit: fires ? policy.perUnitAmount : 0 };
+  return overlapping.map((p) => {
+    // Threshold: total activations in the policy's own window (may extend outside report window)
+    const thresholdQty = allActivations.filter(
+      (a) => a.modelId === modelId && inRange(a.activationDate, p.periodStart, p.periodEnd)
+    ).length;
+    const met = p.targetQty == null ? thresholdQty > 0 : thresholdQty >= p.targetQty;
+    // Earning: activations in the intersection of policy window and report window
+    const eligibleQty = reportWindowActivations.filter(
+      (a) => inRange(a.activationDate, p.periodStart, p.periodEnd)
+    ).length;
+    return {
+      policyId: p.id,
+      periodStart: p.periodStart,
+      periodEnd: p.periodEnd,
+      perUnitAmount: p.perUnitAmount,
+      targetQty: p.targetQty,
+      eligibleQty,
+      earned: met ? round2(eligibleQty * p.perUnitAmount) : 0,
+      met,
+    };
+  });
 }
 
-function applicableStockInPolicy(
-  policies: EngineStockInPolicy[],
-  modelId: string,
-  periodStart: ISODate,
-  periodEnd: ISODate
-): EngineStockInPolicy | null {
-  // Pick the policy with the largest overlap (or any covering policy) for this model in the window.
-  const overlapping = policies.filter(
-    (p) =>
-      p.modelId === modelId &&
-      p.periodStart <= periodEnd &&
-      p.periodEnd >= periodStart
-  );
-  if (overlapping.length === 0) return null;
-  return overlapping.sort((a, b) => (a.periodStart < b.periodStart ? 1 : -1))[0];
-}
 
 /**
  * Pure calculator. Takes data, returns a structured incentive report.
@@ -246,7 +244,6 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     let qtyCross = 0;
     let baseEarned = 0;
     let bonusEarned = 0;
-    let activationEarned = 0;
     let dealerIncEarned = 0;
 
     for (const act of bucket.activations) {
@@ -256,22 +253,8 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       const price = act.dealerPriceSnapshot;
       subMap.set(price, (subMap.get(price) ?? 0) + 1);
 
-      const four = price * basePct;
-      baseEarned += four;
-
-      if (tbpEligible) {
-        bonusEarned += price * bonusPct;
-      }
-
-      const aip = findActivationIncentive(
-        activationIncentivePolicies,
-        modelId,
-        act.activationDate,
-        activations
-      );
-      if (aip && aip.fires) {
-        activationEarned += aip.perUnit;
-      }
+      baseEarned += price * basePct;
+      if (tbpEligible) bonusEarned += price * bonusPct;
 
       for (const ds of dipStatuses) {
         if (!ds.eligible) continue;
@@ -282,14 +265,31 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       }
     }
 
-    // Stock-in: only REGULAR purchases whose purchaseDate falls inside the policy's own
-    // date window (sip.periodStart … sip.periodEnd) count. Purchases outside that window
-    // do not earn stock-in even if they are within the report period.
-    const sip = applicableStockInPolicy(stockInPolicies, modelId, periodStart, periodEnd);
-    let sipRegularQty = 0;
-    let sipInterIdOutQty = 0;
-    if (sip) {
-      sipRegularQty = purchases
+    // Activation incentive: accumulator pattern — each policy evaluated independently.
+    const activationIncentiveLedger = buildActivationIncentiveLedger(
+      activationIncentivePolicies,
+      modelId,
+      periodStart,
+      periodEnd,
+      bucket.activations,
+      activations,
+    );
+    const activationEarned = activationIncentiveLedger.reduce((s, l) => s + l.earned, 0);
+
+    // Stock-in: each overlapping policy is evaluated independently in its own date window.
+    // Earned amounts are accumulated (+=) so multiple policies for the same model are all paid.
+    const overlappingSips = stockInPolicies.filter(
+      (p) =>
+        p.modelId === modelId &&
+        p.periodStart <= periodEnd &&
+        p.periodEnd >= periodStart
+    );
+    const stockInLedger: StockInPolicyLedger[] = [];
+    let totalSipRegularQty = 0;
+    let totalSipInterIdOutQty = 0;
+    let stockInEarned = 0;
+    for (const sip of overlappingSips) {
+      const sipRegularQty = purchases
         .filter(
           (p) =>
             p.modelId === modelId &&
@@ -297,22 +297,32 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
             inRange(p.purchaseDate, sip.periodStart, sip.periodEnd)
         )
         .reduce((sum, p) => sum + p.quantity, 0);
-      sipInterIdOutQty = interIdOut
+      const sipInterIdOutQty = interIdOut
         .filter(
           (t) =>
             t.modelId === modelId &&
             inRange(t.transferDate, sip.periodStart, sip.periodEnd)
         )
         .reduce((sum, t) => sum + t.quantity, 0);
-    }
-    const effectiveStockInQty = Math.max(0, sipRegularQty - sipInterIdOutQty);
-    let stockInEarned = 0;
-    if (sip) {
+      const eligibleQty = Math.max(0, sipRegularQty - sipInterIdOutQty);
       const minQty = sip.minQty ?? 0;
-      if (effectiveStockInQty >= minQty && effectiveStockInQty > 0) {
-        stockInEarned = effectiveStockInQty * sip.perUnitAmount;
-      }
+      const met = eligibleQty >= minQty && eligibleQty > 0;
+      const policyEarned = met ? round2(eligibleQty * sip.perUnitAmount) : 0;
+      stockInLedger.push({
+        policyId: sip.id,
+        periodStart: sip.periodStart,
+        periodEnd: sip.periodEnd,
+        perUnitAmount: sip.perUnitAmount,
+        minQty: sip.minQty,
+        eligibleQty,
+        earned: policyEarned,
+        met,
+      });
+      totalSipRegularQty += sipRegularQty;
+      totalSipInterIdOutQty += sipInterIdOutQty;
+      stockInEarned += policyEarned;
     }
+    const effectiveStockInQty = Math.max(0, totalSipRegularQty - totalSipInterIdOutQty);
 
     const priceSubperiods: PriceSubperiod[] = [...subMap.entries()]
       .map(([dealerPrice, qty]) => ({
@@ -335,11 +345,13 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       bonusPercentEarned: round2(bonusEarned),
       activationIncentiveEarned: round2(activationEarned),
       dealerIncentiveEarned: round2(dealerIncEarned),
-      stockInRegularQty: sipRegularQty,
+      stockInRegularQty: totalSipRegularQty,
       stockInCrossRegionQty: bucket.crossRegionQty,
-      interIdOutQty: sipInterIdOutQty,
+      interIdOutQty: totalSipInterIdOutQty,
       effectiveStockInQty,
       stockInEarned: round2(stockInEarned),
+      stockInLedger,
+      activationIncentiveLedger,
       total: round2(total),
     });
 

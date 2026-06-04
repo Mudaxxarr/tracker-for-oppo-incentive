@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "../client";
-import { and, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 export interface CrCaughtRow {
@@ -8,6 +8,7 @@ export interface CrCaughtRow {
   modelId: string;
   modelName: string;
   quantity: number;
+  fineAmount: number | null;
   caughtDate: string;
   dealerPriceSnapshot: number;
   note: string | null;
@@ -21,6 +22,7 @@ export async function listCrCaught(tenantId: string, dealerId: string): Promise<
       modelId: schema.crCaught.modelId,
       modelName: schema.models.name,
       quantity: schema.crCaught.quantity,
+      fineAmount: schema.crCaught.fineAmount,
       caughtDate: schema.crCaught.caughtDate,
       dealerPriceSnapshot: schema.crCaught.dealerPriceSnapshot,
       note: schema.crCaught.note,
@@ -37,13 +39,14 @@ export async function createCrCaught(input: {
   dealerId: string;
   modelId: string;
   quantity: number;
+  fineAmount?: number;
   caughtDate: string;
   dealerPriceSnapshot: number;
   note: string | null;
   status?: string;
 }): Promise<string> {
   const id = randomUUID();
-  await db.insert(schema.crCaught).values({ id, ...input, status: input.status ?? "active" });
+  await db.insert(schema.crCaught).values({ id, ...input, fineAmount: input.fineAmount ?? 0, status: input.status ?? "active" });
   return id;
 }
 
@@ -53,9 +56,9 @@ export async function getCrCaughtLoss(
   from: string,
   to: string,
   basePct: number
-): Promise<{ totalUnits: number; lostIncentive: number }> {
+): Promise<{ totalUnits: number; priceUnitSum: number; lostIncentive: number; totalFines: number }> {
   const rows = await db
-    .select({ qty: schema.crCaught.quantity, price: schema.crCaught.dealerPriceSnapshot })
+    .select({ qty: schema.crCaught.quantity, price: schema.crCaught.dealerPriceSnapshot, fine: schema.crCaught.fineAmount })
     .from(schema.crCaught)
     .where(
       and(
@@ -66,12 +69,16 @@ export async function getCrCaughtLoss(
       )
     );
   let totalUnits = 0;
-  let lostIncentive = 0;
+  let priceUnitSum = 0;
+  let totalFines = 0;
   for (const r of rows) {
     totalUnits += r.qty;
-    lostIncentive += r.qty * r.price * (basePct / 100) * 1.25;
+    priceUnitSum += r.qty * r.price;
+    totalFines += r.fine ?? 0;
   }
-  return { totalUnits, lostIncentive: Math.round(lostIncentive) };
+  // lostIncentive kept for backward compat (informational only — not a ledger deduction)
+  const lostIncentive = Math.round(priceUnitSum * (basePct / 100) * 1.25);
+  return { totalUnits, priceUnitSum: Math.round(priceUnitSum), lostIncentive, totalFines: Math.round(totalFines) };
 }
 
 export async function getCrCaughtForStockCalc(tenantId: string, dealerId: string, modelId: string): Promise<number> {
@@ -105,10 +112,79 @@ export async function getCrCaughtAsOf(tenantId: string, dealerId: string, modelI
   return Number(qty);
 }
 
-export async function approveCrCaught(id: string): Promise<void> {
-  await db.update(schema.crCaught).set({ status: "active" }).where(eq(schema.crCaught.id, id));
+/** Closing stock of CR-caught units strictly before `beforeDate` — used for rebate eligibility. */
+export async function getCrCaughtBefore(tenantId: string, dealerId: string, modelId: string, beforeDate: string): Promise<number> {
+  const [{ qty }] = await db
+    .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
+    .from(schema.crCaught)
+    .where(
+      and(
+        eq(schema.crCaught.tenantId, tenantId),
+        eq(schema.crCaught.dealerId, dealerId),
+        eq(schema.crCaught.modelId, modelId),
+        lt(schema.crCaught.caughtDate, beforeDate),
+        ne(schema.crCaught.status, "pending_owner_approval")
+      )
+    );
+  return Number(qty);
 }
 
-export async function rejectCrCaught(id: string): Promise<void> {
+export interface CrCaughtExportRow {
+  modelName: string;
+  quantity: number;
+  caughtDate: string;
+  dealerPriceSnapshot: number;
+  fineAmount: number;
+}
+
+export async function listCrCaughtForPeriod(
+  tenantId: string,
+  dealerId: string,
+  from: string,
+  to: string
+): Promise<CrCaughtExportRow[]> {
+  const rows = await db
+    .select({
+      modelName: schema.models.name,
+      quantity: schema.crCaught.quantity,
+      caughtDate: schema.crCaught.caughtDate,
+      dealerPriceSnapshot: schema.crCaught.dealerPriceSnapshot,
+      fineAmount: schema.crCaught.fineAmount,
+    })
+    .from(schema.crCaught)
+    .innerJoin(schema.models, eq(schema.models.id, schema.crCaught.modelId))
+    .where(
+      and(
+        eq(schema.crCaught.tenantId, tenantId),
+        eq(schema.crCaught.dealerId, dealerId),
+        gte(schema.crCaught.caughtDate, from),
+        lte(schema.crCaught.caughtDate, to),
+        ne(schema.crCaught.status, "pending_owner_approval")
+      )
+    )
+    .orderBy(desc(schema.crCaught.caughtDate));
+  return rows.map((r) => ({ ...r, fineAmount: r.fineAmount ?? 0 }));
+}
+
+export type CrCaughtRef = { tenantId: string; dealerId: string; modelId: string; caughtDate: string } | null;
+
+async function crCaughtRef(id: string): Promise<CrCaughtRef> {
+  const rows = await db
+    .select({ tenantId: schema.crCaught.tenantId, dealerId: schema.crCaught.dealerId, modelId: schema.crCaught.modelId, caughtDate: schema.crCaught.caughtDate })
+    .from(schema.crCaught).where(eq(schema.crCaught.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Flips a pending CR-caught to active. Returns the affected row ref so callers can reconcile rebates. */
+export async function approveCrCaught(id: string): Promise<CrCaughtRef> {
+  const ref = await crCaughtRef(id);
+  await db.update(schema.crCaught).set({ status: "active" }).where(eq(schema.crCaught.id, id));
+  return ref;
+}
+
+/** Removes a CR-caught entry (restores stock). Returns the affected row ref so callers can reconcile rebates. */
+export async function rejectCrCaught(id: string): Promise<CrCaughtRef> {
+  const ref = await crCaughtRef(id);
   await db.delete(schema.crCaught).where(eq(schema.crCaught.id, id));
+  return ref;
 }

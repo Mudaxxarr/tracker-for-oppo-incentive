@@ -2,7 +2,7 @@ import "server-only";
 import { db, schema } from "../client";
 import { and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { getStockForModelAsOf } from "./purchases";
+import { getClosingStockBeforeDate } from "./purchases";
 
 export interface RebateRow {
   id: string;
@@ -146,7 +146,7 @@ export async function createRebatesForPriceDrop(input: {
 
   for (const { id: dealerId } of dealerIds) {
     // Use the same stock formula as the rest of the app: purchases - activations - transfers_out - cr_caught
-    const eligibleQty = await getStockForModelAsOf(input.tenantId, dealerId, input.modelId, input.rebateDate);
+    const eligibleQty = await getClosingStockBeforeDate(input.tenantId, dealerId, input.modelId, input.rebateDate);
     if (eligibleQty <= 0) continue;
     const total = eligibleQty * rebatePerUnit;
     await db.insert(schema.rebates).values({
@@ -178,8 +178,10 @@ export async function reEvaluateRebatesForDealer(
   tenantId: string,
   dealerId: string,
   modelId: string,
-  fromDate: string
+  fromDate: string,
+  stockTenantId?: string
 ): Promise<void> {
+  const _stockTenantId = stockTenantId ?? tenantId;
   const allEntries = await db
     .select({
       id: schema.modelPriceHistory.id,
@@ -216,7 +218,7 @@ export async function reEvaluateRebatesForDealer(
 
     if (prev !== null && prev.dealerPrice > curr.dealerPrice) {
       const rebatePerUnit = prev.dealerPrice - curr.dealerPrice;
-      const eligibleQty = await getStockForModelAsOf(tenantId, dealerId, modelId, curr.effectiveFrom);
+      const eligibleQty = await getClosingStockBeforeDate(_stockTenantId, dealerId, modelId, curr.effectiveFrom);
 
       await db.delete(schema.rebates).where(
         and(

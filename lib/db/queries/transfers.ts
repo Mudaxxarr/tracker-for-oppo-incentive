@@ -117,11 +117,17 @@ export async function updateCrossRegionStatus(input: {
   return { ok: true };
 }
 
-export async function deleteCrossRegion(id: string, tenantId: string, dealerId: string) {
+export async function deleteCrossRegion(id: string, tenantId: string, dealerId: string): Promise<{ modelId: string; reportedDate: string } | null> {
+  const rows = await db
+    .select({ modelId: schema.crossRegionTransfers.modelId, reportedDate: schema.crossRegionTransfers.reportedDate })
+    .from(schema.crossRegionTransfers)
+    .where(and(eq(schema.crossRegionTransfers.id, id), eq(schema.crossRegionTransfers.tenantId, tenantId), eq(schema.crossRegionTransfers.dealerId, dealerId)))
+    .limit(1);
   await db.delete(schema.purchases)
     .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.crossRegionTransferId, id)));
   await db.delete(schema.crossRegionTransfers)
     .where(and(eq(schema.crossRegionTransfers.id, id), eq(schema.crossRegionTransfers.tenantId, tenantId), eq(schema.crossRegionTransfers.dealerId, dealerId)));
+  return rows[0] ?? null;
 }
 
 export interface InterIdRow {

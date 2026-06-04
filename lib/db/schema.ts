@@ -245,6 +245,7 @@ export const dealerIncentivePolicies = pgTable(
     periodEnd: isoDate("period_end").notNull(),
     targetTotalActivations: integer("target_total_activations").notNull(),
     perUnitAmount: real("per_unit_amount").notNull(),
+    planId: text("plan_id"),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -270,6 +271,7 @@ export const crossRegionTransfers = pgTable(
     reportedDate: isoDate("reported_date").notNull(),
     shiftedToIdDate: isoDate("shifted_to_id_date"),
     sourceRegionNote: text("source_region_note"),
+    fineAmount: real("fine_amount").default(0),
     status: text("status").notNull(),
     createdAt: isoDateTime("created_at").notNull(),
   },
@@ -322,6 +324,7 @@ export const crCaught = pgTable(
       .notNull()
       .references(() => models.id, { onDelete: "restrict" }),
     quantity: integer("quantity").notNull(),
+    fineAmount: real("fine_amount").default(0),
     caughtDate: isoDate("caught_date").notNull(),
     dealerPriceSnapshot: real("dealer_price_snapshot").notNull(),
     note: text("note"),
@@ -451,6 +454,7 @@ export const rebates = pgTable(
   (t) => ({
     byDealer: index("rebates_by_dealer").on(t.tenantId, t.dealerId, t.rebateDate),
     byModel: index("rebates_by_model").on(t.tenantId, t.modelId, t.rebateDate),
+    byPriceHistory: index("rebates_by_price_history").on(t.tenantId, t.priceHistoryId, t.dealerId),
   })
 );
 

@@ -106,6 +106,29 @@ export interface PriceSubperiod {
   bonusPercentSubtotal: number;
 }
 
+export interface StockInPolicyLedger {
+  policyId: string;
+  periodStart: ISODate;
+  periodEnd: ISODate;
+  perUnitAmount: number;
+  minQty: number | null;
+  eligibleQty: number;
+  earned: number;
+  met: boolean;
+}
+
+export interface ActivationIncentivePolicyLedger {
+  policyId: string;
+  periodStart: ISODate;
+  periodEnd: ISODate;
+  perUnitAmount: number;
+  targetQty: number | null;
+  /** Activations within this policy's window AND the report window. Used as the earning qty. */
+  eligibleQty: number;
+  earned: number;
+  met: boolean;
+}
+
 export interface IncentiveReportRow {
   modelId: string;
   modelName: string;
@@ -127,6 +150,10 @@ export interface IncentiveReportRow {
   /** Effective qty used for stock-in calculation: max(0, regular − interIdOut). */
   effectiveStockInQty: number;
   stockInEarned: number;
+  /** Per-policy breakdown; one entry per overlapping stock-in policy. */
+  stockInLedger: StockInPolicyLedger[];
+  /** Per-policy breakdown; one entry per overlapping activation-incentive policy. */
+  activationIncentiveLedger: ActivationIncentivePolicyLedger[];
 
   total: number;
 }
