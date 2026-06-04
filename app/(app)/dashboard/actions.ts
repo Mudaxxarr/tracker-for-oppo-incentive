@@ -5,8 +5,8 @@ import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { isAnyAuthenticated } from "@/lib/auth";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
-import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
-import { sumRebatesForPeriod } from "@/lib/db/queries/rebates";
+import { getCrCaughtLoss, listCrCaughtForPeriod } from "@/lib/db/queries/cr-caught";
+import { sumRebatesForPeriod, listRebatesForDealerInPeriod } from "@/lib/db/queries/rebates";
 import { getConstants } from "@/lib/settings";
 import type { IncentiveReport } from "@/lib/incentive-engine/types";
 
@@ -46,11 +46,28 @@ export async function getModelSalesAction(
   return rows.map((r) => ({ ...r, qty: Number(r.qty) }));
 }
 
+export interface RebateDetailRow {
+  modelName: string;
+  eligibleQty: number;
+  rebatePerUnit: number;
+}
+
+// Defined here (not re-exported from server-only query file) so the client can import it safely
+export interface CrCaughtExportRow {
+  modelName: string;
+  quantity: number;
+  caughtDate: string;
+  dealerPriceSnapshot: number;
+  fineAmount: number;
+}
+
 export interface DashboardPeriodResult {
   report: IncentiveReport;
   modelSales: ModelSaleRow[];
-  crLoss: { lostIncentive: number; totalUnits: number };
+  crLoss: { lostIncentive: number; totalUnits: number; totalFines: number; priceUnitSum: number };
   rebateTotal: number;
+  rebateRows: RebateDetailRow[];
+  crCaughtRows: CrCaughtExportRow[];
 }
 
 export async function getDashboardPeriodAction(
@@ -61,11 +78,18 @@ export async function getDashboardPeriodAction(
   const dealerId = await getActiveDealerId();
   if (!dealerId) return null;
   const constants = await getConstants();
-  const [report, modelSales, crLoss, rebateTotal] = await Promise.all([
+  const [report, modelSales, crLoss, rebateTotal, rebateRowsFull, crCaughtRows] = await Promise.all([
     buildIncentiveReport({ dealerId, periodStart: from, periodEnd: to }),
     getModelSalesAction(from, to),
     getCrCaughtLoss(OWNER_TENANT_ID, dealerId, from, to, constants.basePercent),
     sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, from, to),
+    listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, from, to),
+    listCrCaughtForPeriod(OWNER_TENANT_ID, dealerId, from, to),
   ]);
-  return { report, modelSales, crLoss, rebateTotal };
+  const rebateRows: RebateDetailRow[] = rebateRowsFull.map((r) => ({
+    modelName: r.modelName,
+    eligibleQty: r.eligibleQty,
+    rebatePerUnit: r.rebatePerUnit,
+  }));
+  return { report, modelSales, crLoss, rebateTotal, rebateRows, crCaughtRows };
 }
