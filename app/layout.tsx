@@ -53,10 +53,7 @@ export default function RootLayout({
       <body suppressHydrationWarning className="min-h-full bg-background text-foreground">
         <Providers>{children}</Providers>
         <SwRegister />
-      {/* impeccable-live-start */}
-<script src="http://localhost:8400/live.js"></script>
-{/* impeccable-live-end */}
-</body>
+      </body>
     </html>
   );
 }

@@ -85,8 +85,8 @@ export async function createActivationAction(
     if (qty === 1) {
       let stockError: string | null = null;
       let singleResult: { id: string; pricedAt: number; isCrossRegion: boolean } | undefined;
-      await db.transaction(async () => {
-        const stock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate);
+      await db.transaction(async (tx) => {
+        const stock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate, tx);
         if (stock < 1) {
           const m = await getModelById(data.modelId);
           stockError = `Only ${stock} ${m?.name ?? "unit(s)"} available from ${data.activationDate} onward — cannot activate 1`;
@@ -100,7 +100,7 @@ export async function createActivationAction(
           imei: data.imei ? data.imei : null,
           purchaseId: data.purchaseId || null,
           isCrossRegion: isCR,
-        });
+        }, tx);
       });
       if (stockError) return { error: stockError };
       if (!singleResult) return { error: "Failed to create activation" };
@@ -134,8 +134,8 @@ export async function createActivationAction(
     }
     let inserted = 0;
     let bulkStockError: string | null = null;
-    await db.transaction(async () => {
-      const stock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate);
+    await db.transaction(async (tx) => {
+      const stock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate, tx);
       if (qty > stock) {
         const m = await getModelById(data.modelId);
         bulkStockError = `Only ${stock} ${m?.name ?? "unit(s)"} available from ${data.activationDate} onward — cannot activate ${qty}`;
@@ -151,7 +151,7 @@ export async function createActivationAction(
           purchaseId: null,
           isCrossRegion: isCR,
           dealerPriceOverride: price.dealerPrice,
-        });
+        }, tx);
         inserted += 1;
       }
     });
@@ -247,9 +247,9 @@ export async function bulkCreateActivationsByDateAction(
   let totalValue = 0;
 
   try {
-    await db.transaction(async () => {
+    await db.transaction(async (tx) => {
       for (const [modelId, r] of merged) {
-        const stock = await getMinForwardStock(tenantId, dealerId, modelId, parsed.data.activationDate);
+        const stock = await getMinForwardStock(tenantId, dealerId, modelId, parsed.data.activationDate, tx);
         const model = await getModelById(modelId);
         if (r.quantity > stock) {
           throw new Error(
@@ -282,7 +282,7 @@ export async function bulkCreateActivationsByDateAction(
             purchaseId: null,
             isCrossRegion: row.isCrossRegion,
             dealerPriceOverride: row.price,
-          });
+          }, tx);
           inserted += 1;
           totalValue += row.price;
         }

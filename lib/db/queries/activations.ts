@@ -5,11 +5,13 @@ import { randomUUID } from "node:crypto";
 import { getPriceOnDate } from "./models";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /** After any activation create/delete, recompute isCrossRegion for all activations of this model/dealer.
  *  FIFO rule: regular stock consumed first; the most-recent excess activations are auto-tagged CR. */
-async function recalculateCrTagsForModel(tenantId: string, dealerId: string, modelId: string): Promise<void> {
+async function recalculateCrTagsForModel(tenantId: string, dealerId: string, modelId: string, executor: Executor = db): Promise<void> {
   // Regular purchased qty (excludes CR transfers)
-  const [{ regularQty }] = await db
+  const [{ regularQty }] = await executor
     .select({ regularQty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
     .from(schema.purchases)
     .where(
@@ -24,7 +26,7 @@ async function recalculateCrTagsForModel(tenantId: string, dealerId: string, mod
   const regular = Number(regularQty);
 
   // All activations for this model, oldest first
-  const all = await db
+  const all = await executor
     .select({ id: schema.activations.id })
     .from(schema.activations)
     .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId)))
@@ -36,13 +38,13 @@ async function recalculateCrTagsForModel(tenantId: string, dealerId: string, mod
   const crIds = all.slice(regular).map((r) => r.id);
 
   if (regularIds.length > 0) {
-    await db
+    await executor
       .update(schema.activations)
       .set({ isCrossRegion: false })
       .where(sql`${schema.activations.id} IN (${sql.join(regularIds.map((id) => sql`${id}`), sql`, `)})`);
   }
   if (crIds.length > 0) {
-    await db
+    await executor
       .update(schema.activations)
       .set({ isCrossRegion: true })
       .where(sql`${schema.activations.id} IN (${sql.join(crIds.map((id) => sql`${id}`), sql`, `)})`);
@@ -93,16 +95,19 @@ export async function listActivations(filters: {
   return rows;
 }
 
-export async function createActivation(input: {
-  tenantId: string;
-  dealerId: string;
-  modelId: string;
-  activationDate: string;
-  imei: string | null;
-  purchaseId: string | null;
-  isCrossRegion: boolean;
-  dealerPriceOverride?: number;
-}): Promise<{ id: string; pricedAt: number; isCrossRegion: boolean }> {
+export async function createActivation(
+  input: {
+    tenantId: string;
+    dealerId: string;
+    modelId: string;
+    activationDate: string;
+    imei: string | null;
+    purchaseId: string | null;
+    isCrossRegion: boolean;
+    dealerPriceOverride?: number;
+  },
+  executor: Executor = db,
+): Promise<{ id: string; pricedAt: number; isCrossRegion: boolean }> {
   const id = randomUUID();
   let snapshot = input.dealerPriceOverride;
   if (snapshot == null) {
@@ -112,14 +117,14 @@ export async function createActivation(input: {
   }
   let isCrossRegion = input.isCrossRegion;
   if (input.purchaseId) {
-    const linked = await db
+    const linked = await executor
       .select()
       .from(schema.purchases)
       .where(and(eq(schema.purchases.id, input.purchaseId), eq(schema.purchases.tenantId, input.tenantId)))
       .limit(1);
     if (linked.length > 0 && linked[0].source === "CROSS_REGION_TRANSFER_IN") isCrossRegion = true;
   }
-  await db.insert(schema.activations).values({
+  await executor.insert(schema.activations).values({
     id,
     tenantId: input.tenantId,
     dealerId: input.dealerId,
@@ -132,10 +137,10 @@ export async function createActivation(input: {
   });
   // Auto-correct CR tags unless the caller already resolved via purchase link
   if (!input.purchaseId) {
-    await recalculateCrTagsForModel(input.tenantId, input.dealerId, input.modelId);
+    await recalculateCrTagsForModel(input.tenantId, input.dealerId, input.modelId, executor);
   }
   // Re-read the final isCrossRegion value after recalculation
-  const saved = await db.select({ isCrossRegion: schema.activations.isCrossRegion }).from(schema.activations).where(eq(schema.activations.id, id)).limit(1);
+  const saved = await executor.select({ isCrossRegion: schema.activations.isCrossRegion }).from(schema.activations).where(eq(schema.activations.id, id)).limit(1);
   const finalCr = saved[0]?.isCrossRegion ?? isCrossRegion;
   return { id, pricedAt: snapshot, isCrossRegion: finalCr };
 }

@@ -101,15 +101,19 @@ export async function updateCrossRegionStatus(input: {
     const effectiveDate = transfer.reportedDate;
     const price = await getPriceOnDate(input.priceTenantId ?? input.tenantId, transfer.modelId, effectiveDate);
     if (!price) return { ok: false, message: "No dealer price defined for this model" };
-    await db.insert(schema.purchases).values({
-      id: randomUUID(), tenantId: input.tenantId, dealerId: transfer.dealerId,
-      modelId: transfer.modelId, quantity: transfer.quantity,
-      unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
-      purchaseDate: effectiveDate, source: PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN,
-      referenceNote: `Cross-region: ${transfer.sourceRegionNote ?? "—"}`,
-      crossRegionTransferId: transfer.id,
+    // Wrap purchase creation + status update atomically so a crash between the two
+    // writes cannot leave stock credited with the transfer still showing pending.
+    await db.transaction(async (tx) => {
+      await tx.insert(schema.purchases).values({
+        id: randomUUID(), tenantId: input.tenantId, dealerId: transfer.dealerId,
+        modelId: transfer.modelId, quantity: transfer.quantity,
+        unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
+        purchaseDate: effectiveDate, source: PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN,
+        referenceNote: `Cross-region: ${transfer.sourceRegionNote ?? "—"}`,
+        crossRegionTransferId: transfer.id,
+      });
+      await tx.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: effectiveDate }).where(eq(schema.crossRegionTransfers.id, transfer.id));
     });
-    await db.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: effectiveDate }).where(eq(schema.crossRegionTransfers.id, transfer.id));
     return { ok: true, created: transfer.quantity, modelId: transfer.modelId, dealerId: transfer.dealerId, effectiveDate };
   }
 
