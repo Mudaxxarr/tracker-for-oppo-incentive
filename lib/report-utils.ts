@@ -74,29 +74,36 @@ export async function buildPolicyAchievements(
         )),
     ]);
 
+  // Clamp policy date display to the report window — a multi-month policy should
+  // only show the portion relevant to the selected period in PDFs/UI.
+  const cs = (d: string) => d < periodStart ? periodStart : d;
+  const ce = (d: string) => d > periodEnd ? periodEnd : d;
+
   const entries: PolicyAchievementEntry[] = [];
 
   for (const p of targetBonusPolicies) {
     const actualQty = report.targetBonus.policyId === p.id ? report.targetBonus.actualQty : 0;
     const eligible = report.targetBonus.policyId === p.id ? report.targetBonus.eligible : false;
     const earned = eligible ? report.totals.bonusPercentEarned : 0;
-    entries.push({ type: "target-bonus", modelName: null, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetActivationsQty, perUnitAmount: p.bonusPercent, actualQty, earned, eligible });
+    entries.push({ type: "target-bonus", modelName: null, periodStart: cs(p.periodStart), periodEnd: ce(p.periodEnd), targetQty: p.targetActivationsQty, perUnitAmount: p.bonusPercent, actualQty, earned, eligible });
   }
 
   for (const p of stockInPolicies) {
     const row = report.rows.find((r) => r.modelId === p.modelId);
-    const actualQty = row?.effectiveStockInQty ?? 0;
-    const eligible = p.minQty == null || actualQty >= p.minQty;
-    const earned = row?.stockInEarned ?? 0;
-    entries.push({ type: "stock-in", modelName: p.modelName, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.minQty, perUnitAmount: p.perUnitAmount, actualQty, earned, eligible });
+    const ledger = row?.stockInLedger?.find((l) => l.policyId === p.id);
+    const eligibleQty = ledger?.eligibleQty ?? 0;
+    const eligible = ledger?.met ?? false;
+    const earned = ledger?.earned ?? 0;
+    entries.push({ type: "stock-in", modelName: p.modelName, periodStart: cs(p.periodStart), periodEnd: ce(p.periodEnd), targetQty: p.minQty, perUnitAmount: p.perUnitAmount, actualQty: eligibleQty, eligibleQty, earned, eligible });
   }
 
   for (const p of activationIncentivePolicies) {
     const row = report.rows.find((r) => r.modelId === p.modelId);
-    const actualQty = row?.qtyActivated ?? 0;
-    const eligible = p.targetQty == null || actualQty >= p.targetQty;
-    const earned = row?.activationIncentiveEarned ?? 0;
-    entries.push({ type: "activation-incentive", modelName: p.modelName, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetQty, perUnitAmount: p.perUnitAmount, actualQty, earned, eligible });
+    const ledger = row?.activationIncentiveLedger?.find((l) => l.policyId === p.id);
+    const eligibleQty = ledger?.eligibleQty ?? 0;
+    const eligible = ledger?.met ?? false;
+    const earned = ledger?.earned ?? 0;
+    entries.push({ type: "activation-incentive", modelName: p.modelName, periodStart: cs(p.periodStart), periodEnd: ce(p.periodEnd), targetQty: p.targetQty, perUnitAmount: p.perUnitAmount, actualQty: eligibleQty, eligibleQty, earned, eligible });
   }
 
   for (const p of dealerIncentivePolicies) {
@@ -104,7 +111,7 @@ export async function buildPolicyAchievements(
     const actualQty = outcome?.actualTotal ?? 0;
     const eligible = outcome?.eligible ?? false;
     const earned = outcome?.earned ?? 0;
-    entries.push({ type: "dealer-incentive", modelName: p.modelName ?? null, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetTotalActivations, perUnitAmount: p.perUnitAmount, actualQty, earned, eligible });
+    entries.push({ type: "dealer-incentive", modelName: p.modelName ?? null, periodStart: cs(p.periodStart), periodEnd: ce(p.periodEnd), targetQty: p.targetTotalActivations, perUnitAmount: p.perUnitAmount, actualQty, earned, eligible });
   }
 
   return entries;

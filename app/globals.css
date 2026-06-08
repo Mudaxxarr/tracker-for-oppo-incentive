@@ -11,6 +11,24 @@
   animation: page-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(0.6); }
+}
+.live-dot { animation: pulse-live 1.8s ease-in-out infinite; }
+
+/* ── Breathing progress bar animations ─────────────────────────────────────── */
+@keyframes bar-breathe {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.12; }
+}
+@keyframes bar-shimmer {
+  0% { transform: translateX(-200%) skewX(-20deg); }
+  100% { transform: translateX(600%) skewX(-20deg); }
+}
+.bar-glow { animation: bar-breathe 2.8s ease-in-out infinite; }
+.bar-shimmer { animation: bar-shimmer 4.5s ease-in-out infinite; }
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -58,18 +76,18 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --background: oklch(0.984 0.003 247.858);   /* slate-50  #F8FAFC */
+  --foreground: oklch(0.129 0.042 264.695);   /* slate-900 #0F172A */
+  --card: oklch(1 0 0);                        /* white     #FFFFFF */
+  --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.129 0.042 264.695);
+  --primary: oklch(0.637 0.145 162.48);       /* emerald-600 #059669 */
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.554 0.046 257.417); /* slate-500 #64748B */
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);

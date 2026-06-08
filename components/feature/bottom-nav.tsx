@@ -23,20 +23,24 @@ export function BottomNav({ staffRole }: { staffRole?: StaffRole | null }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 grid border-t bg-background/95 backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid border-t border-slate-200 bg-white/95 backdrop-blur md:hidden"
       style={{ gridTemplateColumns: `repeat(${primaryItems.length + 1}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {primaryItems.map((item) => {
         const Icon = item.icon;
+        const active = isActive(item.href);
         return (
           <Link
             key={item.href}
             href={item.href}
             className={cn(
-              "flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
-              isActive(item.href) ? "text-primary" : "text-muted-foreground"
+              "relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
+              active ? "text-primary" : "text-slate-400"
             )}
           >
+            {active && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary" />
+            )}
             <Icon className="size-5" />
             <span>{item.label}</span>
           </Link>
@@ -45,7 +49,7 @@ export function BottomNav({ staffRole }: { staffRole?: StaffRole | null }) {
       <Sheet>
         <SheetTrigger
           render={
-            <button className="flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-muted-foreground" />
+            <button className="relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-slate-400" />
           }
         >
           <Menu className="size-5" />
@@ -53,7 +57,7 @@ export function BottomNav({ staffRole }: { staffRole?: StaffRole | null }) {
         </SheetTrigger>
         <SheetContent side="bottom" className="rounded-t-xl">
           <SheetHeader>
-            <SheetTitle>More</SheetTitle>
+            <SheetTitle className="text-sm font-semibold tracking-tight">More</SheetTitle>
           </SheetHeader>
           <div className="grid grid-cols-3 gap-3 p-4">
             {secondaryItems.map((item) => {
@@ -62,7 +66,7 @@ export function BottomNav({ staffRole }: { staffRole?: StaffRole | null }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex flex-col items-center justify-center gap-1 rounded-lg border bg-card px-3 py-4 text-xs font-medium hover:bg-muted"
+                  className="flex flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-4 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   <Icon className="size-5" />
                   <span>{item.label}</span>

@@ -41,7 +41,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { formatPKR } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { DashboardMinimalView } from "@/components/feature/dashboard-minimal";
 import type { IncentiveReport } from "@/lib/incentive-engine/types";
 import { getDashboardPeriodAction, type ModelSaleRow, type RebateDetailRow, type CrCaughtExportRow } from "./actions";
 import {
@@ -116,14 +118,14 @@ function periodLabel(from: string, to: string): string {
 }
 
 const LAYOUTS: { id: Layout; icon: typeof LayoutGrid; label: string }[] = [
-  { id: "cards", icon: LayoutGrid, label: "Cards" },
-  { id: "charts", icon: BarChart2, label: "Charts" },
-  { id: "overview", icon: List, label: "Overview" },
-  { id: "compact", icon: AlignJustify, label: "Compact" },
-  { id: "financial", icon: FileText, label: "Financial" },
+  { id: "cards", icon: LayoutGrid, label: "Summary" },
+  { id: "charts", icon: BarChart2, label: "Trends" },
+  { id: "overview", icon: List, label: "All Data" },
+  { id: "compact", icon: AlignJustify, label: "Quick View" },
+  { id: "financial", icon: FileText, label: "Financials" },
   { id: "performance", icon: Zap, label: "Performance" },
-  { id: "timeline", icon: Calendar, label: "Timeline" },
-  { id: "executive", icon: Briefcase, label: "Executive" },
+  { id: "timeline", icon: Calendar, label: "History" },
+  { id: "executive", icon: Briefcase, label: "Report" },
 ];
 
 /** Lightweight model-sales chart with date filtering — used by the team dashboard. */
@@ -165,24 +167,23 @@ export function DashboardAnalytics({
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Smartphone className="size-4" />
-            Model-wise Sales
-          </CardTitle>
+          <CardTitle className="text-base">Model-wise Sales</CardTitle>
           <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-xl bg-slate-100 p-1">
             {(["month", "last-month", "week", "today", "custom"] as Preset[]).map((p) => (
               <button
                 key={p}
                 onClick={() => applyPreset(p)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-lg px-3 py-1 text-xs font-medium transition-all duration-200 ${
                   preset === p
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                 }`}
               >
                 {p === "month" ? "This Month" : p === "last-month" ? "Last Month" : p === "week" ? "This Week" : p === "today" ? "Today" : "Custom"}
               </button>
             ))}
+          </div>
             {preset === "custom" && (
               <div className="flex items-center gap-1">
                 <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-7 w-32 text-xs" />
@@ -331,9 +332,7 @@ function PolicyProgressCard({ report, rebateTotal }: { report: IncentiveReport; 
 
   return (
     <>
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-5">
-        <Award className="size-3.5" /> Policy Tracker
-      </p>
+      <p className="text-xs font-medium text-slate-400 tracking-tight mb-5">Policy Tracker</p>
       <div className="flex-1 space-y-4">
         {sorted.length === 0 ? (
           <div className="text-xs text-slate-500 text-center py-4">No active policies this period.</div>
@@ -347,7 +346,7 @@ function PolicyProgressCard({ report, rebateTotal }: { report: IncentiveReport; 
               <div key={p.id} className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[11px] font-semibold text-slate-800 truncate">{p.label}</p>
-                  <span className={`shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${badge.cls}`}>
+                  <span className={`shrink-0 text-[10px] font-semibold tracking-tight px-1.5 py-0.5 rounded-full ${badge.cls}`}>
                     {badge.text}
                   </span>
                 </div>
@@ -405,6 +404,7 @@ export function DashboardClient({
   const [rebateRows, setRebateRows] = useState<RebateDetailRow[]>(initialRebateRows);
   const [crCaughtRows, setCrCaughtRows] = useState<CrCaughtExportRow[]>(initialCrCaughtRows);
   const [pending, startTransition] = useTransition();
+  const [minimalView, setMinimalView] = useState(false);
 
   const load = (f: string, t: string) => {
     startTransition(async () => {
@@ -602,10 +602,7 @@ export function DashboardClient({
   const stockSection = (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Package className="size-4" />
-          Current Stock
-        </CardTitle>
+        <CardTitle className="text-base">Current Stock</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         {stock.length === 0 ? (
@@ -759,10 +756,10 @@ export function DashboardClient({
       if (oldest && Math.floor((today.getTime() - new Date(oldest).getTime()) / msPerDay) > 30) agedUnits += s.quantity;
     }
 
-    const CARD ="bg-white rounded-2xl border border-slate-100/80 shadow-[0_4px_32px_-6px_rgba(0,0,0,0.10),0_2px_8px_-2px_rgba(0,0,0,0.05)] ring-1 ring-slate-900/[0.04] p-6 flex flex-col";
+    const CARD = "bg-white rounded-2xl border border-slate-200 p-6 flex flex-col";
 
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans antialiased text-slate-900">
+      <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 items-start">
 
           {/* LEFT: Policy Tracker — hidden on mobile, sticky left column on desktop */}
@@ -771,7 +768,7 @@ export function DashboardClient({
               <PolicyProgressCard report={report} rebateTotal={rebateTotal} />
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Net Receivable</span>
+                  <span className="text-xs font-medium text-slate-400 tracking-tight">Net Receivable</span>
                   <span className="text-sm font-black tabular-nums font-mono text-slate-900">{formatPKR(netReceivable)}</span>
                 </div>
               </div>
@@ -796,7 +793,7 @@ export function DashboardClient({
           </div>
           <div className="relative z-10 flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-6">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400/80 flex items-center gap-2">
+              <p className="text-xs font-medium text-emerald-400/70 tracking-tight flex items-center gap-2">
                 <Wallet className="size-3.5" /> Net Receivable from OPPO
               </p>
               <span className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold tabular-nums ${
@@ -816,7 +813,7 @@ export function DashboardClient({
                     </div>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="live-dot size-1.5 rounded-full bg-emerald-400 shrink-0" />
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">Live</span>
+                      <span className="text-[10px] font-medium tracking-tight text-emerald-400">Live</span>
                       <span className="text-slate-600">·</span>
                       <span className="text-xs text-slate-400">{label}</span>
                     </div>
@@ -833,7 +830,6 @@ export function DashboardClient({
                     ].filter((s) => s.value !== 0).map((s) => {
                       const totalBase = report.totals.grandTotal + rebateTotal;
                       const pct = totalBase > 0 ? (Math.abs(s.value) / totalBase) * 100 : 0;
-                      // D4 — drill-down rows per stream
                       type DrillRow = { model: string; qty: number; perUnit: number };
                       let drillRows: DrillRow[] = [];
                       if (s.label.startsWith("Base")) {
@@ -874,7 +870,7 @@ export function DashboardClient({
                                   <DialogTitle className="text-sm">{s.label}</DialogTitle>
                                 </DialogHeader>
                                 <div className="mt-2 divide-y rounded-xl border border-slate-100 text-xs">
-                                  <div className="grid grid-cols-3 gap-2 px-3 py-2 bg-slate-50 font-semibold text-slate-500 uppercase tracking-wide text-[10px] rounded-t-xl">
+                                  <div className="grid grid-cols-3 gap-2 px-3 py-2 bg-slate-50 font-medium text-slate-400 tracking-tight text-[11px] rounded-t-xl">
                                     <span>Model</span><span className="text-center">Qty</span><span className="text-right">Per Unit</span>
                                   </div>
                                   {drillRows.map((dr, j) => (
@@ -945,9 +941,7 @@ export function DashboardClient({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="col-span-1">
           <div className={`${CARD} h-full`}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-6">
-              <Smartphone className="size-3.5" /> Activation Performance
-            </p>
+            <p className="text-xs font-medium text-slate-400 tracking-tight mb-6">Activation Performance</p>
             <div className="flex-1 space-y-4">
               <div>
                 <div className="text-4xl font-bold tracking-tight text-slate-900">{report.totalActivations}</div>
@@ -986,9 +980,7 @@ export function DashboardClient({
           <div className="col-span-1">
           <div className={`${CARD} h-full`}>
             <div className="flex items-center justify-between mb-6">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                <Package className="size-3.5" /> Stock Intelligence
-              </p>
+              <p className="text-xs font-medium text-slate-400 tracking-tight">Stock Intelligence</p>
               {agedUnits > 0 && (
                 <span className="rounded-lg bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200">
                   ⚠️ {agedUnits} &gt;30d
@@ -1030,9 +1022,7 @@ export function DashboardClient({
 
           <div className="col-span-1">
           <div className={`${CARD} h-full ${tb.eligible ? "ring-1 ring-emerald-200" : ""}`}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-6">
-              <Award className="size-3.5" /> Target Bonus
-            </p>
+            <p className="text-xs font-medium text-slate-400 tracking-tight mb-6">Target Bonus</p>
             <div className="flex-1 space-y-4">
               <div>
                 <div className={`text-4xl font-bold tracking-tight ${tb.eligible ? "text-emerald-600" : "text-slate-900"}`}>
@@ -1069,9 +1059,7 @@ export function DashboardClient({
           {/* CR Risk Monitor — moved down */}
           <div className="col-span-1">
           <div className={`${CARD} h-full ${totalActualFines > 0 ? "ring-1 ring-rose-200" : crLoss.totalUnits > 0 ? "ring-1 ring-amber-200" : ""}`}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
-              <ShieldAlert className="size-3.5" /> CR Monitor
-            </p>
+            <p className="text-xs font-medium text-slate-400 tracking-tight mb-3">CR Monitor</p>
             <div className="flex-1 space-y-2.5">
               {/* Units caught pill */}
               {crLoss.totalUnits > 0 && (
@@ -1091,7 +1079,7 @@ export function DashboardClient({
               {totalActualFines > 0 && (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-rose-700">Fines Deducted</span>
+                    <span className="text-[11px] font-semibold tracking-tight text-rose-700">Fines Deducted</span>
                     <span className="text-sm font-black text-rose-700 font-mono tabular-nums">{formatPKR(totalActualFines)}</span>
                   </div>
                   {crLoss.totalFines > 0 && (
@@ -1107,7 +1095,7 @@ export function DashboardClient({
               {lostMargin > 0 && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Opportunity Cost</span>
+                    <span className="text-[11px] font-semibold tracking-tight text-amber-700">Opportunity Cost</span>
                     <span className="text-sm font-black text-amber-700 font-mono tabular-nums">{formatPKR(lostMargin)}</span>
                   </div>
                   <p className="text-[9px] text-amber-600/80 leading-tight">Margin lost on {crLoss.totalUnits} caught unit{crLoss.totalUnits !== 1 ? "s" : ""} ({report.baseIncentivePercent + tb.bonusPercent}% rate). Not deducted from Net Receivable.</p>
@@ -1131,9 +1119,7 @@ export function DashboardClient({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="col-span-1">
           <div className={`${CARD} h-full`}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-6">
-              <List className="size-3.5" /> Model Leaderboard
-            </p>
+            <p className="text-xs font-medium text-slate-400 tracking-tight mb-6">Model Leaderboard</p>
             <div className="flex-1 space-y-3">
               {leaderRows.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-xs text-slate-500 py-6">No activations this period</div>
@@ -1159,28 +1145,26 @@ export function DashboardClient({
           {/* Inventory Worth — new card */}
           <div className="col-span-1">
           <div className={`${CARD} h-full`}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-6">
-              <Package className="size-3.5" /> Inventory Worth
-            </p>
+            <p className="text-xs font-medium text-slate-400 tracking-tight mb-6">Inventory Worth</p>
             <div className="flex-1 space-y-4">
               <div>
-                <div className="text-3xl font-black tracking-tight text-slate-900 font-mono">{formatPKR(stockValue)}</div>
+                <div className="text-3xl font-bold tracking-tight text-slate-900 font-mono">{formatPKR(stockValue)}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{totalStock} units · unactivated stock</div>
               </div>
               <div className="space-y-2.5">
                 <div className="rounded-xl bg-emerald-50 p-3.5 flex items-center justify-between ring-1 ring-emerald-100">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">4% Rate</div>
+                    <div className="text-[11px] font-semibold tracking-tight text-emerald-700">4% Rate</div>
                     <div className="text-[10px] text-emerald-600/70 mt-0.5">Base incentive potential</div>
                   </div>
-                  <div className="text-xl font-black text-emerald-700 font-mono">{formatPKR(Math.round(stockValue * 0.04))}</div>
+                  <div className="text-xl font-bold text-emerald-700 font-mono">{formatPKR(Math.round(stockValue * 0.04))}</div>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-3.5 flex items-center justify-between ring-1 ring-slate-100">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-700">1% Rate</div>
+                    <div className="text-[11px] font-semibold tracking-tight text-slate-700">1% Rate</div>
                     <div className="text-[10px] text-slate-500 mt-0.5">Dealer incentive potential</div>
                   </div>
-                  <div className="text-xl font-black text-slate-900 font-mono">{formatPKR(Math.round(stockValue * 0.01))}</div>
+                  <div className="text-xl font-bold text-slate-900 font-mono">{formatPKR(Math.round(stockValue * 0.01))}</div>
                 </div>
               </div>
               <p className="text-[9px] text-slate-400 text-center">Potential earnings if all {totalStock} units are activated</p>
@@ -1348,7 +1332,7 @@ export function DashboardClient({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+            <CardTitle className="text-xs font-medium text-muted-foreground/70 tracking-tight">
               Incentive Models
             </CardTitle>
           </CardHeader>
@@ -1378,7 +1362,7 @@ export function DashboardClient({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+            <CardTitle className="text-xs font-medium text-muted-foreground/70 tracking-tight">
               Current Stock
             </CardTitle>
           </CardHeader>
@@ -1419,13 +1403,11 @@ export function DashboardClient({
           {/* Income statement */}
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FileText className="size-4" /> Income Statement — {label}
-              </CardTitle>
+              <CardTitle className="text-sm">Income Statement — {label}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="px-4 py-2 bg-muted/40 border-b">
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Gross Earnings</div>
+              <div className="px-4 py-2 bg-slate-50 border-b">
+                <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Gross Earnings</div>
               </div>
               {streams.map((s) => (
                 <div key={s.label} className="flex items-center justify-between px-6 py-2.5 border-b last:border-b-0">
@@ -1436,14 +1418,14 @@ export function DashboardClient({
                   <div className="text-sm font-semibold tabular-nums">{formatPKR(s.amount)}</div>
                 </div>
               ))}
-              <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-t-2">
+              <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t-2">
                 <div className="font-semibold text-sm">Gross Total</div>
                 <div className="font-bold tabular-nums">{formatPKR(report.totals.grandTotal)}</div>
               </div>
               {rebateTotal > 0 && (
                 <>
                   <div className="px-4 py-2 bg-cyan-50/60 dark:bg-cyan-950/20 border-t border-b border-cyan-200 dark:border-cyan-800">
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-cyan-700 dark:text-cyan-400">Receivables (Owed by OPPO)</div>
+                    <div className="text-xs font-medium tracking-tight text-cyan-700 dark:text-cyan-400">Receivables (Owed by OPPO)</div>
                   </div>
                   <div className="flex items-center justify-between px-6 py-2.5 border-b bg-cyan-50/40 dark:bg-cyan-950/10">
                     <div>
@@ -1458,8 +1440,8 @@ export function DashboardClient({
               )}
               {totalActualFines > 0 && (
                 <>
-                  <div className="px-4 py-2 bg-muted/40 border-t border-b">
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Deductions (Cash Fines)</div>
+                  <div className="px-4 py-2 bg-slate-50 border-t border-b">
+                    <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Deductions (Cash Fines)</div>
                   </div>
                   {crLoss.totalFines > 0 && (
                     <div className="flex items-center justify-between px-6 py-2.5 border-b">
@@ -1475,7 +1457,7 @@ export function DashboardClient({
               {lostMargin > 0 && (
                 <>
                   <div className="px-4 py-2 bg-amber-50/60 dark:bg-amber-950/20 border-t border-b border-amber-200">
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">Opportunity Cost (Informational)</div>
+                    <div className="text-xs font-medium tracking-tight text-amber-700">Opportunity Cost (informational)</div>
                   </div>
                   <div className="flex items-center justify-between px-6 py-2.5 border-b bg-amber-50/30">
                     <div>
@@ -1487,7 +1469,7 @@ export function DashboardClient({
                 </>
               )}
               {(rebateTotal > 0 || totalActualFines > 0) && (
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-t-2">
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t-2">
                   <div className="font-semibold text-sm">Net Receivable from OPPO</div>
                   <div className="font-bold tabular-nums text-primary">{formatPKR(netTotal)}</div>
                 </div>
@@ -1499,7 +1481,7 @@ export function DashboardClient({
           <div className="space-y-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs text-muted-foreground uppercase tracking-widest">Target Progress</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground/70 tracking-tight">Target Progress</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="text-center">
@@ -1523,7 +1505,7 @@ export function DashboardClient({
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs text-muted-foreground uppercase tracking-widest">Activations</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground/70 tracking-tight">Activations</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-4xl font-bold tabular-nums text-center">{report.totalActivations}</div>
@@ -1544,7 +1526,7 @@ export function DashboardClient({
               <CardTitle className="text-sm">Model Earnings Detail</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-muted/30 border-b text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-slate-50 border-b text-xs font-medium text-muted-foreground/70 tracking-tight">
                 <div className="col-span-2">Model</div>
                 <div className="text-center">Activated</div>
                 <div className="text-center">Stocked</div>
@@ -1577,14 +1559,14 @@ export function DashboardClient({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
             <CardContent className="p-6">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Grand Total Incentive</div>
+              <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Grand Total Incentive</div>
               <div className="text-5xl font-black tabular-nums text-primary mt-2 leading-none">{formatPKR(report.totals.grandTotal)}</div>
               <div className="text-xs text-muted-foreground mt-2">{label}</div>
             </CardContent>
           </Card>
           <Card className="relative overflow-hidden">
             <CardContent className="p-6">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Total Activations</div>
+              <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Total Activations</div>
               <div className="text-5xl font-black tabular-nums mt-2 leading-none">{report.totalActivations}</div>
               <div className="text-xs text-muted-foreground mt-2">
                 {report.totalActivationsCrossRegion} cross-region · {report.totalActivations - report.totalActivationsCrossRegion} regular
@@ -1593,7 +1575,7 @@ export function DashboardClient({
           </Card>
           <Card className={`relative overflow-hidden ${tb.eligible ? "border-green-500/40" : ""}`}>
             <CardContent className="p-6">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Target Bonus Progress</div>
+              <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Target Bonus Progress</div>
               <div className={`text-5xl font-black tabular-nums mt-2 leading-none ${tb.eligible ? "text-green-600 dark:text-green-400" : ""}`}>
                 {tb.targetQty != null ? `${progPct.toFixed(0)}%` : "—"}
               </div>
@@ -1605,7 +1587,7 @@ export function DashboardClient({
           </Card>
           <Card>
             <CardContent className="p-6">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Stock Portfolio Value</div>
+              <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Stock Portfolio Value</div>
               <div className="text-3xl font-black tabular-nums mt-2 leading-none">{formatPKR(totalStockVal)}</div>
               <div className="text-xs text-muted-foreground mt-2">{totalStockUnits} units · {stock.length} model(s)</div>
             </CardContent>
@@ -1616,9 +1598,7 @@ export function DashboardClient({
         {modelSales.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Smartphone className="size-4" /> Activation Performance by Model
-              </CardTitle>
+              <CardTitle className="text-sm">Activation Performance by Model</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {modelSales.slice(0, 8).map((r, i) => {
@@ -1666,15 +1646,15 @@ export function DashboardClient({
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-3">
           <Card className="p-4">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">6-Month Total</div>
+            <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">6-Month Total</div>
             <div className="text-xl font-bold tabular-nums mt-1">{formatPKR(totalEarned)}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Monthly Average</div>
+            <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Monthly Average</div>
             <div className="text-xl font-bold tabular-nums mt-1">{formatPKR(avgMonthly)}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Best Month</div>
+            <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">Best Month</div>
             <div className="text-xl font-bold mt-1">{bestMonthObj.label}</div>
             <div className="text-xs text-muted-foreground">{formatPKR(bestMonthObj.total)}</div>
           </Card>
@@ -1682,9 +1662,7 @@ export function DashboardClient({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Calendar className="size-4" /> Month-by-Month Breakdown
-            </CardTitle>
+            <CardTitle className="text-sm">Month-by-Month Breakdown</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {[...sixMonths].reverse().map((m) => {
@@ -1742,7 +1720,7 @@ export function DashboardClient({
           <CardContent className="p-6 relative z-10">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <div className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">{dealerName}</div>
+                <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">{dealerName}</div>
                 <div className="text-5xl font-black tabular-nums text-primary mt-1 leading-none">
                   {formatPKR(report.totals.grandTotal)}
                 </div>
@@ -1779,7 +1757,7 @@ export function DashboardClient({
               key={k.label}
               className={`p-4 ${k.variant === "danger" ? "border-red-500/30" : k.variant === "rebate" ? "border-cyan-500/30 bg-cyan-50/40 dark:bg-cyan-950/10" : ""}`}
             >
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{k.label}</div>
+              <div className="text-xs font-medium text-muted-foreground/70 tracking-tight">{k.label}</div>
               <div className={`text-xl font-bold tabular-nums mt-1 ${k.variant === "danger" ? "text-red-600 dark:text-red-400" : k.variant === "rebate" ? "text-cyan-700 dark:text-cyan-400" : ""}`}>
                 {k.value}
               </div>
@@ -1855,7 +1833,7 @@ export function DashboardClient({
   }[layout]();
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4 transition-all duration-500", minimalView && "-mx-3 md:-mx-6 -my-4 md:-my-6 px-3 md:px-6 py-4 md:py-6 bg-[#F7F6F3]")}>
       {/* ── Page header ── */}
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
@@ -1873,6 +1851,20 @@ export function DashboardClient({
               </Badge>
             </Link>
           )}
+          <button
+            onClick={() => setMinimalView((v) => !v)}
+            className={cn(
+              "group shrink-0 inline-flex items-center gap-2 rounded-[6px] px-3.5 py-2 text-xs font-semibold transition-all duration-500",
+              minimalView
+                ? "bg-[#111111] text-white hover:bg-[#333333]"
+                : "border border-[#EAEAEA] bg-white text-[#787774] hover:border-[#AAAAAA] hover:text-[#111111]"
+            )}
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="size-3 transition-transform duration-500 group-hover:rotate-45">
+              <path d="M8 0L16 8L8 16L0 8Z" />
+            </svg>
+            {minimalView ? "Standard View" : "Minimal View"}
+          </button>
           <Button variant="outline" size="sm" onClick={downloadCSV} className="gap-1.5">
             <Download className="size-4" />
             Export CSV
@@ -1884,27 +1876,29 @@ export function DashboardClient({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Date presets */}
         <div className="flex flex-wrap items-center gap-2">
-          {(["month", "last-month", "week", "today", "custom"] as Preset[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => applyPreset(p)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                preset === p
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {p === "month"
-                ? "This Month"
-                : p === "last-month"
-                ? "Last Month"
-                : p === "week"
-                ? "This Week"
-                : p === "today"
-                ? "Today"
-                : "Custom"}
-            </button>
-          ))}
+          <div className="inline-flex items-center rounded-xl bg-slate-100 p-1">
+            {(["month", "last-month", "week", "today", "custom"] as Preset[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => applyPreset(p)}
+                className={`rounded-lg px-3 py-1 text-xs font-medium transition-all duration-200 ${
+                  preset === p
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {p === "month"
+                  ? "This Month"
+                  : p === "last-month"
+                  ? "Last Month"
+                  : p === "week"
+                  ? "This Week"
+                  : p === "today"
+                  ? "Today"
+                  : "Custom"}
+              </button>
+            ))}
+          </div>
           {preset === "custom" && (
             <div className="flex items-center gap-1">
               <Input
@@ -1930,30 +1924,42 @@ export function DashboardClient({
           )}
         </div>
 
-        {/* Layout switcher */}
-        <div className="flex items-center gap-0.5 rounded-lg border p-1">
-          {LAYOUTS.map(({ id, icon: Icon, label: lbl }) => (
-            <button
-              key={id}
-              onClick={() => setLayout(id)}
-              title={lbl}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                layout === id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              }`}
-            >
-              <Icon className="size-3.5" />
-              <span className="hidden sm:inline">{lbl}</span>
-            </button>
-          ))}
-        </div>
+        {/* Layout switcher — hidden in minimal view */}
+        {!minimalView && (
+          <select
+            value={layout}
+            onChange={(e) => setLayout(e.target.value as Layout)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+          >
+            {LAYOUTS.map(({ id, label: lbl }) => (
+              <option key={id} value={id}>{lbl}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* ── Dashboard content ── */}
-      <div className={pending ? "opacity-60 pointer-events-none transition-opacity" : "transition-opacity"}>
-        {layoutContent}
-      </div>
+      {minimalView ? (
+        <DashboardMinimalView
+          dealerName={dealerName}
+          label={label}
+          netReceivable={netReceivable}
+          report={report}
+          rebateTotal={rebateTotal}
+          totalActualFines={totalActualFines}
+          lostMargin={lostMargin}
+          crLoss={crLoss}
+          pendingCount={pendingCount}
+          stock={stock}
+          modelSales={modelSales}
+          sixMonths={sixMonths}
+          stockOldestDate={stockOldestDate}
+        />
+      ) : (
+        <div className={pending ? "opacity-60 pointer-events-none transition-opacity" : "transition-opacity"}>
+          {layoutContent}
+        </div>
+      )}
     </div>
   );
 }

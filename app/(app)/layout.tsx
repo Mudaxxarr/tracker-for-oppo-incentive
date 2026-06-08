@@ -29,7 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       />
       <div className="flex flex-1">
         <Sidebar staffRole={staffRole} />
-        <main className="flex flex-1 flex-col overflow-x-hidden pb-16 md:pb-0">
+        <main className="flex flex-1 flex-col overflow-x-hidden pb-16 md:pb-0 bg-slate-50">
           <PageTransition>
             <div className="px-3 py-4 md:px-6 md:py-6">{children}</div>
           </PageTransition>
