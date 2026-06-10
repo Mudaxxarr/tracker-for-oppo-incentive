@@ -396,6 +396,7 @@ export const ownerAlerts = pgTable(
     entityId: text("entity_id").notNull(),
     dealerId: text("dealer_id"),
     message: text("message").notNull(),
+    payload: text("payload"),
     isRead: boolean("is_read").notNull().default(false),
     createdAt: isoDateTime("created_at").notNull(),
   },

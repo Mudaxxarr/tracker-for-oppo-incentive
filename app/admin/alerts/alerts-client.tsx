@@ -13,6 +13,9 @@ import {
   rejectPurchaseReviewAction,
   approveCrInwardAction,
   rejectCrInwardAction,
+  approveOfflineActivationAction,
+  approveOfflinePurchaseAction,
+  rejectOfflineItemAction,
 } from "./actions";
 import { formatDate } from "@/lib/format";
 import { BellOff, CheckCheck, Clock, CheckCircle2, XCircle } from "lucide-react";
@@ -24,6 +27,9 @@ const TYPE_LABELS: Record<string, string> = {
   purchase_pending_review: "High Purchase",
   cr_caught_pending_approval: "CR Caught",
   activation_deletion_request: "Delete Request",
+  offline_activation_pending: "Offline Activation",
+  offline_purchase_pending: "Offline Purchase",
+  offline_conflict: "Sync Conflict",
 };
 
 const TYPE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -31,6 +37,9 @@ const TYPE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "ou
   purchase_pending_review: "destructive",
   cr_caught_pending_approval: "destructive",
   activation_deletion_request: "outline",
+  offline_activation_pending: "secondary",
+  offline_purchase_pending: "secondary",
+  offline_conflict: "destructive",
 };
 
 interface Props {
@@ -146,6 +155,39 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
     });
   };
 
+  const handleApproveOfflineActivation = (alert: OwnerAlert) => {
+    startTransition(async () => {
+      const result = await approveOfflineActivationAction(alert.id);
+      if (result.ok) {
+        setLocalRead((prev) => new Set([...prev, alert.id]));
+        toast.success("Offline activation posted");
+      } else {
+        toast.error(result.error ?? "Approval failed");
+      }
+    });
+  };
+
+  const handleApproveOfflinePurchase = (alert: OwnerAlert) => {
+    startTransition(async () => {
+      const result = await approveOfflinePurchaseAction(alert.id);
+      if (result.ok) {
+        setLocalRead((prev) => new Set([...prev, alert.id]));
+        toast.success("Offline purchase posted");
+      } else {
+        toast.error(result.error ?? "Approval failed");
+      }
+    });
+  };
+
+  const handleRejectOfflineItem = (alert: OwnerAlert) => {
+    if (!confirm("Reject this offline item? It will be discarded.")) return;
+    startTransition(async () => {
+      await rejectOfflineItemAction(alert.id);
+      setLocalRead((prev) => new Set([...prev, alert.id]));
+      toast.success("Offline item rejected");
+    });
+  };
+
   const markAll = () => {
     startTransition(() => markAllReadAction());
     setLocalRead(new Set(alerts.filter((a) => !a.isRead).map((a) => a.id)));
@@ -202,6 +244,10 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
                     ? "border-red-400/70 bg-red-50/40 dark:bg-red-950/20"
                     : alert.type === "cr_pending_approval"
                     ? "border-emerald-400/70 bg-emerald-50/40 dark:bg-emerald-950/20"
+                    : alert.type === "offline_activation_pending" || alert.type === "offline_purchase_pending"
+                    ? "border-blue-300/60 bg-blue-50/30 dark:bg-blue-950/20"
+                    : alert.type === "offline_conflict"
+                    ? "border-red-300/60 bg-red-50/20 dark:bg-red-950/10"
                     : "border-amber-300/60 bg-amber-50/30"
                 }`}
               >
@@ -299,6 +345,44 @@ export function AlertsClient({ alerts, unreadCount }: Props) {
                           onClick={() => markOne(alert.id)}
                         >
                           Dismiss
+                        </Button>
+                      </>
+                    ) : alert.type === "offline_activation_pending" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => handleApproveOfflineActivation(alert)}
+                        >
+                          <CheckCircle2 className="size-3.5" /> Post
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs text-destructive"
+                          onClick={() => handleRejectOfflineItem(alert)}
+                        >
+                          <XCircle className="size-3.5" /> Reject
+                        </Button>
+                      </>
+                    ) : alert.type === "offline_purchase_pending" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => handleApproveOfflinePurchase(alert)}
+                        >
+                          <CheckCircle2 className="size-3.5" /> Post
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs text-destructive"
+                          onClick={() => handleRejectOfflineItem(alert)}
+                        >
+                          <XCircle className="size-3.5" /> Reject
                         </Button>
                       </>
                     ) : (

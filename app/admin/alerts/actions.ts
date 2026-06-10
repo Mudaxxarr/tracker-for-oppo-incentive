@@ -2,15 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { isAuthenticated } from "@/lib/auth";
-import { markAlertRead, markAllAlertsReadGlobal } from "@/lib/db/queries/alerts";
+import { markAlertRead, markAllAlertsReadGlobal, getAlertById } from "@/lib/db/queries/alerts";
 import { approveCrCaught, rejectCrCaught } from "@/lib/db/queries/cr-caught";
-import { deleteActivation, getActivationById } from "@/lib/db/queries/activations";
-import { approvePurchaseReview, rejectPurchaseReview } from "@/lib/db/queries/purchases";
+import { createActivation, deleteActivation, getActivationById } from "@/lib/db/queries/activations";
+import { createPurchase, approvePurchaseReview, rejectPurchaseReview } from "@/lib/db/queries/purchases";
 import { updateCrossRegionStatus, getCrossRegionById } from "@/lib/db/queries/transfers";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { CROSS_REGION_STATUS } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
+import type { QueuedActivation, QueuedPurchase } from "@/lib/offline-queue";
 
 export async function markAlertReadAction(id: string): Promise<void> {
   if (!(await isAuthenticated())) throw new Error("Not authenticated");
@@ -125,4 +126,73 @@ export async function approveActivationDeletionAction(alertId: string, activatio
   revalidatePath("/activations");
   revalidatePath("/dashboard");
   return { ok: true };
+}
+
+export async function approveOfflineActivationAction(alertId: string): Promise<{ ok?: boolean; error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const alert = await getAlertById(alertId);
+  if (!alert?.payload) return { error: "Alert not found or missing data" };
+  const item = JSON.parse(alert.payload) as QueuedActivation;
+  try {
+    for (let i = 0; i < item.quantity; i++) {
+      await createActivation({
+        tenantId: item.tenantId,
+        dealerId: item.dealerId,
+        modelId: item.modelId,
+        activationDate: item.activationDate,
+        imei: item.quantity === 1 && item.imei ? item.imei : null,
+        purchaseId: null,
+        isCrossRegion: item.isCrossRegion,
+      });
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Activation failed" };
+  }
+  await markAlertRead(alertId);
+  await logAudit({ action: "offline_activation.approved", entityType: "offline_activation", entityId: alertId, summary: `Approved offline activation: ${item.modelName} × ${item.quantity}` });
+  reEvaluateRebatesForDealer(OWNER_TENANT_ID, item.dealerId, item.modelId, item.activationDate).catch(
+    (e: unknown) => console.error("[rebate-reeval]", e),
+  );
+  revalidatePath("/admin/alerts");
+  revalidatePath("/activations");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function approveOfflinePurchaseAction(alertId: string): Promise<{ ok?: boolean; error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const alert = await getAlertById(alertId);
+  if (!alert?.payload) return { error: "Alert not found or missing data" };
+  const item = JSON.parse(alert.payload) as QueuedPurchase;
+  try {
+    await createPurchase({
+      tenantId: item.tenantId,
+      dealerId: item.dealerId,
+      modelId: item.modelId,
+      quantity: item.quantity,
+      purchaseDate: item.purchaseDate,
+      unitDealerPrice: item.unitDealerPrice,
+      unitInvoicePrice: item.unitInvoicePrice,
+      source: item.source as Parameters<typeof createPurchase>[0]["source"],
+      referenceNote: item.referenceNote ?? null,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Purchase creation failed" };
+  }
+  await markAlertRead(alertId);
+  await logAudit({ action: "offline_purchase.approved", entityType: "offline_purchase", entityId: alertId, summary: `Approved offline purchase: ${item.modelName} × ${item.quantity}` });
+  reEvaluateRebatesForDealer(OWNER_TENANT_ID, item.dealerId, item.modelId, item.purchaseDate).catch(
+    (e: unknown) => console.error("[rebate-reeval]", e),
+  );
+  revalidatePath("/admin/alerts");
+  revalidatePath("/purchases");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function rejectOfflineItemAction(alertId: string): Promise<void> {
+  if (!(await isAuthenticated())) return;
+  await markAlertRead(alertId);
+  await logAudit({ action: "offline_item.rejected", entityType: "offline_item", entityId: alertId, summary: `Owner rejected offline queued item` });
+  revalidatePath("/admin/alerts");
 }

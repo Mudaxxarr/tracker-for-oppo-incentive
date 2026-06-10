@@ -10,6 +10,7 @@ export async function createOwnerAlert(input: {
   entityId: string;
   dealerId: string | null;
   message: string;
+  payload?: string;
 }): Promise<void> {
   await db.insert(schema.ownerAlerts).values({
     id: randomUUID(),
@@ -19,8 +20,14 @@ export async function createOwnerAlert(input: {
     entityId: input.entityId,
     dealerId: input.dealerId,
     message: input.message,
+    payload: input.payload ?? null,
     isRead: false,
   });
+}
+
+export async function getAlertById(id: string) {
+  const rows = await db.select().from(schema.ownerAlerts).where(eq(schema.ownerAlerts.id, id)).limit(1);
+  return rows[0] ?? null;
 }
 
 export async function listOwnerAlerts(tenantId: string, unreadOnly = false) {
