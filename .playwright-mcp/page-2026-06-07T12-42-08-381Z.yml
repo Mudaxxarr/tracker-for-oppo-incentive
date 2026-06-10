@@ -1,0 +1,59 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Alhamd OPPO Tracker" [level=1] [ref=e5]
+        - paragraph [ref=e6]: Sign in to continue.
+      - generic [ref=e8]:
+        - generic [ref=e10]:
+          - img [ref=e11]
+          - text: Admin Login
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - text: Email
+            - textbox "Email" [ref=e16]:
+              - /placeholder: admin@example.com
+          - generic [ref=e17]:
+            - text: Password
+            - textbox "Password" [ref=e18]:
+              - /placeholder: ••••••••
+        - button "Sign in" [ref=e20]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e26] [cursor=pointer]:
+    - img [ref=e27]
+  - generic [ref=e30]:
+    - img "Impeccable live mode - agent not polling" [ref=e31]:
+      - img [ref=e33]
+    - generic [ref=e36]:
+      - button "Pick element" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+        - generic: Pick
+      - button "Insert new element" [ref=e40] [cursor=pointer]:
+        - img [ref=e41]
+        - generic: Insert
+      - button "Detect anti-patterns" [ref=e42] [cursor=pointer]:
+        - img [ref=e43]
+        - generic: Detect
+      - button "Toggle DESIGN.md panel" [ref=e46] [cursor=pointer]:
+        - generic: DESIGN.md
+      - generic "Steer the page" [ref=e52] [cursor=pointer]:
+        - generic:
+          - img
+        - generic: Steer
+        - textbox "Steer the page" [active] [ref=e53]:
+          - /placeholder: Steer the page…
+        - button "Voice input" [ref=e54]:
+          - img [ref=e55]
+      - button "Exit live mode" [ref=e59] [cursor=pointer]:
+        - img [ref=e60]
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic: DESIGN.md
+          - generic:
+            - button "Visual"
+            - button "Raw"
+          - button "Close panel": ✕
+        - generic:
+          - generic: No design system data available.

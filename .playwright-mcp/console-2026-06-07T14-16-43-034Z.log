@@ -1,0 +1,1077 @@
+[     397ms] [LOG] [impeccable] SSE connection lost. Retry 1/20... @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[     436ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[     453ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[     537ms] [LOG] [impeccable] Live variant mode ready. Hover over elements to pick one. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[     563ms] [LOG] [impeccable] Live mode connected. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[     652ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[     660ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[    1948ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    2020ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    2601ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    2624ms] [LOG] [Fast Refresh] done in 124ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    2795ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    2813ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    6226ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    6298ms] [LOG] [Fast Refresh] done in 174ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    6858ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    6944ms] [LOG] [Fast Refresh] done in 186ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    7045ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[    7067ms] [LOG] [Fast Refresh] done in 122ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[  801264ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[  801425ms] [LOG] [Fast Refresh] done in 264ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[  801530ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[  801534ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/purchases:0
+[  802263ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[  802278ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 2024830ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2025105ms] [LOG] [Fast Refresh] done in 311ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2025207ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2025492ms] [LOG] [Fast Refresh] done in 387ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2026065ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2026303ms] [LOG] [Fast Refresh] done in 338ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2026847ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2026934ms] [LOG] [Fast Refresh] done in 187ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2027208ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2027321ms] [LOG] [Fast Refresh] done in 213ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2027423ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2027437ms] [LOG] [Fast Refresh] done in 116ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2027488ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 2027549ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 2047708ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2047786ms] [LOG] [Fast Refresh] done in 180ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2048263ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2048302ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2048611ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2048630ms] [LOG] [Fast Refresh] done in 126ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2098527ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2099726ms] [LOG] [Fast Refresh] done in 1203ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2099861ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2099970ms] [LOG] [Fast Refresh] done in 213ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2100154ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2100415ms] [LOG] [Fast Refresh] done in 366ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2103057ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2103059ms] [LOG] [Fast Refresh] done in 103ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2103467ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2103531ms] [LOG] [Fast Refresh] done in 166ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2103876ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 2103883ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 2219230ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2219288ms] [LOG] [Fast Refresh] done in 160ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2220147ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2220213ms] [LOG] [Fast Refresh] done in 174ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2240964ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2241045ms] [LOG] [Fast Refresh] done in 182ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2241525ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2241579ms] [LOG] [Fast Refresh] done in 165ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2806557ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2806635ms] [LOG] [Fast Refresh] done in 180ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2807210ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2807262ms] [LOG] [Fast Refresh] done in 154ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2848271ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2848352ms] [LOG] [Fast Refresh] done in 188ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2848736ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2848781ms] [LOG] [Fast Refresh] done in 147ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2851591ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2851648ms] [LOG] [Fast Refresh] done in 162ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2852313ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2852368ms] [LOG] [Fast Refresh] done in 159ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2852471ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2852526ms] [LOG] [Fast Refresh] done in 157ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2877768ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2877830ms] [LOG] [Fast Refresh] done in 165ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2878386ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2878468ms] [LOG] [Fast Refresh] done in 183ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2878573ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2878628ms] [LOG] [Fast Refresh] done in 159ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2881692ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2881782ms] [LOG] [Fast Refresh] done in 190ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2882282ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2882362ms] [LOG] [Fast Refresh] done in 185ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2882463ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2882502ms] [LOG] [Fast Refresh] done in 139ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2889082ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2889156ms] [LOG] [Fast Refresh] done in 176ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2889669ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2889703ms] [LOG] [Fast Refresh] done in 134ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2889853ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2889874ms] [LOG] [Fast Refresh] done in 126ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2892645ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2892723ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2893249ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2893323ms] [LOG] [Fast Refresh] done in 177ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2893492ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2893565ms] [LOG] [Fast Refresh] done in 178ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2911912ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2911984ms] [LOG] [Fast Refresh] done in 177ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2912543ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2912626ms] [LOG] [Fast Refresh] done in 183ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2912731ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2912751ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2955954ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2956407ms] [LOG] [Fast Refresh] done in 551ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2956510ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2956952ms] [LOG] [Fast Refresh] done in 545ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2957107ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2957232ms] [LOG] [Fast Refresh] done in 236ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2957791ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2957981ms] [LOG] [Fast Refresh] done in 295ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2958340ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2958379ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2958487ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2958546ms] [LOG] [Fast Refresh] done in 165ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2958942ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 2958947ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 2963946ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2964271ms] [LOG] [Fast Refresh] done in 324ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2964372ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2964800ms] [LOG] [Fast Refresh] done in 529ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2965486ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2965489ms] [LOG] [Fast Refresh] done in 113ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2965986ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2966227ms] [LOG] [Fast Refresh] done in 342ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2966484ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 2966490ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 2983178ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2983548ms] [LOG] [Fast Refresh] done in 357ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2983652ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2983955ms] [LOG] [Fast Refresh] done in 406ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2984455ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2984622ms] [LOG] [Fast Refresh] done in 274ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2985100ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2985215ms] [LOG] [Fast Refresh] done in 216ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2985325ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2985522ms] [LOG] [Fast Refresh] done in 303ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2985736ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 2985741ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 2992839ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2993169ms] [LOG] [Fast Refresh] done in 365ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2993299ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2993599ms] [LOG] [Fast Refresh] done in 404ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2993753ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2993802ms] [LOG] [Fast Refresh] done in 156ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2994081ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2994223ms] [LOG] [Fast Refresh] done in 248ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2994800ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2994950ms] [LOG] [Fast Refresh] done in 254ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2995056ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2995129ms] [LOG] [Fast Refresh] done in 178ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2995140ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 2995253ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2995274ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2995282ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 2998110ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2998403ms] [LOG] [Fast Refresh] done in 323ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2998536ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2998837ms] [LOG] [Fast Refresh] done in 407ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2998994ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2999102ms] [LOG] [Fast Refresh] done in 217ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2999351ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2999493ms] [LOG] [Fast Refresh] done in 253ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 2999946ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3000036ms] [LOG] [Fast Refresh] done in 196ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3000138ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3000144ms] [LOG] [Fast Refresh] done in 107ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3000149ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 3000157ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 3000246ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3000298ms] [LOG] [Fast Refresh] done in 152ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3002764ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3003070ms] [LOG] [Fast Refresh] done in 339ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3003196ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3003726ms] [LOG] [Fast Refresh] done in 633ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3003841ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3003881ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3004108ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3004239ms] [LOG] [Fast Refresh] done in 236ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3004648ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3004782ms] [LOG] [Fast Refresh] done in 242ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3004986ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3005000ms] [LOG] [Fast Refresh] done in 120ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3005060ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 3005068ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 3007943ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3008192ms] [LOG] [Fast Refresh] done in 350ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3008295ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3008630ms] [LOG] [Fast Refresh] done in 438ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3008761ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3008796ms] [LOG] [Fast Refresh] done in 139ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3009175ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3009241ms] [LOG] [Fast Refresh] done in 175ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3009679ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3009789ms] [LOG] [Fast Refresh] done in 219ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3009897ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3010109ms] [LOG] [Fast Refresh] done in 313ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3010172ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 3010184ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 3025121ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3025452ms] [LOG] [Fast Refresh] done in 321ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3025553ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3025891ms] [LOG] [Fast Refresh] done in 439ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3026024ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3026077ms] [LOG] [Fast Refresh] done in 157ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3026343ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3026424ms] [LOG] [Fast Refresh] done in 186ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3027043ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3027117ms] [LOG] [Fast Refresh] done in 175ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3027225ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3027273ms] [LOG] [Fast Refresh] done in 153ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3027406ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3027491ms] [LOG] [Fast Refresh] done in 187ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3027846ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 3027854ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 3029955ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3030247ms] [LOG] [Fast Refresh] done in 305ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3030353ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3030668ms] [LOG] [Fast Refresh] done in 421ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3031940ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3032029ms] [LOG] [Fast Refresh] done in 195ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3032137ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3032290ms] [LOG] [Fast Refresh] done in 259ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 3032381ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 3032384ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 6665051ms] [LOG] [impeccable] SSE connection lost. Retry 1/20... @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 6665092ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 6665113ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 6665804ms] [LOG] [impeccable] Live variant mode ready. Hover over elements to pick one. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 6665832ms] [LOG] [impeccable] Live mode connected. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 6665917ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 6665921ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 7336481ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7336525ms] [LOG] [Fast Refresh] done in 145ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7336631ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7336637ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/purchases:0
+[ 7338305ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7338532ms] [LOG] [Fast Refresh] done in 334ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7338644ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7338646ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/activations:0
+[ 7341549ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7341788ms] [LOG] [Fast Refresh] done in 340ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7341916ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7341922ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/models:0
+[ 7345588ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7345813ms] [LOG] [Fast Refresh] done in 325ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7346443ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7346450ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/cross-region:0
+[ 7347324ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7348894ms] [LOG] [Fast Refresh] done in 1683ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7348996ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7349001ms] [LOG] [Fast Refresh] done in 105ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7349009ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7349015ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/policies:0
+[ 7362516ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7362596ms] [LOG] [Fast Refresh] done in 194ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7363066ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7363146ms] [LOG] [Fast Refresh] done in 185ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7363488ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7363492ms] [LOG] [Fast Refresh] done in 115ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7363599ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7363633ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7365749ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7365798ms] [LOG] [Fast Refresh] done in 165ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7366360ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7366394ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7366549ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7366567ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7378186ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7378235ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7378752ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7378770ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7378925ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7378926ms] [LOG] [Fast Refresh] done in 111ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7402772ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7402917ms] [LOG] [Fast Refresh] done in 245ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7403468ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7403485ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7403656ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7403722ms] [LOG] [Fast Refresh] done in 170ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7406967ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7407030ms] [LOG] [Fast Refresh] done in 176ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7407591ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7407639ms] [LOG] [Fast Refresh] done in 159ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7407841ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7407874ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7412817ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7413171ms] [LOG] [Fast Refresh] done in 439ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7413271ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7414039ms] [LOG] [Fast Refresh] done in 867ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7414179ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7414231ms] [LOG] [Fast Refresh] done in 190ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7414709ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7414749ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7414903ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7414978ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7415232ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7415324ms] [LOG] [Fast Refresh] done in 205ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7415337ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7415346ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/policies:0
+[ 7782916ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7783094ms] [LOG] [Fast Refresh] done in 287ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7783230ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7783237ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 7784534ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7785672ms] [LOG] [Fast Refresh] done in 1240ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7785769ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7785780ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/ids:0
+[ 7786234ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7786342ms] [LOG] [Fast Refresh] done in 212ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7786853ms] [LOG] [impeccable] SSE connection lost. Retry 1/20... @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7786896ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7786920ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7786980ms] [LOG] [impeccable] Live variant mode ready. Hover over elements to pick one. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7786999ms] [LOG] [impeccable] Live mode connected. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7787085ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7787088ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/ids:0
+[ 7787449ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7787454ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[ 7819053ms] [WARNING] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7819053ms] [WARNING] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7819054ms] [WARNING] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7819054ms] [WARNING] The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7885389ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7885389ms] [LOG] [Fast Refresh] done in 104ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7885392ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7885404ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/purchases:0
+[ 7889679ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7889708ms] [LOG] [Fast Refresh] done in 130ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7889816ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7889821ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/activations:0
+[ 7894143ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7894149ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/models:0
+[ 7895236ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7895391ms] [LOG] [Fast Refresh] done in 263ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7895464ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7895483ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/inventory:0
+[ 7897433ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7897441ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/policies:0
+[ 7904176ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 7904180ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 7908771ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 7909083ms] [LOG] [Fast Refresh] done in 412ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8077911ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8077959ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8078473ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8078538ms] [LOG] [Fast Refresh] done in 170ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8078927ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8078973ms] [LOG] [Fast Refresh] done in 153ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8081873ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8081923ms] [LOG] [Fast Refresh] done in 164ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8082470ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8082548ms] [LOG] [Fast Refresh] done in 187ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8082656ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8082704ms] [LOG] [Fast Refresh] done in 155ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8101685ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8101750ms] [LOG] [Fast Refresh] done in 176ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8102386ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8102420ms] [LOG] [Fast Refresh] done in 139ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8102636ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8102686ms] [LOG] [Fast Refresh] done in 154ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8106576ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8106657ms] [LOG] [Fast Refresh] done in 195ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8107219ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8107246ms] [LOG] [Fast Refresh] done in 128ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8107392ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8107424ms] [LOG] [Fast Refresh] done in 138ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8114266ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8114315ms] [LOG] [Fast Refresh] done in 162ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8114846ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8114909ms] [LOG] [Fast Refresh] done in 167ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8115019ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8115036ms] [LOG] [Fast Refresh] done in 126ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8118206ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8118255ms] [LOG] [Fast Refresh] done in 160ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8118755ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8118833ms] [LOG] [Fast Refresh] done in 184ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8118942ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8118944ms] [LOG] [Fast Refresh] done in 109ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8135249ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8135303ms] [LOG] [Fast Refresh] done in 168ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8135832ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8135880ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8136049ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8136052ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8139420ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8139470ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8140003ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8140067ms] [LOG] [Fast Refresh] done in 173ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8140175ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8140193ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8148400ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8148448ms] [LOG] [Fast Refresh] done in 158ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8148994ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8149011ms] [LOG] [Fast Refresh] done in 123ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8149182ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8149200ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8195015ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8195080ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8195642ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8195659ms] [LOG] [Fast Refresh] done in 122ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8195813ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8195846ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8199187ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8199269ms] [LOG] [Fast Refresh] done in 194ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8199756ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8199805ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8200258ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8200260ms] [LOG] [Fast Refresh] done in 107ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8332611ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8332663ms] [LOG] [Fast Refresh] done in 167ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8333188ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8333251ms] [LOG] [Fast Refresh] done in 169ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8333717ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8333721ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8343717ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8343767ms] [LOG] [Fast Refresh] done in 160ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8344329ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8344341ms] [LOG] [Fast Refresh] done in 118ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8344502ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8344536ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8381451ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8381504ms] [LOG] [Fast Refresh] done in 166ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8382123ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8382309ms] [LOG] [Fast Refresh] done in 293ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8385635ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8385871ms] [LOG] [Fast Refresh] done in 318ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8386190ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8386230ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8386342ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8386348ms] [LOG] [Fast Refresh] done in 106ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8386689ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8386753ms] [LOG] [Fast Refresh] done in 167ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8387309ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8387539ms] [LOG] [Fast Refresh] done in 332ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8387600ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8387702ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8393631ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8393896ms] [LOG] [Fast Refresh] done in 376ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8393997ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8394294ms] [LOG] [Fast Refresh] done in 398ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8394475ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8394501ms] [LOG] [Fast Refresh] done in 126ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8394825ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8394906ms] [LOG] [Fast Refresh] done in 182ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8395010ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8395059ms] [LOG] [Fast Refresh] done in 154ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8395156ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8395161ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8395492ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8395611ms] [LOG] [Fast Refresh] done in 230ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8395713ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8395780ms] [LOG] [Fast Refresh] done in 168ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8399240ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8399459ms] [LOG] [Fast Refresh] done in 315ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8399582ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8399830ms] [LOG] [Fast Refresh] done in 349ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8399954ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8399982ms] [LOG] [Fast Refresh] done in 134ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8400407ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8400588ms] [LOG] [Fast Refresh] done in 289ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8400718ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8400755ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8401035ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8401097ms] [LOG] [Fast Refresh] done in 168ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8401206ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8401224ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8404409ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8404571ms] [LOG] [Fast Refresh] done in 230ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8404672ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8404959ms] [LOG] [Fast Refresh] done in 388ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8405359ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8405406ms] [LOG] [Fast Refresh] done in 146ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8405575ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8405674ms] [LOG] [Fast Refresh] done in 198ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8405825ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8405832ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8406202ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8406208ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8406374ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8406397ms] [LOG] [Fast Refresh] done in 130ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8409034ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8409163ms] [LOG] [Fast Refresh] done in 210ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8409286ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8409759ms] [LOG] [Fast Refresh] done in 583ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8410193ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8410451ms] [LOG] [Fast Refresh] done in 365ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8410492ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8410500ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8410873ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8410906ms] [LOG] [Fast Refresh] done in 137ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8411078ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8411081ms] [LOG] [Fast Refresh] done in 112ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8413717ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8414267ms] [LOG] [Fast Refresh] done in 637ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8414380ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8414518ms] [LOG] [Fast Refresh] done in 241ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8414630ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8414637ms] [LOG] [Fast Refresh] done in 112ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8414949ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8415128ms] [LOG] [Fast Refresh] done in 282ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8415288ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8415296ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8415569ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8415647ms] [LOG] [Fast Refresh] done in 185ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8415756ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8415757ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8418401ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8418543ms] [LOG] [Fast Refresh] done in 228ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8418667ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8418903ms] [LOG] [Fast Refresh] done in 348ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8419333ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8419400ms] [LOG] [Fast Refresh] done in 173ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8419541ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8419699ms] [LOG] [Fast Refresh] done in 260ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8419733ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8419744ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8420211ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8420232ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8420382ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8420414ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8423706ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8423849ms] [LOG] [Fast Refresh] done in 216ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8423955ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8424239ms] [LOG] [Fast Refresh] done in 389ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8424721ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8424783ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8424889ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8424983ms] [LOG] [Fast Refresh] done in 199ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8424988ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8424994ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8425505ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8425551ms] [LOG] [Fast Refresh] done in 154ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8425662ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8425696ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8431199ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8431363ms] [LOG] [Fast Refresh] done in 230ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8431466ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8431787ms] [LOG] [Fast Refresh] done in 423ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8432161ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8432237ms] [LOG] [Fast Refresh] done in 181ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8432402ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8432540ms] [LOG] [Fast Refresh] done in 240ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8432571ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8432579ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8433044ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8433121ms] [LOG] [Fast Refresh] done in 185ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8433230ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8433231ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8440267ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8440400ms] [LOG] [Fast Refresh] done in 199ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8440515ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8440796ms] [LOG] [Fast Refresh] done in 396ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8441218ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8441279ms] [LOG] [Fast Refresh] done in 161ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8441434ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8441533ms] [LOG] [Fast Refresh] done in 203ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8441539ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8441545ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8442062ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8442126ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8442234ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8442282ms] [LOG] [Fast Refresh] done in 155ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8446356ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8446483ms] [LOG] [Fast Refresh] done in 193ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8446588ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8446991ms] [LOG] [Fast Refresh] done in 507ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8447893ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8447976ms] [LOG] [Fast Refresh] done in 184ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8448140ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8448147ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8448350ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8448352ms] [LOG] [Fast Refresh] done in 104ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8448507ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8448511ms] [LOG] [Fast Refresh] done in 114ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8452052ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8452190ms] [LOG] [Fast Refresh] done in 217ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8452318ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8452574ms] [LOG] [Fast Refresh] done in 369ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8453019ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8453085ms] [LOG] [Fast Refresh] done in 165ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8453219ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8453313ms] [LOG] [Fast Refresh] done in 197ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8453475ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8453485ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8453873ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8453882ms] [LOG] [Fast Refresh] done in 117ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8454369ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8454371ms] [LOG] [Fast Refresh] done in 109ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8462371ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8462549ms] [LOG] [Fast Refresh] done in 252ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8462656ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8462945ms] [LOG] [Fast Refresh] done in 395ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8463332ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8463383ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8463594ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8463605ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8463697ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8463734ms] [LOG] [Fast Refresh] done in 149ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8464344ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8464356ms] [LOG] [Fast Refresh] done in 119ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8464513ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8464546ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8467392ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8467778ms] [LOG] [Fast Refresh] done in 469ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8467896ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8468174ms] [LOG] [Fast Refresh] done in 382ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8468471ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8468551ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8468653ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8468689ms] [LOG] [Fast Refresh] done in 137ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8469072ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8469188ms] [LOG] [Fast Refresh] done in 223ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8469339ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8469433ms] [LOG] [Fast Refresh] done in 201ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8469439ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8469446ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8469534ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8469585ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8475375ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8475484ms] [LOG] [Fast Refresh] done in 197ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8475608ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8475898ms] [LOG] [Fast Refresh] done in 399ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8476834ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8476886ms] [LOG] [Fast Refresh] done in 153ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8477041ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8477046ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8477281ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8477359ms] [LOG] [Fast Refresh] done in 183ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8477469ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8477519ms] [LOG] [Fast Refresh] done in 159ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8487257ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8487418ms] [LOG] [Fast Refresh] done in 233ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8487522ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8487905ms] [LOG] [Fast Refresh] done in 487ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8488607ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8488787ms] [LOG] [Fast Refresh] done in 283ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8489235ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8489328ms] [LOG] [Fast Refresh] done in 197ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8489481ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8489515ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8489519ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8489524ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8495360ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8495594ms] [LOG] [Fast Refresh] done in 345ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8495698ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8496001ms] [LOG] [Fast Refresh] done in 407ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8496427ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8496523ms] [LOG] [Fast Refresh] done in 198ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8496627ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8496678ms] [LOG] [Fast Refresh] done in 153ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8496685ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8496699ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8497249ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8497304ms] [LOG] [Fast Refresh] done in 161ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8497405ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8497453ms] [LOG] [Fast Refresh] done in 148ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8509066ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8509189ms] [LOG] [Fast Refresh] done in 198ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8509310ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8509653ms] [LOG] [Fast Refresh] done in 447ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8510263ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8510469ms] [LOG] [Fast Refresh] done in 310ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8510906ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8510992ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[ 8510996ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[ 8511003ms] [LOG] [Fast Refresh] done in 198ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8511108ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8511133ms] [LOG] [Fast Refresh] done in 129ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8522533ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8522629ms] [LOG] [Fast Refresh] done in 208ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8523111ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8523150ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8523301ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[ 8523334ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[10210035ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[10210043ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/cross-region:0
+[10212082ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[10212090ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[10227984ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[10227993ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11102012ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11102073ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11102651ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11102680ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11137779ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11137842ms] [LOG] [Fast Refresh] done in 176ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11138309ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11138378ms] [LOG] [Fast Refresh] done in 183ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11138746ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11138779ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11165225ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11165227ms] [LOG] [Fast Refresh] done in 109ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11203369ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11203433ms] [LOG] [Fast Refresh] done in 175ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11203967ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11204045ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11204156ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11204205ms] [LOG] [Fast Refresh] done in 159ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11209184ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11209243ms] [LOG] [Fast Refresh] done in 172ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11209852ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11209869ms] [LOG] [Fast Refresh] done in 124ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11210040ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11210043ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11221096ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11221344ms] [LOG] [Fast Refresh] done in 321ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11221451ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11221659ms] [LOG] [Fast Refresh] done in 313ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11222214ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11222300ms] [LOG] [Fast Refresh] done in 190ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11222791ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11222902ms] [LOG] [Fast Refresh] done in 217ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11222912ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11222917ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11223424ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11223474ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11225882ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11226111ms] [LOG] [Fast Refresh] done in 317ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11226236ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11226429ms] [LOG] [Fast Refresh] done in 299ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11227715ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11227805ms] [LOG] [Fast Refresh] done in 196ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11227894ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11227898ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11231473ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11231703ms] [LOG] [Fast Refresh] done in 310ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11231806ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11232008ms] [LOG] [Fast Refresh] done in 304ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11232132ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11232143ms] [LOG] [Fast Refresh] done in 113ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11232702ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11232792ms] [LOG] [Fast Refresh] done in 195ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11232878ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11232884ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11233366ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11233399ms] [LOG] [Fast Refresh] done in 138ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11233569ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11233570ms] [LOG] [Fast Refresh] done in 108ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11237128ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11237396ms] [LOG] [Fast Refresh] done in 343ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11237500ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11237689ms] [LOG] [Fast Refresh] done in 293ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11238349ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11238626ms] [LOG] [Fast Refresh] done in 377ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11238665ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11238676ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11239012ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11239047ms] [LOG] [Fast Refresh] done in 139ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11239200ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11239222ms] [LOG] [Fast Refresh] done in 131ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11245455ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11245503ms] [LOG] [Fast Refresh] done in 161ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11246044ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11246076ms] [LOG] [Fast Refresh] done in 137ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11246250ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11246251ms] [LOG] [Fast Refresh] done in 114ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11249308ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11249358ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11249912ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11249956ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11250116ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11250118ms] [LOG] [Fast Refresh] done in 111ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11254028ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11254458ms] [LOG] [Fast Refresh] done in 534ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11254566ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11254821ms] [LOG] [Fast Refresh] done in 356ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11255071ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11255189ms] [LOG] [Fast Refresh] done in 219ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11255291ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11255324ms] [LOG] [Fast Refresh] done in 134ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11255932ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11255959ms] [LOG] [Fast Refresh] done in 128ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11256407ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11256488ms] [LOG] [Fast Refresh] done in 182ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11256507ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11256512ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11259828ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11259891ms] [LOG] [Fast Refresh] done in 173ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11260423ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11260486ms] [LOG] [Fast Refresh] done in 178ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11260592ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11260596ms] [LOG] [Fast Refresh] done in 109ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11263648ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11263711ms] [LOG] [Fast Refresh] done in 177ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11264225ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11264288ms] [LOG] [Fast Refresh] done in 171ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11264396ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11264429ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11267750ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11267947ms] [LOG] [Fast Refresh] done in 298ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11268062ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11268270ms] [LOG] [Fast Refresh] done in 321ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11269784ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11269982ms] [LOG] [Fast Refresh] done in 300ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11270870ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11270877ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11275545ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11275735ms] [LOG] [Fast Refresh] done in 297ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11275844ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11276079ms] [LOG] [Fast Refresh] done in 344ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11276220ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11276223ms] [LOG] [Fast Refresh] done in 107ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11276708ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11276924ms] [LOG] [Fast Refresh] done in 322ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11276934ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11277034ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11277395ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11277427ms] [LOG] [Fast Refresh] done in 133ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11280225ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11280473ms] [LOG] [Fast Refresh] done in 318ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11280576ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11280738ms] [LOG] [Fast Refresh] done in 264ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11281437ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11281670ms] [LOG] [Fast Refresh] done in 336ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11281676ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11281683ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11282064ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11282113ms] [LOG] [Fast Refresh] done in 150ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11282283ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11282319ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11286538ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11286756ms] [LOG] [Fast Refresh] done in 293ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11286861ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11287078ms] [LOG] [Fast Refresh] done in 322ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11287702ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11287897ms] [LOG] [Fast Refresh] done in 297ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11287904ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11287911ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11288342ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11288360ms] [LOG] [Fast Refresh] done in 123ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11288514ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11288531ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11290960ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11291188ms] [LOG] [Fast Refresh] done in 329ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11291307ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11291497ms] [LOG] [Fast Refresh] done in 290ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11291615ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11291648ms] [LOG] [Fast Refresh] done in 134ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11292135ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11292338ms] [LOG] [Fast Refresh] done in 308ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11292345ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11292413ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11292777ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11292798ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11292965ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11292982ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11295500ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11295702ms] [LOG] [Fast Refresh] done in 303ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11295804ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11296075ms] [LOG] [Fast Refresh] done in 371ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11296738ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11296961ms] [LOG] [Fast Refresh] done in 324ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11297008ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11297021ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11297393ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11297409ms] [LOG] [Fast Refresh] done in 129ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11297582ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11297613ms] [LOG] [Fast Refresh] done in 132ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11300435ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11300686ms] [LOG] [Fast Refresh] done in 321ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11300787ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11300985ms] [LOG] [Fast Refresh] done in 299ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11301183ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11301747ms] [LOG] [Fast Refresh] done in 670ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11302295ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11302372ms] [LOG] [Fast Refresh] done in 180ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11302476ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11302482ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11302577ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11302597ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11305612ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11305902ms] [LOG] [Fast Refresh] done in 364ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11306003ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11306184ms] [LOG] [Fast Refresh] done in 281ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11306771ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11306878ms] [LOG] [Fast Refresh] done in 209ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11306964ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11306971ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11307475ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11307486ms] [LOG] [Fast Refresh] done in 121ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11307631ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11307648ms] [LOG] [Fast Refresh] done in 126ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11311602ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11312660ms] [LOG] [Fast Refresh] done in 1161ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11312777ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11312792ms] [LOG] [Fast Refresh] done in 118ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11312894ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11313174ms] [LOG] [Fast Refresh] done in 381ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11313351ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11313513ms] [LOG] [Fast Refresh] done in 266ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11313738ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11313857ms] [LOG] [Fast Refresh] done in 222ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11314378ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11314397ms] [LOG] [Fast Refresh] done in 120ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11314697ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11314703ms] [LOG] [Fast Refresh] done in 107ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11315317ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11315369ms] [LOG] [Fast Refresh] done in 153ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11315377ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[11315389ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[11317626ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11317690ms] [LOG] [Fast Refresh] done in 177ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11318267ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11318317ms] [LOG] [Fast Refresh] done in 153ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11318471ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11318488ms] [LOG] [Fast Refresh] done in 133ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11327737ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[11327740ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24779040ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24779637ms] [LOG] [Fast Refresh] done in 697ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24779803ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24779812ms] [LOG] [Fast Refresh] done in 110ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24779818ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[24779824ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[24846498ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[24846502ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports:0
+[24859995ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[24860000ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/reports?periodStart=2026-05-01&periodEnd=2026-05-31&dealerIds=f9b6c190-3fbd-443e-b815-10ce5b576a53:0
+[24925605ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24925749ms] [LOG] [Fast Refresh] done in 255ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24926612ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24926707ms] [LOG] [Fast Refresh] done in 211ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24927195ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24927290ms] [LOG] [Fast Refresh] done in 200ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24927723ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24927740ms] [LOG] [Fast Refresh] done in 122ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24931343ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24931410ms] [LOG] [Fast Refresh] done in 177ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24931983ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24932047ms] [LOG] [Fast Refresh] done in 168ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24932202ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24932235ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24935744ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24935805ms] [LOG] [Fast Refresh] done in 161ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24936413ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24936447ms] [LOG] [Fast Refresh] done in 139ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24936555ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24936592ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24943178ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24943258ms] [LOG] [Fast Refresh] done in 185ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24943806ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24943871ms] [LOG] [Fast Refresh] done in 170ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24943991ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24944041ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[24947325ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[24947332ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[25005850ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25005909ms] [LOG] [Fast Refresh] done in 160ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25006496ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25006578ms] [LOG] [Fast Refresh] done in 183ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25006684ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25006720ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25010914ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25010982ms] [LOG] [Fast Refresh] done in 171ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25011552ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25011574ms] [LOG] [Fast Refresh] done in 123ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25011774ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25011823ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25018275ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25018329ms] [LOG] [Fast Refresh] done in 159ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25018998ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25019030ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25019186ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25019239ms] [LOG] [Fast Refresh] done in 158ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25069817ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25070036ms] [LOG] [Fast Refresh] done in 317ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25070146ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25070624ms] [LOG] [Fast Refresh] done in 584ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25070741ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25070752ms] [LOG] [Fast Refresh] done in 114ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25071006ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25071177ms] [LOG] [Fast Refresh] done in 272ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25072408ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25072695ms] [LOG] [Fast Refresh] done in 388ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25073630ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25073888ms] [LOG] [Fast Refresh] done in 362ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25073896ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25073900ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[25077685ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25077982ms] [LOG] [Fast Refresh] done in 362ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25078084ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25078422ms] [LOG] [Fast Refresh] done in 439ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25078534ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25078786ms] [LOG] [Fast Refresh] done in 354ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25079252ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25079510ms] [LOG] [Fast Refresh] done in 368ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25079518ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25079648ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[25080050ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25080108ms] [LOG] [Fast Refresh] done in 160ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25080258ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25080299ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25096581ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25096694ms] [LOG] [Fast Refresh] done in 201ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25096800ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25097407ms] [LOG] [Fast Refresh] done in 712ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25097864ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25098013ms] [LOG] [Fast Refresh] done in 252ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25098591ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25098788ms] [LOG] [Fast Refresh] done in 297ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25098796ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25098803ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[25229962ms] [LOG] [impeccable] SSE connection lost. Retry 1/20... @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25230058ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25230085ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25230973ms] [LOG] [impeccable] Live variant mode ready. Hover over elements to pick one. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25230986ms] [LOG] [impeccable] Live mode connected. @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25231092ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25231097ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[25242463ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25242725ms] [LOG] [Fast Refresh] done in 362ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25242883ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25242886ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/purchases:0
+[25244947ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25244954ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/dashboard:0
+[25247572ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25247573ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/purchases:0
+[25267102ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25267339ms] [LOG] [Fast Refresh] done in 349ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25267484ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25267487ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/models:0
+[25271838ms] [WARNING] Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <input#impeccable-live-page-chat-input>
+Ancestor with aria-hidden: <div#impeccable-live-global-bar> @ http://localhost:3000/models:0
+[25278764ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25278962ms] [LOG] [Fast Refresh] done in 309ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25279090ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25279093ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/inventory:0
+[25281636ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25281853ms] [LOG] [Fast Refresh] done in 323ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25281994ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25282007ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/cross-region:0
+[25284330ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25284516ms] [LOG] [Fast Refresh] done in 289ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25284626ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25284632ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/policies:0
+[25291716ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25293484ms] [LOG] [Fast Refresh] done in 1876ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25293622ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25293645ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/low-stock:0
+[25293754ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25293768ms] [LOG] [Fast Refresh] done in 117ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25297100ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25298310ms] [LOG] [Fast Refresh] done in 1325ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25298440ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/icons/icon-192.png:0
+[25298448ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3000/icons/icon-192.png (Download error or resource isn't a valid image) @ http://localhost:3000/activity:0
+[25324040ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25324104ms] [LOG] [Fast Refresh] done in 170ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25325056ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25325152ms] [LOG] [Fast Refresh] done in 199ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25346849ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25346899ms] [LOG] [Fast Refresh] done in 162ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25347541ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25347558ms] [LOG] [Fast Refresh] done in 126ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25347888ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25347905ms] [LOG] [Fast Refresh] done in 126ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25360007ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477
+[25360008ms] [LOG] [Fast Refresh] done in 104ms @ http://localhost:3000/_next/static/chunks/11cj_next_dist_05prb0z._.js:2477

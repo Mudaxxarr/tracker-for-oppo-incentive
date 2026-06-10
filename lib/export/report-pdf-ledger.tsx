@@ -126,7 +126,7 @@ function makeStyles(t: PdfTheme) {
     calcRow:    { flexDirection: "row", alignItems: "center", paddingHorizontal: m ? 0 : 10, paddingVertical: m ? 8 : 4.5, borderTopWidth: m ? 0.5 : 0.5, borderColor: t.tBorder },
     calcAlt:    { flexDirection: "row", alignItems: "center", paddingHorizontal: m ? 0 : 10, paddingVertical: m ? 8 : 4.5, borderTopWidth: m ? 0.5 : 0.5, borderColor: t.tBorder, backgroundColor: "transparent" },
     calcLabel:  { width: "28%", fontSize: m ? 7.5 : 7.5, fontFamily: m ? _fSB : _fB, color: t.text },
-    calcFormula:{ flex: 1, fontSize: m ? 7 : 7.5, color: t.light, fontFamily: m ? _fL : _fR },
+    calcFormula:{ flex: 1, fontSize: m ? 7 : 7.5, color: t.light, fontFamily: m ? _fL : _fR, paddingLeft: m ? 12 : 10 },
     calcAmt:    { width: "22%", fontSize: m ? 8 : 8, fontFamily: m ? _fSB : _fB, color: t.text, textAlign: "right" },
     badge:      { paddingHorizontal: 5, paddingVertical: 2, borderRadius: m ? 2 : 8, fontSize: 6.5, fontFamily: m ? _fM : _fB, marginLeft: 6 },
     badgeMet:   { backgroundColor: t.greenBg, color: t.green },
@@ -283,18 +283,6 @@ function ModelBlock({
           <Text style={[S.calcAmt, e.debit ? { color: t.red } : e.teal ? { color: "#0E7490" } : e.credit ? { color: t.green } : {}]}>
             {e.debit ? `−${fmtPKR(e.amount)}` : e.amount > 0 ? (e.teal ? `+${fmtPKR(e.amount)}` : fmtPKR(e.amount)) : "—"}
           </Text>
-          {/* Fixed-width badge container keeps calcAmt column aligned on every row */}
-          <View style={{ width: 52 }}>
-            {e.showBadge ? (
-              <View style={[S.badge, { marginLeft: 0 }, e.eligible ? S.badgeMet : S.badgeNo]}>
-                <Text>{e.eligible ? "Met ✓" : "Not Met"}</Text>
-              </View>
-            ) : e.teal ? (
-              <View style={[S.badgeTeal, { paddingHorizontal: 5, paddingVertical: 2 }]}>
-                <Text style={{ fontSize: 6.5, fontFamily: _fM }}>Rebate</Text>
-              </View>
-            ) : null}
-          </View>
         </View>
       ))}
 

@@ -1,0 +1,57 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - paragraph [ref=e5]: Alhamd Telecom
+        - heading "Sales Console" [level=1] [ref=e6]
+        - paragraph [ref=e7]: Sign in to access your portal.
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - text: Email
+          - textbox "Email" [ref=e11]:
+            - /placeholder: admin@example.com
+        - generic [ref=e12]:
+          - text: Password
+          - textbox "Password" [ref=e13]:
+            - /placeholder: ••••••••
+        - button "Sign in" [ref=e14]
+      - paragraph [ref=e15]: Dealer and staff portals have separate login links.
+  - region "Notifications alt+T"
+  - generic [ref=e16]:
+    - img "Impeccable live mode" [ref=e17]:
+      - img [ref=e19]
+    - generic [ref=e22]:
+      - button "Pick element" [ref=e23] [cursor=pointer]:
+        - img [ref=e24]
+        - generic: Pick
+      - button "Insert new element" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+        - generic: Insert
+      - button "Detect anti-patterns" [ref=e28] [cursor=pointer]:
+        - img [ref=e29]
+        - generic: Detect
+      - button "Toggle DESIGN.md panel" [ref=e32] [cursor=pointer]:
+        - generic: DESIGN.md
+      - generic "Steer the page" [ref=e38] [cursor=pointer]:
+        - generic:
+          - img
+        - generic: Steer
+        - textbox "Steer the page" [active] [ref=e39]:
+          - /placeholder: Steer the page…
+        - button "Voice input" [ref=e40]:
+          - img [ref=e41]
+      - button "Exit live mode" [ref=e45] [cursor=pointer]:
+        - img [ref=e46]
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic: DESIGN.md
+          - generic:
+            - button "Visual"
+            - button "Raw"
+          - button "Close panel": ✕
+        - generic:
+          - generic: No design system data available.
+  - button "Open Next.js Dev Tools" [ref=e54] [cursor=pointer]:
+    - img [ref=e55]

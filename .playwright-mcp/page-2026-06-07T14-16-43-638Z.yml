@@ -1,0 +1,126 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e5]
+        - generic [ref=e7]: Alhamd Telecom — OPPO ID Tracker
+      - generic [ref=e8]:
+        - generic [ref=e9]: Jun 2026
+        - combobox "Active Dealer ID" [ref=e10]:
+          - generic [ref=e11]:
+            - img
+            - generic [ref=e12]: Khanewal Main
+          - img: ▼
+        - textbox [ref=e13]: f9b6c190-3fbd-443e-b815-10ce5b576a53
+        - button "Toggle theme" [ref=e14]:
+          - img
+        - button "Sign out" [ref=e15]:
+          - img
+          - generic [ref=e16]: Sign out
+    - generic [ref=e17]:
+      - complementary [ref=e18]:
+        - navigation [ref=e19]:
+          - generic [ref=e20]:
+            - link "Dashboard" [ref=e21] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e22]
+              - generic [ref=e27]: Dashboard
+            - link "Purchases" [ref=e28] [cursor=pointer]:
+              - /url: /purchases
+              - img [ref=e29]
+              - generic [ref=e33]: Purchases
+            - link "Activations" [ref=e34] [cursor=pointer]:
+              - /url: /activations
+              - img [ref=e35]
+              - generic [ref=e37]: Activations
+            - link "Models" [ref=e38] [cursor=pointer]:
+              - /url: /models
+              - img [ref=e39]
+              - generic [ref=e43]: Models
+            - link "Inventory" [ref=e44] [cursor=pointer]:
+              - /url: /inventory
+              - img [ref=e45]
+              - generic [ref=e48]: Inventory
+            - link "Cross-Region" [ref=e49] [cursor=pointer]:
+              - /url: /cross-region
+              - img [ref=e50]
+              - generic [ref=e53]: Cross-Region
+            - link "Policies" [ref=e54] [cursor=pointer]:
+              - /url: /policies
+              - img [ref=e55]
+              - generic [ref=e58]: Policies
+            - link "Reports" [ref=e59] [cursor=pointer]:
+              - /url: /reports
+              - img [ref=e60]
+              - generic [ref=e63]: Reports
+            - link "IDs" [ref=e64] [cursor=pointer]:
+              - /url: /ids
+              - img [ref=e65]
+              - generic [ref=e69]: IDs
+            - link "Low Stock" [ref=e70] [cursor=pointer]:
+              - /url: /low-stock
+              - img [ref=e71]
+              - generic [ref=e73]: Low Stock
+            - link "Activity" [ref=e74] [cursor=pointer]:
+              - /url: /activity
+              - img [ref=e75]
+              - generic [ref=e79]: Activity
+            - link "Settings" [ref=e80] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e81]
+              - generic [ref=e84]: Settings
+            - link "Team View" [ref=e85] [cursor=pointer]:
+              - /url: /team/dashboard
+              - img [ref=e86]
+              - generic [ref=e91]: Team View
+          - paragraph [ref=e93]: Admin
+          - generic [ref=e94]:
+            - link "Dealers" [ref=e95] [cursor=pointer]:
+              - /url: /admin/dealers
+              - img [ref=e96]
+              - generic [ref=e101]: Dealers
+            - link "Revenue" [ref=e102] [cursor=pointer]:
+              - /url: /admin/revenue
+              - img [ref=e103]
+              - generic [ref=e106]: Revenue
+      - main [ref=e107]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e125] [cursor=pointer]:
+    - img [ref=e126]
+  - generic [ref=e129]:
+    - img "Impeccable live mode - agent not polling" [ref=e130]:
+      - img [ref=e132]
+    - generic [ref=e135]:
+      - button "Pick element" [ref=e136] [cursor=pointer]:
+        - img [ref=e137]
+        - generic [ref=e139]: Pick
+      - button "Insert new element" [ref=e140] [cursor=pointer]:
+        - img [ref=e141]
+        - generic [ref=e142]: Insert
+      - button "Detect anti-patterns" [ref=e143] [cursor=pointer]:
+        - img [ref=e144]
+        - generic [ref=e147]: Detect
+      - button "Toggle DESIGN.md panel" [ref=e148] [cursor=pointer]:
+        - generic [ref=e154]: DESIGN.md
+      - generic "Steer the page" [ref=e155] [cursor=pointer]:
+        - generic:
+          - img
+        - generic: Steer
+        - textbox "Steer the page" [active] [ref=e156]:
+          - /placeholder: Steer the page…
+        - button "Voice input" [ref=e157]:
+          - img [ref=e158]
+      - button "Exit live mode" [ref=e162] [cursor=pointer]:
+        - img [ref=e163]
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic: DESIGN.md
+          - generic:
+            - button "Visual"
+            - button "Raw"
+          - button "Close panel": ✕
+        - generic:
+          - generic: No design system data available.
+  - alert [ref=e166]

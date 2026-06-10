@@ -21,7 +21,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       imei: schema.activations.imei,
       activationDate: schema.activations.activationDate,
       dealerPriceSnapshot: schema.activations.dealerPriceSnapshot,
-      customerId: schema.activations.customerId,
       dealerName: schema.dealerIds.name,
     })
     .from(schema.activations)
@@ -41,23 +40,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const tenant = await getTenantById(session.tenantId);
 
-  let customerName: string | null = null;
-  let customerPhone: string | null = null;
-  let customerCnic: string | null = null;
-
-  if (act.customerId) {
-    const cRows = await db
-      .select({ name: schema.customers.name, phone: schema.customers.phone, cnic: schema.customers.cnic })
-      .from(schema.customers)
-      .where(eq(schema.customers.id, act.customerId))
-      .limit(1);
-    if (cRows[0]) {
-      customerName = cRows[0].name;
-      customerPhone = cRows[0].phone;
-      customerCnic = cRows[0].cnic ?? null;
-    }
-  }
-
   const pdf = await buildReceipt({
     activationId: act.id,
     dealerName: act.dealerName,
@@ -66,9 +48,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     modelName: act.modelName,
     imei: act.imei,
     dealerPrice: act.dealerPriceSnapshot,
-    customerName,
-    customerPhone,
-    customerCnic,
+    customerName: null,
+    customerPhone: null,
+    customerCnic: null,
   });
 
   const filename = `receipt-${act.id.slice(0, 8)}.pdf`;

@@ -1,0 +1,284 @@
+- generic [ref=e1]:
+  - generic [ref=e62]:
+    - banner [ref=e63]:
+      - generic [ref=e64]:
+        - img [ref=e65]
+        - generic [ref=e67]: OPPO ID Tracker
+      - generic [ref=e68]:
+        - combobox "Active Dealer ID" [ref=e69]:
+          - generic [ref=e70]:
+            - img
+            - generic [ref=e71]: Khanewal Main
+          - img: ▼
+        - textbox [ref=e72]: f9b6c190-3fbd-443e-b815-10ce5b576a53
+        - button "Toggle theme" [ref=e73]:
+          - img
+        - button "Sign out" [ref=e74]:
+          - img
+          - generic [ref=e75]: Sign out
+    - generic [ref=e76]:
+      - complementary [ref=e77]:
+        - navigation [ref=e78]:
+          - generic [ref=e79]:
+            - link "Dashboard" [ref=e80] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e81]
+              - generic [ref=e86]: Dashboard
+            - link "Purchases" [ref=e87] [cursor=pointer]:
+              - /url: /purchases
+              - img [ref=e88]
+              - generic [ref=e92]: Purchases
+            - link "Activations" [ref=e93] [cursor=pointer]:
+              - /url: /activations
+              - img [ref=e94]
+              - generic [ref=e96]: Activations
+            - link "Models" [ref=e97] [cursor=pointer]:
+              - /url: /models
+              - img [ref=e98]
+              - generic [ref=e102]: Models
+            - link "Inventory" [ref=e103] [cursor=pointer]:
+              - /url: /inventory
+              - img [ref=e104]
+              - generic [ref=e107]: Inventory
+            - link "Cross-Region" [ref=e108] [cursor=pointer]:
+              - /url: /cross-region
+              - img [ref=e109]
+              - generic [ref=e112]: Cross-Region
+            - link "Policies" [ref=e113] [cursor=pointer]:
+              - /url: /policies
+              - img [ref=e114]
+              - generic [ref=e117]: Policies
+            - link "Reports" [ref=e118] [cursor=pointer]:
+              - /url: /reports
+              - img [ref=e119]
+              - generic [ref=e122]: Reports
+            - link "IDs" [ref=e123] [cursor=pointer]:
+              - /url: /ids
+              - img [ref=e124]
+              - generic [ref=e128]: IDs
+            - link "Low Stock" [ref=e129] [cursor=pointer]:
+              - /url: /low-stock
+              - img [ref=e130]
+              - generic [ref=e132]: Low Stock
+            - link "Activity" [ref=e133] [cursor=pointer]:
+              - /url: /activity
+              - img [ref=e134]
+              - generic [ref=e138]: Activity
+            - link "Settings" [ref=e139] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e140]
+              - generic [ref=e143]: Settings
+            - link "Team View" [ref=e144] [cursor=pointer]:
+              - /url: /team/dashboard
+              - img [ref=e145]
+              - generic [ref=e150]: Team View
+          - paragraph [ref=e152]: Admin
+          - generic [ref=e153]:
+            - link "Dealers" [ref=e154] [cursor=pointer]:
+              - /url: /admin/dealers
+              - img [ref=e155]
+              - generic [ref=e160]: Dealers
+            - link "Revenue" [ref=e161] [cursor=pointer]:
+              - /url: /admin/revenue
+              - img [ref=e162]
+              - generic [ref=e165]: Revenue
+      - main [ref=e166]:
+        - generic [ref=e170]:
+          - generic [ref=e171]:
+            - generic [ref=e172]:
+              - heading "Dashboard" [level=1] [ref=e173]
+              - paragraph [ref=e174]:
+                - strong [ref=e175]: Khanewal Main
+                - text: — 2026-06-01 → 2026-06-30
+            - button "Export CSV" [ref=e177]:
+              - img
+              - text: Export CSV
+          - generic [ref=e178]:
+            - generic [ref=e179]:
+              - button "This Month" [ref=e180]
+              - button "Last Month" [ref=e181]
+              - button "This Week" [ref=e182]
+              - button "Today" [ref=e183]
+              - button "Custom" [ref=e184]
+            - generic [ref=e185]:
+              - button "Cards" [ref=e186]:
+                - img [ref=e187]
+                - generic [ref=e192]: Cards
+              - button "Charts" [ref=e193]:
+                - img [ref=e194]
+                - generic [ref=e195]: Charts
+              - button "Overview" [ref=e196]:
+                - img [ref=e197]
+                - generic [ref=e198]: Overview
+              - button "Compact" [ref=e199]:
+                - img [ref=e200]
+                - generic [ref=e201]: Compact
+              - button "Financial" [ref=e202]:
+                - img [ref=e203]
+                - generic [ref=e206]: Financial
+              - button "Performance" [ref=e207]:
+                - img [ref=e208]
+                - generic [ref=e210]: Performance
+              - button "Timeline" [ref=e211]:
+                - img [ref=e212]
+                - generic [ref=e214]: Timeline
+              - button "Executive" [ref=e215]:
+                - img [ref=e216]
+                - generic [ref=e219]: Executive
+          - generic [ref=e222]:
+            - generic [ref=e224]:
+              - paragraph [ref=e225]:
+                - img [ref=e226]
+                - text: Policy Tracker
+              - generic [ref=e230]:
+                - generic [ref=e231]:
+                  - paragraph [ref=e232]: Base 4% Incentive
+                  - generic [ref=e233]: 5%
+                - paragraph [ref=e234]: 0 activations this period
+              - generic [ref=e240]:
+                - generic [ref=e241]: Net Receivable
+                - generic [ref=e242]: Rs 0
+            - generic [ref=e243]:
+              - generic [ref=e245]:
+                - generic [ref=e246]:
+                  - paragraph [ref=e247]:
+                    - img [ref=e248]
+                    - text: Net Receivable from OPPO
+                  - generic [ref=e251]:
+                    - img [ref=e252]
+                    - text: 0 fines deducted
+                - generic [ref=e254]:
+                  - generic [ref=e255]:
+                    - generic [ref=e256]:
+                      - generic [ref=e257]: Rs 0
+                      - generic [ref=e258]:
+                        - generic [ref=e260]: Live
+                        - generic [ref=e261]: ·
+                        - generic [ref=e262]: 2026-06-01 → 2026-06-30
+                    - generic [ref=e264]:
+                      - generic [ref=e265]: Gross (incentives + rebates)
+                      - generic [ref=e266]: Rs 0
+                  - generic [ref=e267]:
+                    - application [ref=e269]
+                    - generic:
+                      - generic: earned
+                      - generic: —
+              - generic [ref=e276]:
+                - generic [ref=e278]:
+                  - paragraph [ref=e279]:
+                    - img [ref=e280]
+                    - text: Activation Performance
+                  - generic [ref=e282]:
+                    - generic [ref=e283]:
+                      - generic [ref=e284]: "0"
+                      - generic [ref=e285]: total activations
+                    - generic [ref=e286]:
+                      - generic [ref=e287]:
+                        - generic [ref=e288]: "0"
+                        - generic [ref=e289]: Regular
+                      - generic [ref=e290]:
+                        - generic [ref=e291]: "0"
+                        - generic [ref=e292]: Cross-Region
+                - generic [ref=e294]:
+                  - generic [ref=e295]:
+                    - paragraph [ref=e296]:
+                      - img [ref=e297]
+                      - text: Stock Intelligence
+                    - generic [ref=e301]: ⚠️ 3>30d
+                  - generic [ref=e302]:
+                    - generic [ref=e303]:
+                      - generic [ref=e304]:
+                        - generic [ref=e305]: "3"
+                        - generic [ref=e306]: units on hand
+                      - generic [ref=e307]:
+                        - generic [ref=e308]: Rs 102,300
+                        - generic [ref=e309]: stock value
+                    - generic [ref=e311]:
+                      - generic [ref=e312]: A6c 64GB
+                      - generic [ref=e313]: "3"
+                      - 'generic "Oldest: 2026-05-01" [ref=e314]': ⚠️
+                    - generic [ref=e315]: 1 model(s) total
+                - generic [ref=e317]:
+                  - paragraph [ref=e318]:
+                    - img [ref=e319]
+                    - text: Target Bonus
+                  - generic [ref=e322]:
+                    - generic [ref=e323]:
+                      - generic [ref=e324]: Rs 0
+                      - generic [ref=e325]: 0% bonus
+                    - generic [ref=e326]:
+                      - generic [ref=e327]:
+                        - generic [ref=e328]: 0 purchased
+                        - generic [ref=e329]: "target: —"
+                      - generic [ref=e331]: 0% to goal
+                - generic [ref=e333]:
+                  - paragraph [ref=e334]:
+                    - img [ref=e335]
+                    - text: CR Monitor
+                  - generic [ref=e340]: No CR risk
+              - generic [ref=e341]:
+                - generic [ref=e343]:
+                  - paragraph [ref=e344]:
+                    - img [ref=e345]
+                    - text: Model Leaderboard
+                  - generic [ref=e347]: No activations this period
+                - generic [ref=e349]:
+                  - paragraph [ref=e350]:
+                    - img [ref=e351]
+                    - text: Inventory Worth
+                  - generic [ref=e355]:
+                    - generic [ref=e356]:
+                      - generic [ref=e357]: Rs 102,300
+                      - generic [ref=e358]: 3 units · unactivated stock
+                    - generic [ref=e359]:
+                      - generic [ref=e360]:
+                        - generic [ref=e361]:
+                          - generic [ref=e362]: 4% Rate
+                          - generic [ref=e363]: Base incentive potential
+                        - generic [ref=e364]: Rs 4,092
+                      - generic [ref=e365]:
+                        - generic [ref=e366]:
+                          - generic [ref=e367]: 1% Rate
+                          - generic [ref=e368]: Dealer incentive potential
+                        - generic [ref=e369]: Rs 1,023
+                    - paragraph [ref=e370]: Potential earnings if all 3 units are activated
+  - region "Notifications alt+T"
+  - generic [ref=e16]:
+    - img "Impeccable live mode" [ref=e17]:
+      - img [ref=e371]
+    - generic [ref=e22]:
+      - button "Pick element" [ref=e23] [cursor=pointer]:
+        - img [ref=e24]
+        - generic: Pick
+      - button "Insert new element" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+        - generic: Insert
+      - button "Detect anti-patterns" [ref=e28] [cursor=pointer]:
+        - img [ref=e29]
+        - generic: Detect
+      - button "Toggle DESIGN.md panel" [ref=e32] [cursor=pointer]:
+        - generic: DESIGN.md
+      - generic "Steer the page" [ref=e38] [cursor=pointer]:
+        - generic:
+          - img
+        - generic: Steer
+        - textbox "Steer the page" [active] [ref=e39]:
+          - /placeholder: Steer the page…
+        - button "Voice input" [ref=e40]:
+          - img [ref=e41]
+      - button "Exit live mode" [ref=e45] [cursor=pointer]:
+        - img [ref=e46]
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic: DESIGN.md
+          - generic:
+            - button "Visual"
+            - button "Raw"
+          - button "Close panel": ✕
+        - generic:
+          - generic: No design system data available.
+  - button "Open Next.js Dev Tools" [ref=e54] [cursor=pointer]:
+    - img [ref=e55]
+  - alert [ref=e61]

@@ -12,6 +12,7 @@ import type { PolicyAchievementEntry } from "@/lib/report-types";
 import type { RebateRow } from "@/lib/db/queries/rebates";
 import type { CrCaughtExportRow } from "@/lib/db/queries/cr-caught";
 import { NAVAL, type PdfTheme } from "./pdf-themes";
+import { isZeroDealerIncentivePolicy, buildDealerIncentiveBreakdown } from "@/lib/report-utils";
 
 // ─── Brand palette ────────────────────────────────────────────────────────────
 function buildC(t: PdfTheme) {
@@ -119,8 +120,8 @@ function makeS(theme: PdfTheme) {
       backgroundColor: m ? "transparent" : C.grandBg,
       padding: m ? "10 0" : "6 7",
     },
-    kpiGrandLabel: { fontSize: m ? 5.5 : 6.5, color: m ? C.textLight : C.grandAccent, fontFamily: m ? _fM : _fB, letterSpacing: m ? 2 : 0.4, marginBottom: m ? 9 : 3 },
-    kpiGrandValue: { fontSize: m ? 17 : 11, fontFamily: m ? _fEB : _fB, color: m ? C.textPrimary : C.grandFg, letterSpacing: m ? -0.5 : 0 },
+    kpiGrandLabel: { fontSize: m ? 5.5 : 6.5, color: m ? C.textLight : C.grandAccent, fontFamily: m ? _fM : _fB, letterSpacing: m ? 2 : 0.4, marginBottom: m ? 9 : 3, textAlign: "right" },
+    kpiGrandValue: { fontSize: m ? 17 : 11, fontFamily: m ? _fEB : _fB, color: m ? C.textPrimary : C.grandFg, letterSpacing: m ? -0.5 : 0, textAlign: "right" },
 
     // Target status banner
     targetRow: {
@@ -195,20 +196,20 @@ function makeS(theme: PdfTheme) {
     // Grand total — Naval: dark navy banner; Arctic luxury: generous spacing, large number, 0.5pt rules
     grandBanner: {
       marginTop: m ? 14 : 10,
-      padding: m ? "16 0" : "10 14",
+      padding: m ? "16 0" : "10 0 10 14",
       borderRadius: m ? 0 : 5,
       backgroundColor: m ? "transparent" : C.grandBg,
       borderTopWidth: m ? 0.5 : 0, borderTopColor: m ? C.divider : "transparent",
       borderBottomWidth: m ? 0.5 : 0, borderBottomColor: m ? C.divider : "transparent",
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
     },
     grandLeft: { flex: 1 },
     grandTag: { fontSize: m ? 6 : 7.5, color: m ? C.textMuted : C.grandAccent, fontFamily: _fB, letterSpacing: m ? 1.5 : 0.5, marginBottom: m ? 8 : 4 },
     grandAmt: { fontSize: m ? 36 : 18, fontFamily: m ? _fEB : _fB, color: m ? C.textPrimary : C.grandFg, letterSpacing: m ? -1 : 0 },
-    grandBreakdown: { alignItems: "flex-end", flexShrink: 0, minWidth: 165 },
-    grandBreakItem: { flexDirection: "row", gap: 6, marginBottom: 1.5 },
-    grandBreakLabel: { fontSize: m ? 6 : 7, color: m ? C.textLight : C.grandAccent, fontFamily: m ? _fL : _fR, letterSpacing: m ? 0.2 : 0, minWidth: 80 },
-    grandBreakValue: { fontSize: m ? 7 : 7, color: m ? C.textPrimary : "#FFFFFF", fontFamily: m ? _fSB : _fB, minWidth: 62, textAlign: "right" },
+    grandBreakdown: { width: 180, flexShrink: 0 },
+    grandBreakItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 6, marginBottom: 1.5 },
+    grandBreakLabel: { fontSize: m ? 6 : 7, color: m ? C.textLight : C.grandAccent, fontFamily: m ? _fL : _fR, letterSpacing: m ? 0.2 : 0 },
+    grandBreakValue: { fontSize: m ? 7 : 7, color: m ? C.textPrimary : "#FFFFFF", fontFamily: m ? _fSB : _fB, textAlign: "right" },
 
     // Note
     note: {
@@ -342,13 +343,18 @@ export async function buildPDF(
     : report.rows;
 
   const policies = opts?.policies ?? [];
+  const shownPolicies = policies.filter((p) => !isZeroDealerIncentivePolicy(p));
+  // Dealer Incentive = one policy (total-activation based) + engine's per-model split.
+  const diBreakdown = buildDealerIncentiveBreakdown(report);
+  const diPolicy = shownPolicies.find((p) => p.type === "dealer-incentive");
+  const nonDiPolicies = shownPolicies.filter((p) => p.type !== "dealer-incentive");
   const rebateRows = opts?.rebateRows ?? [];
   const rebateTotal = opts?.rebateTotal ?? 0;
   const crCaughtRows = opts?.crCaughtRows ?? [];
   const crCaughtLoss = opts?.crCaughtLoss;
   const netReceivable = report.totals.grandTotal + rebateTotal - (crCaughtLoss?.totalFines ?? 0);
   const tb = report.targetBonus;
-  const hasPage2 = policies.length > 0 || rebateRows.length > 0 || (crCaughtLoss?.totalUnits ?? 0) > 0;
+  const hasPage2 = shownPolicies.length > 0 || rebateRows.length > 0 || (crCaughtLoss?.totalUnits ?? 0) > 0;
   const totalPages = hasPage2 ? 2 : 1;
 
   const doc = (
@@ -536,14 +542,14 @@ export async function buildPDF(
           )}
 
           {/* ── Policies & Achievements ── */}
-          {policies.length > 0 && (
+          {shownPolicies.length > 0 && (
             <>
               <View style={[S.sectionHeader, { marginTop: (rebateRows.length > 0 || (crCaughtLoss?.totalUnits ?? 0) > 0) ? 10 : 12 }]}>
                 <Text style={S.sectionTitle}>Policies &amp; Achievements</Text>
                 <View style={S.sectionLine} />
-                <Text style={[S.sectionTitle, { color: C.green }]}>{policies.filter((p) => p.eligible).length} met</Text>
+                <Text style={[S.sectionTitle, { color: C.green }]}>{shownPolicies.filter((p) => p.eligible).length} met</Text>
                 <Text style={S.sectionTitle}> · </Text>
-                <Text style={[S.sectionTitle, { color: C.red }]}>{policies.filter((p) => !p.eligible).length} not met</Text>
+                <Text style={[S.sectionTitle, { color: C.red }]}>{shownPolicies.filter((p) => !p.eligible).length} not met</Text>
               </View>
               <View style={S.table}>
                 <View style={S.tHeadRow}>
@@ -553,10 +559,10 @@ export async function buildPDF(
                   <Text style={[S.tHCell, { width: "9%",  textAlign: "right" }]}>Target</Text>
                   <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Rate / %</Text>
                   <Text style={[S.tHCell, { width: "9%",  textAlign: "right" }]}>Actual</Text>
-                  <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Earned</Text>
                   <Text style={[S.tHCell, { width: "6%",  textAlign: "center" }]}>Status</Text>
+                  <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Earned</Text>
                 </View>
-                {policies.map((p, i) => (
+                {nonDiPolicies.map((p, i) => (
                   <View key={i} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
                     <Text style={[S.tCellBold, { width: "18%", fontSize: 7.5 }]}>{POLICY_LABEL[p.type]}</Text>
                     <Text style={[S.tCell,     { width: "18%" }]}>{p.modelName ?? "All models"}</Text>
@@ -566,21 +572,49 @@ export async function buildPDF(
                       {p.type === "target-bonus" ? `${p.perUnitAmount}%` : fmtPKR(p.perUnitAmount)}
                     </Text>
                     <Text style={[S.tCell,     { width: "9%",  textAlign: "right" }]}>{p.actualQty}</Text>
-                    <Text style={[S.tCellBold, { width: "12%", textAlign: "right", color: p.eligible ? C.green : C.textMuted }]}>{fmtPKR(p.earned)}</Text>
                     <View style={{ width: "6%", padding: "3.5 4", alignItems: "center", justifyContent: "center" }}>
                       <View style={[S.badge, p.eligible ? S.badgeMet : S.badgeNotMet]}>
                         <Text>{p.eligible ? "Met ✓" : "Not Met"}</Text>
                       </View>
                     </View>
+                    <Text style={[S.tCellBold, { width: "12%", textAlign: "right", color: p.eligible ? C.green : C.textMuted }]}>{fmtPKR(p.earned)}</Text>
                   </View>
                 ))}
+
+                {/* Dealer Incentive — single policy (total-activation based) + model-wise split */}
+                {diBreakdown && diPolicy && (
+                  <>
+                    <View style={nonDiPolicies.length % 2 === 1 ? S.tAltRow : S.tRow}>
+                      <Text style={[S.tCellBold, { width: "18%", fontSize: 7.5 }]}>{POLICY_LABEL["dealer-incentive"]}</Text>
+                      <Text style={[S.tCell,     { width: "18%" }]}>All models</Text>
+                      <Text style={[S.tCell,     { width: "16%", fontSize: 7, color: C.textMuted }]}>{diPolicy.periodStart} → {diPolicy.periodEnd}</Text>
+                      <Text style={[S.tCell,     { width: "9%",  textAlign: "right" }]}>{diBreakdown.targetTotal}</Text>
+                      <Text style={[S.tCell,     { width: "12%", textAlign: "right" }]}>{diBreakdown.perUnit != null ? fmtPKR(diBreakdown.perUnit) : "—"}</Text>
+                      <Text style={[S.tCell,     { width: "9%",  textAlign: "right" }]}>{diBreakdown.actualTotal}</Text>
+                      <View style={{ width: "6%", padding: "3.5 4", alignItems: "center", justifyContent: "center" }}>
+                        <View style={[S.badge, diBreakdown.eligible ? S.badgeMet : S.badgeNotMet]}>
+                          <Text>{diBreakdown.eligible ? "Met ✓" : "Not Met"}</Text>
+                        </View>
+                      </View>
+                      <Text style={[S.tCellBold, { width: "12%", textAlign: "right", color: diBreakdown.eligible ? C.green : C.textMuted }]}>{fmtPKR(diBreakdown.totalEarned)}</Text>
+                    </View>
+                    {diBreakdown.eligible && diBreakdown.models.map((m) => (
+                      <View key={m.modelId} style={S.tRow}>
+                        <Text style={[S.tCell, { width: "18%" }]}></Text>
+                        <Text style={[S.tCell, { width: "18%", fontSize: 7, color: C.textMuted, paddingLeft: 8 }]}>{m.modelName}</Text>
+                        <Text style={[S.tCell, { width: "16%", fontSize: 7, color: C.textMuted }]}>-</Text>
+                        <Text style={[S.tCell, { width: "9%",  fontSize: 7, color: C.textMuted, textAlign: "right" }]}>-</Text>
+                        <Text style={[S.tCell, { width: "12%", fontSize: 7, color: C.textMuted, textAlign: "right" }]}>{m.perUnit ? fmtPKR(m.perUnit) : "—"}</Text>
+                        <Text style={[S.tCell, { width: "9%",  fontSize: 7, color: C.textMuted, textAlign: "right" }]}>{m.qty}</Text>
+                        <Text style={{ width: "6%" }}></Text>
+                        <Text style={[S.tCellBold, { width: "12%", fontSize: 7.5, color: C.textMuted, textAlign: "right" }]}>{fmtPKR(m.amount)}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
                 <View style={S.tTotalRow}>
-                  <Text style={[S.tTotalCell, { width: "62%" }]}>NET RECEIVABLE</Text>
-                  <Text style={[S.tTotalCell, { width: "9%",  textAlign: "right" }]}></Text>
-                  <Text style={[S.tTotalCell, { width: "12%", textAlign: "right" }]}></Text>
-                  <Text style={[S.tTotalCell, { width: "9%",  textAlign: "right" }]}></Text>
+                  <Text style={[S.tTotalCell, { width: "88%" }]}>NET RECEIVABLE</Text>
                   <Text style={[S.tTotalCell, { width: "12%", textAlign: "right" }]}>{fmtPKR(netReceivable)}</Text>
-                  <Text style={[S.tTotalCell, { width: "6%"  }]}></Text>
                 </View>
               </View>
             </>
@@ -610,6 +644,12 @@ export async function buildAnalyticsPDF(
 ): Promise<Buffer> {
   ensureInterFont(); C = buildC(theme); S = makeS(theme);
   const { policies = [], rebateRows = [], crCaughtRows = [], crCaughtLoss, rebateTotal = 0 } = opts ?? {};
+  // Dealer Incentive renders as ONE consolidated policy + activated-model split,
+  // identical to the Dealer Incentive Report page 2 (never the raw per-model dump).
+  const shownPolicies = policies.filter((p) => !isZeroDealerIncentivePolicy(p));
+  const diBreakdown = buildDealerIncentiveBreakdown(report);
+  const diPolicy = shownPolicies.find((p) => p.type === "dealer-incentive");
+  const nonDiPolicies = shownPolicies.filter((p) => p.type !== "dealer-incentive");
   const tb = report.targetBonus;
   const net = report.totals.grandTotal + rebateTotal - (crCaughtLoss?.totalFines ?? 0);
   const streams = [
@@ -620,7 +660,7 @@ export async function buildAnalyticsPDF(
     { label: "Stock-In", val: report.totals.stockInEarned },
   ].filter((s) => s.val > 0);
   const hasModelRows = report.rows.filter(r => r.total > 0).length > 0;
-  const tp = 1 + (hasModelRows ? 1 : 0) + (policies.length > 0 ? 1 : 0) + 1;
+  const tp = 1 + (hasModelRows ? 1 : 0) + (shownPolicies.length > 0 ? 1 : 0) + 1;
 
   const PH = 24; // portrait horizontal padding
   const ph = (n: number) => -n as unknown as number; // neg margin helper
@@ -760,46 +800,47 @@ export async function buildAnalyticsPDF(
           </View>
           <View style={S.table}>
             <View style={S.tHeadRow}>
-              <Text style={[S.tHCell, { width: "23%" }]}>Model</Text>
+              <Text style={[S.tHCell, { width: "26%" }]}>Model</Text>
               <Text style={[S.tHCell, { width: "6%",  textAlign: "right" }]}>Qty</Text>
               <Text style={[S.tHCell, { width: "5%",  textAlign: "right" }]}>CR</Text>
-              <Text style={[S.tHCell, { width: "15%", textAlign: "right" }]}>Price Split</Text>
-              <Text style={[S.tHCell, { width: "11%", textAlign: "right" }]}>Base {report.baseIncentivePercent}%</Text>
-              <Text style={[S.tHCell, { width: "9%",  textAlign: "right" }]}>Bonus {tb.bonusPercent}%</Text>
-              <Text style={[S.tHCell, { width: "9%",  textAlign: "right" }]}>Act.Inc</Text>
-              <Text style={[S.tHCell, { width: "9%",  textAlign: "right" }]}>Dlr.Inc</Text>
-              <Text style={[S.tHCell, { width: "7%",  textAlign: "right" }]}>Stk-In</Text>
-              <Text style={[S.tHCell, { width: "8%",  textAlign: "right" }]}>Total</Text>
+              <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Base {report.baseIncentivePercent}%</Text>
+              <Text style={[S.tHCell, { width: "11%", textAlign: "right" }]}>Bonus {tb.bonusPercent}%</Text>
+              <Text style={[S.tHCell, { width: "11%", textAlign: "right" }]}>Act. Inc.</Text>
+              <Text style={[S.tHCell, { width: "11%", textAlign: "right" }]}>Dealer Inc.</Text>
+              <Text style={[S.tHCell, { width: "8%",  textAlign: "right" }]}>Stock-In</Text>
+              <Text style={[S.tHCell, { width: "10%", textAlign: "right" }]}>Total</Text>
             </View>
             {report.rows.filter(r => r.total > 0).map((r, i) => (
               <View key={r.modelId} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
-                <Text style={[S.tCell,     { width: "23%" }]}>{r.modelName}</Text>
+                {/* Model + price-split sub-line (editorial primary/secondary stack) */}
+                <View style={{ width: "26%", padding: theme.minimal ? "4.5 5" : "3.5 5" }}>
+                  <Text style={{ fontSize: 8, fontFamily: _fSB, color: C.textPrimary }}>{r.modelName}</Text>
+                  <Text style={{ fontSize: 6.5, color: C.textLight, fontFamily: _fR, marginTop: 1.5 }}>
+                    {r.priceSubperiods.map((s) => `${s.qty} @ ${fmtPKR(s.dealerPrice)}`).join("   ·   ")}
+                  </Text>
+                </View>
                 <Text style={[S.tCell,     { width: "6%",  textAlign: "right" }]}>{r.qtyActivated}</Text>
                 <Text style={[S.tCell,     { width: "5%",  textAlign: "right", color: r.qtyActivatedCrossRegion > 0 ? C.red : C.textLight }]}>
                   {r.qtyActivatedCrossRegion > 0 ? r.qtyActivatedCrossRegion : "—"}
                 </Text>
-                <Text style={[S.tCell,     { width: "15%", textAlign: "right", fontSize: 7, color: C.textMuted }]}>
-                  {r.priceSubperiods.map((s) => `${s.qty}@${fmtPKR(s.dealerPrice)}`).join("  ")}
-                </Text>
-                <Text style={[S.tCellBold, { width: "11%", textAlign: "right" }]}>{fmtPKR(r.basePercentEarned)}</Text>
-                <Text style={[S.tCell,     { width: "9%",  textAlign: "right" }]}>{r.bonusPercentEarned > 0 ? fmtPKR(r.bonusPercentEarned) : "—"}</Text>
-                <Text style={[S.tCell,     { width: "9%",  textAlign: "right" }]}>{r.activationIncentiveEarned > 0 ? fmtPKR(r.activationIncentiveEarned) : "—"}</Text>
-                <Text style={[S.tCell,     { width: "9%",  textAlign: "right" }]}>{r.dealerIncentiveEarned > 0 ? fmtPKR(r.dealerIncentiveEarned) : "—"}</Text>
-                <Text style={[S.tCell,     { width: "7%",  textAlign: "right" }]}>{r.stockInEarned > 0 ? fmtPKR(r.stockInEarned) : "—"}</Text>
-                <Text style={[S.tCellBold, { width: "8%",  textAlign: "right", color: C.accentBar }]}>{fmtPKR(r.total)}</Text>
+                <Text style={[S.tCellBold, { width: "12%", textAlign: "right" }]}>{fmtPKR(r.basePercentEarned)}</Text>
+                <Text style={[S.tCell,     { width: "11%", textAlign: "right", color: r.bonusPercentEarned > 0 ? C.textPrimary : C.textLight }]}>{r.bonusPercentEarned > 0 ? fmtPKR(r.bonusPercentEarned) : "—"}</Text>
+                <Text style={[S.tCell,     { width: "11%", textAlign: "right", color: r.activationIncentiveEarned > 0 ? C.textPrimary : C.textLight }]}>{r.activationIncentiveEarned > 0 ? fmtPKR(r.activationIncentiveEarned) : "—"}</Text>
+                <Text style={[S.tCell,     { width: "11%", textAlign: "right", color: r.dealerIncentiveEarned > 0 ? C.textPrimary : C.textLight }]}>{r.dealerIncentiveEarned > 0 ? fmtPKR(r.dealerIncentiveEarned) : "—"}</Text>
+                <Text style={[S.tCell,     { width: "8%",  textAlign: "right", color: r.stockInEarned > 0 ? C.textPrimary : C.textLight }]}>{r.stockInEarned > 0 ? fmtPKR(r.stockInEarned) : "—"}</Text>
+                <Text style={[S.tCellBold, { width: "10%", textAlign: "right", color: C.accentBar }]}>{fmtPKR(r.total)}</Text>
               </View>
             ))}
             <View style={S.tTotalRow}>
-              <Text style={[S.tTotalCell, { width: "23%" }]}>TOTAL</Text>
+              <Text style={[S.tTotalCell, { width: "26%" }]}>TOTAL</Text>
               <Text style={[S.tTotalCell, { width: "6%",  textAlign: "right" }]}>{report.rows.reduce((s, r) => s + r.qtyActivated, 0)}</Text>
               <Text style={[S.tTotalCell, { width: "5%" }]}></Text>
-              <Text style={[S.tTotalCell, { width: "15%" }]}></Text>
-              <Text style={[S.tTotalCell, { width: "11%", textAlign: "right" }]}>{fmtPKR(report.totals.basePercentEarned)}</Text>
-              <Text style={[S.tTotalCell, { width: "9%",  textAlign: "right" }]}>{fmtPKR(report.totals.bonusPercentEarned)}</Text>
-              <Text style={[S.tTotalCell, { width: "9%",  textAlign: "right" }]}>{fmtPKR(report.totals.activationIncentiveEarned)}</Text>
-              <Text style={[S.tTotalCell, { width: "9%",  textAlign: "right" }]}>{fmtPKR(report.totals.dealerIncentiveEarned)}</Text>
-              <Text style={[S.tTotalCell, { width: "7%",  textAlign: "right" }]}>{fmtPKR(report.totals.stockInEarned)}</Text>
-              <Text style={[S.tTotalCell, { width: "8%",  textAlign: "right" }]}>{fmtPKR(report.totals.grandTotal)}</Text>
+              <Text style={[S.tTotalCell, { width: "12%", textAlign: "right" }]}>{fmtPKR(report.totals.basePercentEarned)}</Text>
+              <Text style={[S.tTotalCell, { width: "11%", textAlign: "right" }]}>{fmtPKR(report.totals.bonusPercentEarned)}</Text>
+              <Text style={[S.tTotalCell, { width: "11%", textAlign: "right" }]}>{fmtPKR(report.totals.activationIncentiveEarned)}</Text>
+              <Text style={[S.tTotalCell, { width: "11%", textAlign: "right" }]}>{fmtPKR(report.totals.dealerIncentiveEarned)}</Text>
+              <Text style={[S.tTotalCell, { width: "8%",  textAlign: "right" }]}>{fmtPKR(report.totals.stockInEarned)}</Text>
+              <Text style={[S.tTotalCell, { width: "10%", textAlign: "right", color: C.accentBar }]}>{fmtPKR(report.totals.grandTotal)}</Text>
             </View>
           </View>
 
@@ -902,42 +943,73 @@ export async function buildAnalyticsPDF(
 
 
       {/* ══ Last Page: Policies ══ */}
-      {policies.length > 0 && (
+      {shownPolicies.length > 0 && (
         <Page size="A4" style={AH.page}>
           <AnalyticsHeader sub="Policies" />
           <View style={[S.sectionHeader, { marginTop: 12 }]}>
             <Text style={S.sectionTitle}>Policies &amp; Achievements</Text>
             <View style={S.sectionLine} />
-            <Text style={[S.sectionTitle, { color: C.green }]}>{policies.filter(p => p.eligible).length} met · </Text>
-            <Text style={[S.sectionTitle, { color: C.red }]}>{policies.filter(p => !p.eligible).length} not met</Text>
+            <Text style={[S.sectionTitle, { color: C.green }]}>{shownPolicies.filter(p => p.eligible).length} met · </Text>
+            <Text style={[S.sectionTitle, { color: C.red }]}>{shownPolicies.filter(p => !p.eligible).length} not met</Text>
           </View>
           <View style={S.table}>
             <View style={S.tHeadRow}>
-              <Text style={[S.tHCell, { width: "20%" }]}>Policy Type</Text>
-              <Text style={[S.tHCell, { width: "20%" }]}>Model</Text>
-              <Text style={[S.tHCell, { width: "18%" }]}>Period</Text>
-              <Text style={[S.tHCell, { width: "10%", textAlign: "right" }]}>Target</Text>
-              <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Rate</Text>
-              <Text style={[S.tHCell, { width: "10%", textAlign: "right" }]}>Actual</Text>
-              <Text style={[S.tHCell, { width: "10%", textAlign: "center" }]}>Status</Text>
+              <Text style={[S.tHCell, { width: "18%" }]}>Policy Type</Text>
+              <Text style={[S.tHCell, { width: "18%" }]}>Model</Text>
+              <Text style={[S.tHCell, { width: "16%" }]}>Period</Text>
+              <Text style={[S.tHCell, { width: "9%",  textAlign: "right" }]}>Target</Text>
+              <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Rate / %</Text>
+              <Text style={[S.tHCell, { width: "9%",  textAlign: "right" }]}>Actual</Text>
+              <Text style={[S.tHCell, { width: "6%",  textAlign: "center" }]}>Status</Text>
+              <Text style={[S.tHCell, { width: "12%", textAlign: "right" }]}>Earned</Text>
             </View>
-            {policies.map((p, i) => (
+            {nonDiPolicies.map((p, i) => (
               <View key={i} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
-                <Text style={[S.tCellBold, { width: "20%", fontSize: 7.5 }]}>{POLICY_LABEL[p.type]}</Text>
-                <Text style={[S.tCell, { width: "20%" }]}>{p.modelName ?? "All models"}</Text>
-                <Text style={[S.tCell, { width: "18%", fontSize: 7, color: C.textMuted }]}>{p.periodStart} → {p.periodEnd}</Text>
-                <Text style={[S.tCell, { width: "10%", textAlign: "right" }]}>{p.targetQty ?? "—"}</Text>
+                <Text style={[S.tCellBold, { width: "18%", fontSize: 7.5 }]}>{POLICY_LABEL[p.type]}</Text>
+                <Text style={[S.tCell, { width: "18%" }]}>{p.modelName ?? "All models"}</Text>
+                <Text style={[S.tCell, { width: "16%", fontSize: 7, color: C.textMuted }]}>{p.periodStart} → {p.periodEnd}</Text>
+                <Text style={[S.tCell, { width: "9%",  textAlign: "right" }]}>{p.targetQty ?? "—"}</Text>
                 <Text style={[S.tCell, { width: "12%", textAlign: "right" }]}>{p.type === "target-bonus" ? `${p.perUnitAmount}%` : fmtPKR(p.perUnitAmount)}</Text>
-                <Text style={[S.tCell, { width: "10%", textAlign: "right" }]}>{p.actualQty}</Text>
-                <View style={{ width: "10%", padding: "3.5 4", alignItems: "center" }}>
+                <Text style={[S.tCell, { width: "9%",  textAlign: "right" }]}>{p.actualQty}</Text>
+                <View style={{ width: "6%", padding: "3.5 4", alignItems: "center", justifyContent: "center" }}>
                   <View style={[S.badge, p.eligible ? S.badgeMet : S.badgeNotMet]}><Text>{p.eligible ? "Met ✓" : "✗"}</Text></View>
                 </View>
+                <Text style={[S.tCellBold, { width: "12%", textAlign: "right", color: p.eligible ? C.green : C.textMuted }]}>{fmtPKR(p.earned)}</Text>
               </View>
             ))}
+
+            {/* Dealer Incentive — single policy (total-activation based) + activated-model split */}
+            {diBreakdown && diPolicy && (
+              <>
+                <View style={nonDiPolicies.length % 2 === 1 ? S.tAltRow : S.tRow}>
+                  <Text style={[S.tCellBold, { width: "18%", fontSize: 7.5 }]}>{POLICY_LABEL["dealer-incentive"]}</Text>
+                  <Text style={[S.tCell, { width: "18%" }]}>All models</Text>
+                  <Text style={[S.tCell, { width: "16%", fontSize: 7, color: C.textMuted }]}>{diPolicy.periodStart} → {diPolicy.periodEnd}</Text>
+                  <Text style={[S.tCell, { width: "9%",  textAlign: "right" }]}>{diBreakdown.targetTotal}</Text>
+                  <Text style={[S.tCell, { width: "12%", textAlign: "right" }]}>{diBreakdown.perUnit != null ? fmtPKR(diBreakdown.perUnit) : "—"}</Text>
+                  <Text style={[S.tCell, { width: "9%",  textAlign: "right" }]}>{diBreakdown.actualTotal}</Text>
+                  <View style={{ width: "6%", padding: "3.5 4", alignItems: "center", justifyContent: "center" }}>
+                    <View style={[S.badge, diBreakdown.eligible ? S.badgeMet : S.badgeNotMet]}><Text>{diBreakdown.eligible ? "Met ✓" : "✗"}</Text></View>
+                  </View>
+                  <Text style={[S.tCellBold, { width: "12%", textAlign: "right", color: diBreakdown.eligible ? C.green : C.textMuted }]}>{fmtPKR(diBreakdown.totalEarned)}</Text>
+                </View>
+                {diBreakdown.eligible && diBreakdown.models.map((m) => (
+                  <View key={m.modelId} style={S.tRow}>
+                    <Text style={[S.tCell, { width: "18%" }]}></Text>
+                    <Text style={[S.tCell, { width: "18%", fontSize: 7, color: C.textMuted, paddingLeft: 8 }]}>{m.modelName}</Text>
+                    <Text style={[S.tCell, { width: "16%", fontSize: 7, color: C.textMuted }]}>-</Text>
+                    <Text style={[S.tCell, { width: "9%",  fontSize: 7, color: C.textMuted, textAlign: "right" }]}>-</Text>
+                    <Text style={[S.tCell, { width: "12%", fontSize: 7, color: C.textMuted, textAlign: "right" }]}>{m.perUnit ? fmtPKR(m.perUnit) : "—"}</Text>
+                    <Text style={[S.tCell, { width: "9%",  fontSize: 7, color: C.textMuted, textAlign: "right" }]}>{m.qty}</Text>
+                    <Text style={{ width: "6%" }}></Text>
+                    <Text style={[S.tCellBold, { width: "12%", fontSize: 7.5, color: C.textMuted, textAlign: "right" }]}>{fmtPKR(m.amount)}</Text>
+                  </View>
+                ))}
+              </>
+            )}
             <View style={S.tTotalRow}>
-              <Text style={[S.tTotalCell, { width: "70%" }]}>TOTAL ELIGIBLE</Text>
-              <Text style={[S.tTotalCell, { width: "20%" }]}></Text>
-              <Text style={[S.tTotalCell, { width: "10%", textAlign: "right" }]}>{fmtPKR(policies.filter(p => p.eligible).reduce((s, p) => s + p.earned, 0))}</Text>
+              <Text style={[S.tTotalCell, { width: "88%" }]}>TOTAL ELIGIBLE</Text>
+              <Text style={[S.tTotalCell, { width: "12%", textAlign: "right" }]}>{fmtPKR(shownPolicies.filter(p => p.eligible).reduce((s, p) => s + p.earned, 0))}</Text>
             </View>
           </View>
           <Footer page={tp - 1} total={tp} />
@@ -959,7 +1031,7 @@ export async function buildAnalyticsPDF(
             <Text style={{ fontSize: 6.5, color: theme.minimal ? C.textMuted : C.grandAccent, fontFamily: _fB, marginBottom: 4 }}>PERIOD AT A GLANCE</Text>
             <Text style={{ fontSize: 10, color: theme.minimal ? C.textPrimary : "#FFFFFF", fontFamily: _fB }}>{report.totalActivations} Activations</Text>
             <Text style={{ fontSize: 7, color: theme.minimal ? C.textMuted : C.grandAccent, marginTop: 2 }}>
-              {report.rows.filter(r => r.total > 0).length} Models  ·  {policies.filter(p => p.eligible).length}/{policies.length} Policies Met
+              {report.rows.filter(r => r.total > 0).length} Models  ·  {shownPolicies.filter(p => p.eligible).length}/{shownPolicies.length} Policies Met
             </Text>
           </View>
         </View>
@@ -970,7 +1042,7 @@ export async function buildAnalyticsPDF(
             { label: "TOTAL ACTIVATIONS",  val: String(report.totalActivations),  sub: report.totalActivationsCrossRegion > 0 ? `${report.totalActivationsCrossRegion} cross-region` : "All standard" },
             { label: "MODELS ACTIVE",       val: String(report.rows.filter(r => r.total > 0).length), sub: `of ${report.rows.length} total models` },
             { label: "TARGET BONUS",        val: tb.eligible ? "ACHIEVED ✓" : "NOT MET ✗",           sub: `${tb.actualQty} / ${tb.targetQty ?? "—"} units`, color: tb.eligible ? C.green : C.red },
-            { label: "POLICIES MET",        val: `${policies.filter(p => p.eligible).length} / ${policies.length}`, sub: policies.filter(p => !p.eligible).length > 0 ? `${policies.filter(p => !p.eligible).length} missed` : policies.length > 0 ? "All achieved!" : "No policies", color: policies.length > 0 && policies.every(p => p.eligible) ? C.green : undefined },
+            { label: "POLICIES MET",        val: `${shownPolicies.filter(p => p.eligible).length} / ${shownPolicies.length}`, sub: shownPolicies.filter(p => !p.eligible).length > 0 ? `${shownPolicies.filter(p => !p.eligible).length} missed` : shownPolicies.length > 0 ? "All achieved!" : "No policies", color: shownPolicies.length > 0 && shownPolicies.every(p => p.eligible) ? C.green : undefined },
           ].map(k => (
             <View key={k.label} style={{ flex: 1, borderWidth: 0.75, borderColor: C.divider, borderRadius: 4, backgroundColor: "#FAFAFA", padding: "7 8" }}>
               <Text style={{ fontSize: 6, color: C.textMuted, fontFamily: _fB, letterSpacing: 0.4, marginBottom: 3 }}>{k.label}</Text>
@@ -1090,6 +1162,9 @@ export async function buildBriefPDF(
 ): Promise<Buffer> {
   ensureInterFont(); C = buildC(theme); S = makeS(theme);
   const { policies = [], rebateRows = [], rebateTotal = 0, crCaughtLoss } = opts ?? {};
+  // Dealer Incentive = one policy (total-activation based) + engine's per-model split.
+  const diBreakdown = buildDealerIncentiveBreakdown(report);
+  const diPolicy = policies.find((p) => p.type === "dealer-incentive" && !isZeroDealerIncentivePolicy(p));
   const tb = report.targetBonus;
   const net = report.totals.grandTotal + rebateTotal - (crCaughtLoss?.totalFines ?? 0);
   const totalStocked = report.rows.reduce((s, r) => s + r.stockInRegularQty, 0);
@@ -1098,14 +1173,14 @@ export async function buildBriefPDF(
     page: { paddingHorizontal: 36, paddingTop: 0, paddingBottom: 24, fontSize: 9, fontFamily: _fR, color: C.textPrimary, backgroundColor: "#FFFFFF" },
 
     // Net receivable hero — Naval: dark banner; Arctic: ruled section
-    netBox: { marginTop: 14, marginBottom: 14, padding: theme.minimal ? "14 0" : "14 18", borderRadius: theme.minimal ? 0 : 6, backgroundColor: theme.minimal ? "transparent" : C.grandBg, borderTopWidth: theme.minimal ? 2 : 0, borderTopColor: theme.minimal ? C.textPrimary : "transparent", borderBottomWidth: theme.minimal ? 1 : 0, borderBottomColor: theme.minimal ? C.divider : "transparent", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    netBox: { marginTop: 14, marginBottom: 14, padding: theme.minimal ? "14 0" : "14 0 14 18", borderRadius: theme.minimal ? 0 : 6, backgroundColor: theme.minimal ? "transparent" : C.grandBg, borderTopWidth: theme.minimal ? 2 : 0, borderTopColor: theme.minimal ? C.textPrimary : "transparent", borderBottomWidth: theme.minimal ? 1 : 0, borderBottomColor: theme.minimal ? C.divider : "transparent", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     netLabel: { fontSize: 8, color: theme.minimal ? C.textMuted : C.grandAccent, fontFamily: theme.minimal ? _fR : _fB, letterSpacing: 0.5, marginBottom: 6 },
     netAmount: { fontSize: 26, fontFamily: _fB, color: theme.minimal ? C.textPrimary : "#FFFFFF" },
     netSub: { fontSize: 7.5, color: theme.minimal ? C.textMuted : C.grandAccent, marginTop: 4 },
-    netRight: { alignItems: "flex-end", gap: 2, flexShrink: 0, minWidth: 140 },
-    netRightLine: { flexDirection: "row", gap: 10 },
-    netRightLabel: { fontSize: 7.5, color: theme.minimal ? C.textMuted : C.grandAccent, minWidth: 58 },
-    netRightValue: { fontSize: 7.5, color: theme.minimal ? C.textPrimary : "#FFFFFF", fontFamily: _fB, minWidth: 68, textAlign: "right" },
+    netRight: { width: 170, flexShrink: 0, gap: 3 },
+    netRightLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    netRightLabel: { fontSize: 7.5, color: theme.minimal ? C.textMuted : C.grandAccent },
+    netRightValue: { fontSize: 7.5, color: theme.minimal ? C.textPrimary : "#FFFFFF", fontFamily: _fB, textAlign: "right" },
 
     // Statement rows — both row types are identical except background so columns never shift
     stmtSection: { marginBottom: 14 },
@@ -1123,7 +1198,7 @@ export async function buildBriefPDF(
     stmtValueCyan:  { width: "30%", fontSize: 8.5, fontFamily: _fB, color: "#0E7490", textAlign: "right" },
     stmtTotal:      { flexDirection: "row", alignItems: "center", paddingVertical: theme.minimal ? 7 : 5, paddingHorizontal: 0, marginTop: theme.minimal ? 6 : 0, backgroundColor: theme.minimal ? "transparent" : C.tTotalBg, borderRadius: theme.minimal ? 0 : 3 },
     stmtTotalLabel: { width: "70%", fontSize: 9, fontFamily: _fB, color: theme.minimal ? C.textPrimary : C.tTotalFg, paddingLeft: theme.minimal ? 0 : 5 },
-    stmtTotalValue: { width: "30%", fontSize: 9, fontFamily: _fB, color: theme.minimal ? C.textPrimary : C.tTotalFg, textAlign: "right", paddingRight: theme.minimal ? 0 : 5 },
+    stmtTotalValue: { width: "30%", fontSize: 9, fontFamily: _fB, color: theme.minimal ? C.textPrimary : C.tTotalFg, textAlign: "right", paddingRight: 0 },
 
     // Policy checklist
     policyRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, paddingVertical: 3, borderBottomWidth: 0.25, borderColor: C.divider },
@@ -1131,7 +1206,13 @@ export async function buildBriefPDF(
     policyInfo: { flex: 1 },
     policyLabel: { fontSize: 8.5, fontFamily: _fB },
     policySub: { fontSize: 7, color: C.textMuted, marginTop: 1 },
-    policyEarned: { fontSize: 9, fontFamily: _fB, textAlign: "right", minWidth: 85, flexShrink: 0 },
+    policyEarned: { fontSize: 9, fontFamily: _fB, textAlign: "right", flexShrink: 0, paddingLeft: 8 },
+
+    // Dealer-incentive model-wise split (nested under the single DI policy row)
+    diSubRow: { flexDirection: "row", alignItems: "center", paddingVertical: 2, paddingLeft: 26 },
+    diSubLabel: { fontSize: 7.5, color: C.textPrimary, flexShrink: 0 },
+    diSubMeta: { fontSize: 7, color: C.textMuted, flex: 1, paddingLeft: 8 },
+    diSubAmt: { fontSize: 7.5, fontFamily: _fB, color: C.textPrimary, textAlign: "right", flexShrink: 0, paddingLeft: 8 },
 
     // KPI strip
     kpiRow: { flexDirection: "row", gap: 6, marginBottom: 12 },
@@ -1266,7 +1347,7 @@ export async function buildBriefPDF(
 
           <View style={[BS.stmtTotal, theme.minimal
             ? { borderTopWidth: 2, borderTopColor: C.textPrimary, padding: "8 0" }
-            : { backgroundColor: C.grandBg, padding: "8 10" }]}>
+            : { backgroundColor: C.grandBg, padding: "8 0 8 10" }]}>
             <Text style={[BS.stmtTotalLabel, { color: theme.minimal ? C.textPrimary : "#FFFFFF", fontSize: 10 }]}>NET RECEIVABLE FROM OPPO</Text>
             <Text style={[BS.stmtTotalValue, { color: theme.minimal ? C.textPrimary : "#FFFFFF", fontSize: 11 }]}>{fmtPKR(net)}</Text>
           </View>
@@ -1278,7 +1359,7 @@ export async function buildBriefPDF(
             <Text style={[BS.stmtTitle, { marginTop: 6 }]}>Policy Status</Text>
             <View style={BS.stmtDivider} />
             {policies
-              .filter(p => !(p.type === "dealer-incentive" && p.perUnitAmount < 1))
+              .filter(p => p.type !== "dealer-incentive")
               .filter(p => p.actualQty > 0)
               .map((p, i) => (
               <View key={i} style={BS.policyRow}>
@@ -1300,6 +1381,35 @@ export async function buildBriefPDF(
                 </Text>
               </View>
             ))}
+
+            {/* Dealer Incentive — single policy (total-activation based) + model-wise split */}
+            {diBreakdown && diPolicy && (
+              <View>
+                <View style={BS.policyRow}>
+                  <View style={[BS.policyBadge, diBreakdown.eligible ? S.badgeMet : S.badgeNotMet]}>
+                    <Text>{diBreakdown.eligible ? "Met ✓" : "✗"}</Text>
+                  </View>
+                  <View style={BS.policyInfo}>
+                    <Text style={BS.policyLabel}>{POLICY_LABEL["dealer-incentive"]}</Text>
+                    <Text style={BS.policySub}>
+                      {diPolicy.periodStart} → {diPolicy.periodEnd}
+                      {`  ·  ${diBreakdown.actualTotal} / ${diBreakdown.targetTotal} activations ${diBreakdown.eligible ? "✓" : `(need ${Math.max(0, diBreakdown.targetTotal - diBreakdown.actualTotal)} more)`}`}
+                      {diBreakdown.perUnit != null ? `  ·  ${fmtPKR(diBreakdown.perUnit)}/unit` : ""}
+                    </Text>
+                  </View>
+                  <Text style={[BS.policyEarned, { color: diBreakdown.eligible ? C.green : C.textMuted }]}>
+                    {diBreakdown.eligible ? fmtPKR(diBreakdown.totalEarned) : "—"}
+                  </Text>
+                </View>
+                {diBreakdown.eligible && diBreakdown.models.map((m) => (
+                  <View key={m.modelId} style={BS.diSubRow}>
+                    <Text style={BS.diSubLabel}>{m.modelName}</Text>
+                    <Text style={BS.diSubMeta}>{m.qty} act{m.qty !== 1 ? "s" : ""}{m.perUnit ? ` × ${fmtPKR(m.perUnit)}` : ""}</Text>
+                    <Text style={BS.diSubAmt}>{fmtPKR(m.amount)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 

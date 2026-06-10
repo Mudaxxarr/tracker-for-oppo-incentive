@@ -116,3 +116,76 @@ export async function buildPolicyAchievements(
 
   return entries;
 }
+
+/**
+ * Single source of truth for the Rs-0 Dealer Incentive rule: a dealer-incentive
+ * policy whose rate resolves below Rs 1 is treated as zero and hidden from
+ * statements/reports. Use everywhere a Dealer Incentive row renders — never fork.
+ */
+export const isZeroDealerIncentivePolicy = (
+  p: Pick<PolicyAchievementEntry, "type" | "perUnitAmount">
+): boolean => p.type === "dealer-incentive" && p.perUnitAmount < 1;
+
+export interface DealerIncentiveModelPortion {
+  modelId: string;
+  modelName: string;
+  qty: number;
+  perUnit: number;
+  amount: number;
+}
+
+export interface DealerIncentiveBreakdown {
+  eligible: boolean;
+  targetTotal: number;
+  actualTotal: number;
+  /** Uniform per-unit rate, or null when policies carry differing rates. */
+  perUnit: number | null;
+  totalEarned: number;
+  models: DealerIncentiveModelPortion[];
+}
+
+/**
+ * Dealer Incentive is secured on TOTAL activation qty, so it is ONE policy — but
+ * the engine already attributes its payout per model (row.dealerIncentiveEarned).
+ * This consolidates the single-policy outcome with that model-wise split for
+ * display. The model portions sum EXACTLY to report.totals.dealerIncentiveEarned;
+ * never recompute amounts downstream. Returns null when nothing was earned.
+ * Use everywhere a Dealer Incentive breakdown renders — never fork.
+ */
+export function buildDealerIncentiveBreakdown(
+  report: IncentiveReport
+): DealerIncentiveBreakdown | null {
+  const totalEarned = report.totals.dealerIncentiveEarned;
+  if (totalEarned <= 0) return null;
+  const outcomes = report.dealerIncentives ?? [];
+  const rates = Array.from(new Set(outcomes.filter((d) => d.eligible).map((d) => d.perUnitAmount)));
+  const perUnit = rates.length === 1 ? rates[0] : null;
+  const primary = outcomes.find((d) => d.eligible) ?? outcomes[0];
+  const models = report.rows
+    .filter((r) => r.dealerIncentiveEarned > 0)
+    .map((r) => {
+      // Per-model effective rate = sum of eligible policy rates that apply to this
+      // model: global policies (modelId null) + this model's own policy. Lets each
+      // model show its true per-unit even when rates differ across models (where the
+      // uniform `perUnit` above is null and would otherwise render "—").
+      const modelRate = outcomes
+        .filter((d) => d.eligible && (d.modelId === null || d.modelId === r.modelId))
+        .reduce((s, d) => s + d.perUnitAmount, 0);
+      return {
+        modelId: r.modelId,
+        modelName: r.modelName,
+        amount: r.dealerIncentiveEarned,
+        perUnit: modelRate,
+        qty: modelRate > 0 ? Math.round(r.dealerIncentiveEarned / modelRate) : r.qtyActivated,
+      };
+    })
+    .sort((a, b) => b.amount - a.amount);
+  return {
+    eligible: outcomes.some((d) => d.eligible),
+    targetTotal: primary?.targetTotal ?? 0,
+    actualTotal: primary?.actualTotal ?? 0,
+    perUnit,
+    totalEarned,
+    models,
+  };
+}

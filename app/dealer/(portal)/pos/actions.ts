@@ -6,7 +6,6 @@ import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant, getTenantById } from "@/lib/dealer-tenant";
 import { getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
-import { createCustomer } from "@/lib/db/queries/customers";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { INTER_ID_STATUS } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -30,10 +29,6 @@ const SaleSchema = z.object({
     .optional()
     .or(z.literal("")),
   // Customer: either link existing (customerId) or create new (customerName + customerPhone)
-  customerId: z.string().optional().nullable(),
-  customerName: z.string().trim().max(120).optional().nullable(),
-  customerPhone: z.string().trim().max(30).optional().nullable(),
-  customerCnic: z.string().trim().max(20).optional().nullable(),
 });
 
 export async function createPosSaleAction(
@@ -52,10 +47,6 @@ export async function createPosSaleAction(
   const parsed = SaleSchema.safeParse({
     modelId: fd.get("modelId"),
     imei: fd.get("imei") || "",
-    customerId: fd.get("customerId") || null,
-    customerName: fd.get("customerName") || null,
-    customerPhone: fd.get("customerPhone") || null,
-    customerCnic: fd.get("customerCnic") || null,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -70,18 +61,6 @@ export async function createPosSaleAction(
 
   const priceData = await getPriceOnDate(OWNER_TENANT_ID, d.modelId, today);
   const pricedAt = priceData?.dealerPrice ?? 0;
-
-  // Resolve or create customer
-  let resolvedCustomerId: string | null = d.customerId ?? null;
-  if (!resolvedCustomerId && d.customerName && d.customerPhone) {
-    resolvedCustomerId = await createCustomer({
-      tenantId,
-      dealerId,
-      name: d.customerName,
-      phone: d.customerPhone,
-      cnic: d.customerCnic ?? null,
-    });
-  }
 
   // Fetch model name for return
   const modelRows = await db
@@ -132,7 +111,6 @@ export async function createPosSaleAction(
         purchaseId: null,
         isCrossRegion: false,
         dealerPriceSnapshot: pricedAt,
-        customerId: resolvedCustomerId,
       });
     });
   } catch (err) {
@@ -144,7 +122,7 @@ export async function createPosSaleAction(
     entityType: "activation",
     entityId: activationId!,
     dealerId,
-    summary: `[Dealer] POS sale: ${modelName} @ PKR ${pricedAt}${resolvedCustomerId ? " (customer linked)" : ""}`,
+    summary: `[Dealer] POS sale: ${modelName} @ PKR ${pricedAt}`,
   });
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/pos");

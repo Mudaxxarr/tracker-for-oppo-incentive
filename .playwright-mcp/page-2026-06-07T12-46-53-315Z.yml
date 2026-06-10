@@ -1,0 +1,57 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - paragraph [ref=e5]: Alhamd Telecom
+        - heading "Sales Console" [level=1] [ref=e6]
+        - paragraph [ref=e7]: Sign in to access your portal.
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - text: Email
+          - textbox "Email" [ref=e11]:
+            - /placeholder: admin@example.com
+        - generic [ref=e12]:
+          - text: Password
+          - textbox "Password" [ref=e13]:
+            - /placeholder: ••••••••
+        - button "Sign in" [ref=e14]
+      - paragraph [ref=e15]: Dealer and staff portals have separate login links.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e21] [cursor=pointer]:
+    - img [ref=e22]
+  - generic [ref=e25]:
+    - img "Impeccable live mode" [ref=e26]:
+      - img [ref=e28]
+    - generic [ref=e31]:
+      - button "Pick element" [ref=e32] [cursor=pointer]:
+        - img [ref=e33]
+        - generic: Pick
+      - button "Insert new element" [ref=e35] [cursor=pointer]:
+        - img [ref=e36]
+        - generic: Insert
+      - button "Detect anti-patterns" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+        - generic: Detect
+      - button "Toggle DESIGN.md panel" [ref=e41] [cursor=pointer]:
+        - generic: DESIGN.md
+      - generic "Steer the page" [ref=e47] [cursor=pointer]:
+        - generic:
+          - img
+        - generic: Steer
+        - textbox "Steer the page" [active] [ref=e48]:
+          - /placeholder: Steer the page…
+        - button "Voice input" [ref=e49]:
+          - img [ref=e50]
+      - button "Exit live mode" [ref=e54] [cursor=pointer]:
+        - img [ref=e55]
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic: DESIGN.md
+          - generic:
+            - button "Visual"
+            - button "Raw"
+          - button "Close panel": ✕
+        - generic:
+          - generic: No design system data available.

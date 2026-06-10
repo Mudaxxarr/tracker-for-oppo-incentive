@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-07T00:00:00Z",
+  "title": "Design System: Alhamd Sales Console",
+  "extensions": {
+    "colorMeta": {
+      "verified-green": {
+        "role": "primary",
+        "displayName": "Verified Green",
+        "canonical": "oklch(0.637 0.145 162.48)",
+        "tonalRamp": [
+          "oklch(0.15 0.145 162.48)",
+          "oklch(0.25 0.145 162.48)",
+          "oklch(0.35 0.145 162.48)",
+          "oklch(0.45 0.145 162.48)",
+          "oklch(0.55 0.145 162.48)",
+          "oklch(0.637 0.145 162.48)",
+          "oklch(0.80 0.10 162.48)",
+          "oklch(0.95 0.04 162.48)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.129 0.042 264.695)",
+        "tonalRamp": [
+          "oklch(0.10 0.042 264.695)",
+          "oklch(0.20 0.042 264.695)",
+          "oklch(0.30 0.042 264.695)",
+          "oklch(0.40 0.035 264.695)",
+          "oklch(0.50 0.030 264.695)",
+          "oklch(0.65 0.025 264.695)",
+          "oklch(0.80 0.015 264.695)",
+          "oklch(0.95 0.005 264.695)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "oklch(0.984 0.003 247.858)",
+        "tonalRamp": [
+          "oklch(0.60 0.003 247.858)",
+          "oklch(0.68 0.003 247.858)",
+          "oklch(0.74 0.003 247.858)",
+          "oklch(0.80 0.003 247.858)",
+          "oklch(0.86 0.003 247.858)",
+          "oklch(0.92 0.003 247.858)",
+          "oklch(0.96 0.003 247.858)",
+          "oklch(0.984 0.003 247.858)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Danger",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(0.20 0.245 27.325)",
+          "oklch(0.30 0.245 27.325)",
+          "oklch(0.40 0.245 27.325)",
+          "oklch(0.50 0.245 27.325)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.70 0.18 27.325)",
+          "oklch(0.85 0.10 27.325)",
+          "oklch(0.96 0.04 27.325)"
+        ]
+      },
+      "subdued": {
+        "role": "neutral",
+        "displayName": "Subdued",
+        "canonical": "oklch(0.554 0.046 257.417)",
+        "tonalRamp": [
+          "oklch(0.20 0.046 257.417)",
+          "oklch(0.30 0.046 257.417)",
+          "oklch(0.40 0.046 257.417)",
+          "oklch(0.50 0.046 257.417)",
+          "oklch(0.554 0.046 257.417)",
+          "oklch(0.70 0.025 257.417)",
+          "oklch(0.85 0.012 257.417)",
+          "oklch(0.97 0.004 257.417)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page titles, section headers, modal headers." },
+      "title": { "displayName": "Title", "purpose": "Card headings, form section labels — same size as body, weight-differentiated." },
+      "body": { "displayName": "Body", "purpose": "Explanatory text, descriptions, dialog content. Max 65–75ch." },
+      "label": { "displayName": "Label", "purpose": "Form labels, table column headers, nav item text, badge text." },
+      "data": { "displayName": "Data / Mono", "purpose": "PKR amounts, unit counts, model codes, activation IDs. Always Geist Mono." }
+    },
+    "shadows": [
+      {
+        "name": "ambient-low",
+        "value": "0 1px 3px 0 oklch(0 0 0 / 0.1), 0 1px 2px -1px oklch(0 0 0 / 0.1)",
+        "purpose": "Popovers, dropdowns, command palette when open. Never on resting cards."
+      },
+      {
+        "name": "ambient-mid",
+        "value": "0 4px 12px 0 oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.06)",
+        "purpose": "Modals and sheets. Combined with oklch(0 0 0 / 0.3) backdrop."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Default easing for state transitions and page-level enters."
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Hover states, color changes, button feedback."
+      },
+      {
+        "name": "duration-standard",
+        "value": "220ms",
+        "purpose": "Sliding nav pill, panel reveals, focus ring transitions."
+      },
+      {
+        "name": "duration-enter",
+        "value": "280ms",
+        "purpose": "Page-level enters — the animate-page-in keyframe."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action trigger. Confirms, approves, submits. Verified Green background.",
+      "html": "<button class=\"ds-btn-primary\">Approve Activation</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; background-color: oklch(0.637 0.145 162.48); color: oklch(1 0 0); font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-primary:hover { background-color: oklch(0.57 0.145 162.48); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.637 0.145 162.48); outline-offset: 2px; } .ds-btn-primary:active { background-color: oklch(0.52 0.145 162.48); } .ds-btn-primary:disabled { background-color: oklch(0.922 0 0); color: oklch(0.554 0.046 257.417); cursor: not-allowed; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Void, reject, delete actions. Danger red background. Never co-located with Primary without a visual separator.",
+      "html": "<button class=\"ds-btn-destructive\">Void Activation</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; background-color: oklch(0.577 0.245 27.325); color: oklch(1 0 0); font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-destructive:hover { background-color: oklch(0.50 0.245 27.325); } .ds-btn-destructive:focus-visible { outline: 2px solid oklch(0.577 0.245 27.325); outline-offset: 2px; } .ds-btn-destructive:disabled { background-color: oklch(0.922 0 0); color: oklch(0.554 0.046 257.417); cursor: not-allowed; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary / cancel actions. Transparent background, muted hover.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; background-color: transparent; color: oklch(0.129 0.042 264.695); font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-btn-ghost:hover { background-color: oklch(0.97 0 0); } .ds-btn-ghost:focus-visible { outline: 2px solid oklch(0.637 0.145 162.48); outline-offset: 2px; }"
+    },
+    {
+      "name": "KPI Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Dashboard summary card. Data value in Geist Mono, label in Inter Label. No hero gradients.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-label\">Total Incentives</p><p class=\"ds-card-value\">PKR 47,200</p><p class=\"ds-card-sub\">3 models · 42 units</p></div>",
+      "css": ".ds-card { background-color: oklch(1 0 0); border: 1px solid oklch(0.922 0 0); border-radius: 0.875rem; padding: 1.5rem; } .ds-card-label { font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: oklch(0.554 0.046 257.417); letter-spacing: 0.02em; text-transform: uppercase; margin: 0 0 0.5rem 0; } .ds-card-value { font-family: \"Geist Mono\", ui-monospace, monospace; font-size: 1.5rem; font-weight: 600; color: oklch(0.129 0.042 264.695); margin: 0 0 0.25rem 0; } .ds-card-sub { font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; color: oklch(0.554 0.046 257.417); margin: 0; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Standard form control. Verified Green focus ring. Always has a visible label above.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-inp-1\">Activation Date</label><input class=\"ds-input\" id=\"ds-inp-1\" type=\"text\" placeholder=\"DD/MM/YYYY\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.375rem; } .ds-field-label { font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.129 0.042 264.695); } .ds-input { height: 2.25rem; width: 100%; padding: 0 0.75rem; background-color: oklch(1 0 0); border: 1px solid oklch(0.922 0 0); border-radius: 0.5rem; font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; color: oklch(0.129 0.042 264.695); transition: border-color 150ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1); outline: none; box-sizing: border-box; } .ds-input::placeholder { color: oklch(0.70 0.02 264.695); } .ds-input:focus { border-color: oklch(0.637 0.145 162.48); box-shadow: 0 0 0 3px oklch(0.637 0.145 162.48 / 0.15); } .ds-input:disabled { background-color: oklch(0.97 0 0); color: oklch(0.554 0.046 257.417); cursor: not-allowed; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Inline status indicator. Always paired with text — never color-only. Three semantic states.",
+      "html": "<div style=\"display:flex;gap:0.5rem;align-items:center;\"><span class=\"ds-badge ds-badge--active\">Active</span><span class=\"ds-badge ds-badge--pending\">Pending</span><span class=\"ds-badge ds-badge--voided\">Voided</span></div>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; line-height: 1.4; } .ds-badge--active { background-color: oklch(0.95 0.04 162.48); color: oklch(0.35 0.145 162.48); } .ds-badge--pending { background-color: oklch(0.97 0.05 85); color: oklch(0.45 0.12 85); } .ds-badge--voided { background-color: oklch(0.97 0.04 27.325); color: oklch(0.40 0.18 27.325); }"
+    },
+    {
+      "name": "Sliding Pill Nav",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Signature navigation component. An absolutely-positioned pill tracks the active route with a 220ms ease-out transition. The pill is aria-hidden; contrast carries the active state semantically.",
+      "html": "<nav class=\"ds-sliding-nav\"><div class=\"ds-nav-pill\" style=\"top:0;height:36px;\"></div><a class=\"ds-sn-item ds-sn-active\" href=\"#\"><svg class=\"ds-sn-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"></rect><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"></rect><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"></rect><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"></rect></svg><span>Dashboard</span></a><a class=\"ds-sn-item\" href=\"#\"><svg class=\"ds-sn-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"8\" y1=\"6\" x2=\"21\" y2=\"6\"/><line x1=\"8\" y1=\"12\" x2=\"21\" y2=\"12\"/><line x1=\"8\" y1=\"18\" x2=\"21\" y2=\"18\"/><line x1=\"3\" y1=\"6\" x2=\"3.01\" y2=\"6\"/><line x1=\"3\" y1=\"12\" x2=\"3.01\" y2=\"12\"/><line x1=\"3\" y1=\"18\" x2=\"3.01\" y2=\"18\"/></svg><span>Activations</span></a><a class=\"ds-sn-item\" href=\"#\"><svg class=\"ds-sn-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"></path><polyline points=\"14 2 14 8 20 8\"></polyline></svg><span>Reports</span></a></nav>",
+      "css": ".ds-sliding-nav { position: relative; display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem; } .ds-nav-pill { position: absolute; left: 0.75rem; right: 0.75rem; border-radius: 0.5rem; background-color: oklch(0.637 0.145 162.48); pointer-events: none; transition: top 220ms cubic-bezier(0.22, 1, 0.36, 1), height 220ms cubic-bezier(0.22, 1, 0.36, 1); } @media (prefers-reduced-motion: reduce) { .ds-nav-pill { transition: none; } } .ds-sn-item { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; font-weight: 400; color: oklch(0.554 0.046 257.417); text-decoration: none; transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-sn-item:hover { color: oklch(0.129 0.042 264.695); } .ds-sn-active { color: oklch(1 0 0); font-weight: 500; } .ds-sn-active:hover { color: oklch(1 0 0); } .ds-sn-item:focus-visible { outline: 2px solid oklch(0.637 0.145 162.48); outline-offset: 2px; } .ds-sn-icon { width: 1rem; height: 1rem; flex-shrink: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Clear Register",
+    "overview": "The Alhamd Sales Console is an auditable operations tool — not a dashboard for admiring metrics, but an instrument for confirming truth. Every screen answers a question a dealer, officer, or accountant would actually ask: How much stock do I hold? What rebates are owed? Is this activation approved? The interface earns trust not by looking impressive but by being unambiguous.\n\nThe dominant surface is light — a near-neutral cool white — because clarity demands a neutral field. The one charged color, Verified Green, is reserved for things that have cleared the system. Its rarity is the point. When it appears, it means something passed. This system explicitly rejects consumer-app gradient energy, decorative data displays, dashboard hero-metrics that exist for visual drama, and any component that draws more attention to itself than to the data it contains.",
+    "keyCharacteristics": [
+      "Typographic density over spatial extravagance — information-first layout",
+      "A single chromatic accent in an achromatic field; color encodes significance, not decoration",
+      "Monospace data values; proportional labels; clear hierarchy between the two",
+      "Motion used only for state — the sliding nav pill communicates location, not personality",
+      "Flat surfaces with minimal shadow; depth conveyed by tonal surface layering, not lift"
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Verified Green appears on 10% or less of any given screen. When present everywhere, it means nothing. Scope it to: active nav item, primary buttons, success/approved badges, confirmed numeric values in reports.",
+        "section": "colors"
+      },
+      {
+        "name": "The Silent Chart Rule",
+        "body": "Charts use achromatic gray steps by default. Verified Green enters a chart only when representing the dealer's own confirmed incentive position. Color encodes financial significance, not aesthetic variety.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Color Rule",
+        "body": "Status colors must always be paired with a text label or icon. Never encode status through color alone. Users operate on variable ambient-light mobile screens.",
+        "section": "colors"
+      },
+      {
+        "name": "The Number Rule",
+        "body": "All financial values and stock counts render in Geist Mono. No exceptions. When a value next to a label looks identical in typeface, the hierarchy has failed.",
+        "section": "typography"
+      },
+      {
+        "name": "The Scale Floor Rule",
+        "body": "Nothing below 12px (0.75rem) in the interface. Going smaller to fit more data is prohibited — reduce columns or reflow the layout instead.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Cards, panels, and sidebars are borderlined, not shadowed, at rest. A resting surface with a drop-shadow is a design decision that requires justification. If in doubt, use a 1px Divider border.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do render all PKR amounts, unit counts, and stock figures in Geist Mono so columns align.",
+      "Do pair every status color with a text label or icon.",
+      "Do use a 1px Divider-color border on cards and panels at rest — skip shadows.",
+      "Do reserve Verified Green exclusively for confirmed/approved states and primary actions.",
+      "Do keep the achromatic chart palette — Verified Green enters only for confirmed incentive data.",
+      "Do set focus rings using Verified Green at full opacity with 2px offset.",
+      "Do reduce motion to instant transitions when prefers-reduced-motion is set.",
+      "Do cap line length at 65–75ch for prose blocks."
+    ],
+    "donts": [
+      "Don't use gradient text (background-clip: text + gradient). Emphasis is weight or size, never gradient.",
+      "Don't use color as the sole encoding of financial status. Always pair with text or icon.",
+      "Don't put decorative side-stripe borders (border-left > 1px colored accent) on cards or alerts.",
+      "Don't put the active Verified Green on inactive states, hover states, or ambient decoration.",
+      "Don't build nested cards. Use a bordered section, a table row, or an indented list instead.",
+      "Don't use display or slab fonts in UI labels, button text, table headers, or data values.",
+      "Don't introduce cream, sand, beige, or warm-tinted body backgrounds. The surface is intentionally cool-neutral.",
+      "Don't build hero-metric layouts (giant number, tiny label, gradient accent) for KPI cards.",
+      "Don't use Verified Green for loading states or progress indicators. The color means done.",
+      "Don't open modals as a first response to any action — prefer inline, progressive, or side-panel patterns."
+    ]
+  }
+}

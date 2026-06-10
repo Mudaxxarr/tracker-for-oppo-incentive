@@ -143,7 +143,6 @@ export const activations = pgTable(
     activationDate: isoDate("activation_date").notNull(),
     dealerPriceSnapshot: real("dealer_price_snapshot").notNull(),
     isCrossRegion: boolean("is_cross_region").notNull().default(false),
-    customerId: text("customer_id").references(() => customers.id, { onDelete: "set null" }),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -336,55 +335,6 @@ export const crCaught = pgTable(
   })
 );
 
-// ---------- Customers ----------
-export const customers = pgTable(
-  "customers",
-  {
-    id: text("id").primaryKey(),
-    tenantId: text("tenant_id").notNull().references(() => dealerTenants.id, { onDelete: "cascade" }),
-    dealerId: text("dealer_id").notNull().references(() => dealerIds.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    phone: text("phone").notNull(),
-    cnic: text("cnic"),
-    createdAt: isoDateTime("created_at").notNull(),
-  },
-  (t) => ({
-    byDealer: index("customers_by_dealer").on(t.tenantId, t.dealerId, t.createdAt),
-    byPhone: index("customers_by_phone").on(t.tenantId, t.dealerId, t.phone),
-  })
-);
-
-// ---------- Warranty Claims ----------
-export const warrantyClaims = pgTable(
-  "warranty_claims",
-  {
-    id: text("id").primaryKey(),
-    tenantId: text("tenant_id").notNull().references(() => dealerTenants.id, { onDelete: "cascade" }),
-    dealerId: text("dealer_id").notNull().references(() => dealerIds.id, { onDelete: "cascade" }),
-    customerId: text("customer_id").references(() => customers.id, { onDelete: "set null" }),
-    activationId: text("activation_id").references(() => activations.id, { onDelete: "set null" }),
-    modelId: text("model_id").notNull().references(() => models.id, { onDelete: "restrict" }),
-    issueDesc: text("issue_desc").notNull(),
-    status: text("status").notNull().default("pending"), // pending|in_repair|resolved|rejected
-    createdAt: isoDateTime("created_at").notNull(),
-    resolvedAt: text("resolved_at"),
-  },
-  (t) => ({
-    byDealer: index("warranty_by_dealer").on(t.tenantId, t.dealerId, t.createdAt),
-    byStatus: index("warranty_by_status").on(t.tenantId, t.status, t.createdAt),
-  })
-);
-
-// ---------- Sales Scripts (global — owner manages, all dealers read) ----------
-export const scripts = pgTable("scripts", {
-  id: text("id").primaryKey(),
-  title: text("title").notNull(),
-  body: text("body").notNull(),
-  sortOrder: integer("sort_order").notNull().default(0),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: isoDateTime("created_at").notNull(),
-});
-
 // ---------- Owner Alerts ----------
 export const ownerAlerts = pgTable(
   "owner_alerts",
@@ -521,12 +471,6 @@ export type AppSetting = typeof appSettings.$inferSelect;
 export type AuditLog = typeof auditLog.$inferSelect;
 export type OwnerAlert = typeof ownerAlerts.$inferSelect;
 export type NewOwnerAlert = typeof ownerAlerts.$inferInsert;
-export type Customer = typeof customers.$inferSelect;
-export type NewCustomer = typeof customers.$inferInsert;
-export type WarrantyClaim = typeof warrantyClaims.$inferSelect;
-export type NewWarrantyClaim = typeof warrantyClaims.$inferInsert;
-export type Script = typeof scripts.$inferSelect;
-export type NewScript = typeof scripts.$inferInsert;
 export type Rebate = typeof rebates.$inferSelect;
 export type NewRebate = typeof rebates.$inferInsert;
 export type OwnerStaff = typeof ownerStaff.$inferSelect;
