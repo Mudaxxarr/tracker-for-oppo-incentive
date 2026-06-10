@@ -44,9 +44,12 @@ interface Props {
   initialPurchases: PurchaseRow[];
   initialFilters: { modelId?: string; source?: string; from?: string; to?: string };
   hasDealer: boolean;
+  dealerId: string | null;
+  tenantId: string;
+  role: "admin" | "exec";
 }
 
-export function DealerPurchasesClient({ models, initialPurchases, initialFilters, hasDealer }: Props) {
+export function DealerPurchasesClient({ models, initialPurchases, initialFilters, hasDealer, dealerId, tenantId, role }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
@@ -106,6 +109,9 @@ export function DealerPurchasesClient({ models, initialPurchases, initialFilters
                 <TabsContent value="single" className="pt-3">
                   <DealerPurchaseForm
                     models={models}
+                    dealerId={dealerId ?? ""}
+                    tenantId={tenantId}
+                    role={role}
                     onSuccess={() => {
                       setOpen(false);
                       toast.success("Purchase added");

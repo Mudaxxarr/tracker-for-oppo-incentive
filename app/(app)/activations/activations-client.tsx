@@ -89,6 +89,8 @@ interface Props {
   initialActivations: ActivationRow[];
   initialFilters: { modelId?: string; from?: string; to?: string };
   hasDealer: boolean;
+  dealerId: string | null;
+  tenantId: string;
   staffRole?: StaffRole | null;
 }
 
@@ -98,6 +100,8 @@ export function ActivationsClient({
   initialActivations,
   initialFilters,
   hasDealer,
+  dealerId,
+  tenantId,
   staffRole,
 }: Props) {
   const isSO = staffRole === "so";
@@ -290,7 +294,7 @@ export function ActivationsClient({
                       <TabsTrigger value="bulk">Bulk by Date</TabsTrigger>
                     </TabsList>
                     <TabsContent value="single" className="pt-3">
-                      <ActivationForm stock={stock} onSuccess={() => { setOpen(false); router.refresh(); }} />
+                      <ActivationForm stock={stock} dealerId={dealerId ?? ""} tenantId={tenantId} onSuccess={() => { setOpen(false); router.refresh(); }} />
                     </TabsContent>
                     <TabsContent value="bulk" className="pt-3">
                       <BulkActivationForm stock={stock} onSuccess={() => { setOpen(false); router.refresh(); }} />

@@ -10,6 +10,7 @@ import { NAVAL, ARCTIC } from "@/lib/export/pdf-themes";
 import { buildPolicyAchievements } from "@/lib/report-utils";
 import { getConstants } from "@/lib/settings";
 import { listRebatesForDealerInPeriod, sumRebatesForPeriod } from "@/lib/db/queries/rebates";
+import { listStockForDealer } from "@/lib/db/queries/purchases";
 import { getCrCaughtLoss, listCrCaughtForPeriod } from "@/lib/db/queries/cr-caught";
 import { logAudit } from "@/lib/audit";
 import { db, schema } from "@/lib/db/client";
@@ -90,14 +91,15 @@ export async function GET(req: Request) {
 
   if (fmt === "detailed-pdf") {
     const constants = await getConstants();
-    const [policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal] = await Promise.all([
+    const [policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal, inventory] = await Promise.all([
       buildPolicyAchievements(dealerId, periodStart, periodEnd, report),
       listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       listCrCaughtForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd, constants.basePercent),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
+      listStockForDealer(OWNER_TENANT_ID, dealerId),
     ]);
-    const buffer = await buildDetailedPDF(report, dealer.name, policies, pdfTheme, { rebateRows, crCaughtRows, crCaughtLoss, rebateTotal });
+    const buffer = await buildDetailedPDF(report, dealer.name, policies, pdfTheme, { rebateRows, crCaughtRows, crCaughtLoss, rebateTotal, inventory });
     const baseName = `OPPO_Detailed_Breakup_${dealer.name.replace(/\s+/g, "_")}_${periodStart}_${periodEnd}`;
     await logAudit({
       action: "report.export",

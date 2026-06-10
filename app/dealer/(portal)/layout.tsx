@@ -12,6 +12,7 @@ import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isAuthenticated } from "@/lib/auth";
 import { AdminPreviewBanner } from "@/components/dealer/admin-preview-banner";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { OfflineSync } from "@/components/pwa/offline-sync";
 
 export default async function DealerLayout({
   children,
@@ -60,6 +61,7 @@ export default async function DealerLayout({
       </div>
       <DealerBottomNav features={features} />
       <InstallPrompt />
+      <OfflineSync />
     </div>
   );
 }

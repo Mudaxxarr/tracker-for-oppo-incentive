@@ -35,6 +35,8 @@ export default async function TeamActivationsPage({
       initialActivations={activations}
       initialFilters={sp}
       hasDealer={!!dealerId}
+      dealerId={dealerId}
+      tenantId={OWNER_TENANT_ID}
     />
   );
 }

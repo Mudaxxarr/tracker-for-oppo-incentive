@@ -51,6 +51,9 @@ export default async function DealerPurchasesPage({
       initialPurchases={purchases}
       initialFilters={sp}
       hasDealer={!!dealerId}
+      dealerId={dealerId}
+      tenantId={session.tenantId}
+      role={session.role as "admin" | "exec"}
     />
   );
 }

@@ -81,6 +81,9 @@ interface Props {
   initialActivations: ActivationRow[];
   initialFilters: { modelId?: string; from?: string; to?: string };
   hasDealer: boolean;
+  dealerId: string | null;
+  tenantId: string;
+  role: "admin" | "exec";
 }
 
 export function DealerActivationsClient({
@@ -89,6 +92,9 @@ export function DealerActivationsClient({
   initialActivations,
   initialFilters,
   hasDealer,
+  dealerId,
+  tenantId,
+  role,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -249,6 +255,9 @@ export function DealerActivationsClient({
                     <TabsContent value="single" className="pt-3">
                       <DealerActivationForm
                         stock={stock}
+                        dealerId={dealerId ?? ""}
+                        tenantId={tenantId}
+                        role={role}
                         onSuccess={() => { setOpen(false); router.refresh(); }}
                       />
                     </TabsContent>

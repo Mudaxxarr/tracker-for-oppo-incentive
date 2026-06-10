@@ -12,14 +12,18 @@ import {
 import { createDealerActivationAction, type ActivationFormState } from "./actions";
 import { formatPKR } from "@/lib/format";
 import { toast } from "sonner";
+import { addToQueue } from "@/lib/offline-queue";
 import type { StockRow } from "@/lib/db/queries/purchases";
 
 interface Props {
   stock: StockRow[];
+  dealerId: string;
+  tenantId: string;
+  role: "admin" | "exec";
   onSuccess?: () => void;
 }
 
-export function DealerActivationForm({ stock, onSuccess }: Props) {
+export function DealerActivationForm({ stock, dealerId, tenantId, role, onSuccess }: Props) {
   const [state, action, pending] = useActionState<ActivationFormState, FormData>(
     createDealerActivationAction,
     {},
@@ -51,8 +55,37 @@ export function DealerActivationForm({ stock, onSuccess }: Props) {
     }
   }, [state, onSuccess]);
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!navigator.onLine) {
+      const fd = new FormData(e.currentTarget);
+      await addToQueue({
+        type: "activation",
+        portal: "dealer",
+        role,
+        tenantId,
+        dealerId,
+        modelId,
+        modelName: selected?.modelName ?? modelId,
+        quantity: Math.max(1, Number(fd.get("quantity")) || 1),
+        activationDate: String(fd.get("activationDate") ?? today),
+        imei: String(fd.get("imei") || "").trim() || undefined,
+        isCrossRegion: fd.get("isCrossRegion") === "on",
+        stockSnapshot: selected?.quantity ?? 0,
+        dealerPrice: selected?.dealerPrice ?? 0,
+      });
+      window.dispatchEvent(new Event("offlineQueueUpdated"));
+      toast.success(`Saved offline — will sync when connected`);
+      setModelId("");
+      setQuantity("1");
+      onSuccess?.();
+      return;
+    }
+    action(new FormData(e.currentTarget));
+  };
+
   return (
-    <form action={action} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <input type="hidden" name="modelId" value={modelId} />
 
       <div className="space-y-1.5">

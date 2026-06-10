@@ -6,6 +6,8 @@ import { buildExcel } from "@/lib/export/report-excel";
 import { buildPDF } from "@/lib/export/report-pdf";
 import { buildDetailedPDF } from "@/lib/export/report-pdf-detailed";
 import { buildPolicyAchievements } from "@/lib/report-utils";
+import { listStockForDealer } from "@/lib/db/queries/purchases";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { logAudit } from "@/lib/audit";
 import { db, schema } from "@/lib/db/client";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
@@ -46,8 +48,11 @@ export async function GET(req: Request) {
   const dealerName = dealerRow[0]?.name ?? activeDealerId;
 
   if (fmt === "detailed-pdf") {
-    const policies = await buildPolicyAchievements(activeDealerId, periodStart, periodEnd, report);
-    const buffer = await buildDetailedPDF(report, dealerName, policies);
+    const [policies, inventory] = await Promise.all([
+      buildPolicyAchievements(activeDealerId, periodStart, periodEnd, report),
+      listStockForDealer(session.tenantId, activeDealerId, OWNER_TENANT_ID),
+    ]);
+    const buffer = await buildDetailedPDF(report, dealerName, policies, undefined, { inventory });
     const baseName = `OPPO_Detailed_Breakup_${dealerName.replace(/\s+/g, "_")}_${periodStart}_${periodEnd}`;
     await logAudit({
       action: "report.export",

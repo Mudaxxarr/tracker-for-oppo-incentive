@@ -12,14 +12,19 @@ import {
 import { createDealerPurchaseAction, getPriceOnDateForDealer, type PurchaseFormState } from "./actions";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { formatPKR } from "@/lib/format";
+import { addToQueue } from "@/lib/offline-queue";
+import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 
 interface Props {
   models: ModelWithCurrentPrice[];
+  dealerId: string;
+  tenantId: string;
+  role: "admin" | "exec";
   onSuccess?: () => void;
 }
 
-export function DealerPurchaseForm({ models, onSuccess }: Props) {
+export function DealerPurchaseForm({ models, dealerId, tenantId, role, onSuccess }: Props) {
   const [state, action, pending] = useActionState<PurchaseFormState, FormData>(
     createDealerPurchaseAction,
     {},
@@ -71,8 +76,44 @@ export function DealerPurchaseForm({ models, onSuccess }: Props) {
     }
   }, [state.ok, onSuccess, today]);
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!navigator.onLine) {
+      const fd = new FormData(e.currentTarget);
+      const qty = Math.max(1, Number(fd.get("quantity")) || 1);
+      const udp = Number(dealerPrice) || 0;
+      const uip = Number(invoicePrice) || 0;
+      await addToQueue({
+        type: "purchase",
+        portal: "dealer",
+        role,
+        tenantId,
+        dealerId,
+        modelId,
+        modelName: selected?.name ?? modelId,
+        quantity: qty,
+        purchaseDate: purchaseDate,
+        unitDealerPrice: udp,
+        unitInvoicePrice: uip,
+        source: source,
+        referenceNote: String(fd.get("referenceNote") || "").trim() || undefined,
+      });
+      window.dispatchEvent(new Event("offlineQueueUpdated"));
+      toast.success("Purchase saved offline — will sync when connected");
+      setModelId("");
+      setPurchaseDate(today);
+      setDealerPrice("");
+      setInvoicePrice("");
+      setPriceTouched(false);
+      setPricedAt(null);
+      onSuccess?.();
+      return;
+    }
+    action(new FormData(e.currentTarget));
+  };
+
   return (
-    <form action={action} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <input type="hidden" name="modelId" value={modelId} />
 
       <div className="space-y-1.5">

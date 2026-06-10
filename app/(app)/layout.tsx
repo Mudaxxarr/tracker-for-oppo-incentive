@@ -8,6 +8,7 @@ import { TopBar } from "@/components/feature/top-bar";
 import { Sidebar } from "@/components/feature/sidebar";
 import { BottomNav } from "@/components/feature/bottom-nav";
 import { PageTransition } from "@/components/feature/page-transition";
+import { OfflineSync } from "@/components/pwa/offline-sync";
 import type { StaffRole } from "@/lib/constants";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <BottomNav staffRole={staffRole} />
+      <OfflineSync />
     </div>
   );
 }

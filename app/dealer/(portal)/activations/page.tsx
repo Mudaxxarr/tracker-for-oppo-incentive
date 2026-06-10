@@ -53,6 +53,9 @@ export default async function DealerActivationsPage({
       initialActivations={activations}
       initialFilters={sp}
       hasDealer={!!dealerId}
+      dealerId={dealerId}
+      tenantId={session.tenantId}
+      role={session.role as "admin" | "exec"}
     />
   );
 }
