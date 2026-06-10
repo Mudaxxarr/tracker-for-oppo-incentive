@@ -47,3 +47,6 @@ next-env.d.ts
 /data/*.db-shm
 /data/oppo-tracker.stress.db*
 
+
+# Claude Code local settings (may contain allowlisted commands with credentials)
+.claude/settings.local.json
