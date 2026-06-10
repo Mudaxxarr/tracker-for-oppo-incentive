@@ -18,6 +18,7 @@ import {
   History,
   LogOut,
   Receipt,
+  CreditCard,
 } from "lucide-react";
 import { logoutAction } from "@/app/dealer/actions";
 import type { DealerFeatureKey, DealerFeatures } from "@/lib/dealer-features";
@@ -42,6 +43,7 @@ const NAV: {
   { href: "/dealer/pos", label: "Sell", icon: Receipt, feature: "pos", primaryMobile: true },
   { href: "/dealer/activity", label: "Activity", icon: History, feature: "activity" },
   { href: "/dealer/settings", label: "Settings", icon: Settings, feature: "settings" },
+  { href: "/dealer/billing", label: "Billing", icon: CreditCard },
   { href: "/dealer/team", label: "Team View", icon: Users, feature: "team" },
 ];
 

@@ -27,6 +27,7 @@ export interface TenantDetail {
   startedAt: string;
   expiresAt: string;
   status: string;
+  monthlyFee: number | null;
   createdAt: string;
   features: DealerFeatures;
   users: {
@@ -412,6 +413,110 @@ export async function deleteDealerTeamMember(
     payload: { tenantId },
   });
   return { ok: true };
+}
+
+// ── Billing ───────────────────────────────────────────────────────────────────
+
+export interface BillingEventRow {
+  id: string;
+  amount: number;
+  paidAt: string;
+  note: string | null;
+  recordedBy: string | null;
+  monthsAdded: number | null;
+  createdAt: string;
+}
+
+export async function getBillingEvents(tenantId: string): Promise<BillingEventRow[]> {
+  const rows = await db
+    .select({
+      id: schema.billingEvents.id,
+      amount: schema.billingEvents.amount,
+      paidAt: schema.billingEvents.paidAt,
+      note: schema.billingEvents.note,
+      recordedBy: schema.billingEvents.recordedBy,
+      monthsAdded: schema.billingEvents.monthsAdded,
+      createdAt: schema.billingEvents.createdAt,
+    })
+    .from(schema.billingEvents)
+    .where(eq(schema.billingEvents.tenantId, tenantId))
+    .orderBy(desc(schema.billingEvents.createdAt));
+  return rows.map((r) => ({ ...r, createdAt: String(r.createdAt) }));
+}
+
+export async function recordBillingPayment(
+  tenantId: string,
+  amount: number,
+  paidAt: string,
+  note: string | null,
+  recordedBy: string,
+  monthsAdded: number | null,
+): Promise<void> {
+  await db.insert(schema.billingEvents).values({
+    id: randomUUID(),
+    tenantId,
+    amount,
+    paidAt,
+    note,
+    recordedBy,
+    monthsAdded,
+    createdAt: new Date().toISOString(),
+  });
+
+  if (monthsAdded && monthsAdded > 0) {
+    await renewTenant(tenantId, monthsAdded);
+  }
+
+  await logAudit({
+    action: "admin_billing_payment_recorded",
+    summary: `Recorded PKR ${amount} payment for tenant ${tenantId}`,
+    entityType: "dealer_tenant",
+    entityId: tenantId,
+    payload: { amount, paidAt, note, monthsAdded },
+  });
+}
+
+export async function suspendTenant(tenantId: string): Promise<void> {
+  await db
+    .update(schema.dealerTenants)
+    .set({ status: "suspended" })
+    .where(eq(schema.dealerTenants.id, tenantId));
+
+  await logAudit({
+    action: "admin_tenant_suspended",
+    summary: `Suspended tenant ${tenantId}`,
+    entityType: "dealer_tenant",
+    entityId: tenantId,
+  });
+}
+
+export async function reactivateTenant(tenantId: string): Promise<void> {
+  await db
+    .update(schema.dealerTenants)
+    .set({ status: "active" })
+    .where(eq(schema.dealerTenants.id, tenantId));
+
+  await logAudit({
+    action: "admin_tenant_reactivated",
+    summary: `Reactivated tenant ${tenantId}`,
+    entityType: "dealer_tenant",
+    entityId: tenantId,
+  });
+}
+
+export async function updateMonthlyFee(tenantId: string, monthlyFee: number): Promise<void> {
+  await db
+    .update(schema.dealerTenants)
+    .set({ monthlyFee })
+    .where(eq(schema.dealerTenants.id, tenantId));
+
+  await logAudit({
+    action: "admin_tenant_fee_updated",
+    summary: `Updated monthly fee for tenant ${tenantId} to PKR ${monthlyFee}`,
+    entityType: "dealer_tenant",
+    entityId: tenantId,
+    payload: { monthlyFee },
+  });
 }
 
 function addMonths(dateStr: string, months: number): string {

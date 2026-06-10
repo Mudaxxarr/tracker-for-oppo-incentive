@@ -75,6 +75,7 @@ export default async function AdminDealerDetailPage({ params }: Props) {
           </a>
           <Link href={`/admin/dealers/${id}/settings`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Settings</Link>
           <Link href={`/admin/dealers/${id}/features`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Features</Link>
+          <Link href={`/admin/dealers/${id}/billing`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Billing</Link>
           <Link href={`/admin/dealers/${id}/renew`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Renew</Link>
           <Link href={`/admin/dealers/${id}/team`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Team</Link>
           <Link href={`/admin/dealers/${id}/reset-password`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>Reset Password</Link>

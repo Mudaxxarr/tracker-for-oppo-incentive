@@ -436,6 +436,20 @@ export const dealerDailyBackups = pgTable(
   })
 );
 
+// ---------- Billing Events ----------
+export const billingEvents = pgTable("billing_events", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => dealerTenants.id, { onDelete: "cascade" }),
+  amount: real("amount").notNull(),
+  paidAt: isoDate("paid_at").notNull(),
+  note: text("note"),
+  recordedBy: text("recorded_by"),
+  monthsAdded: integer("months_added"),
+  createdAt: isoDateTime("created_at").notNull(),
+});
+
 // ----- Type exports -----
 export type DealerTenant = typeof dealerTenants.$inferSelect;
 export type NewDealerTenant = typeof dealerTenants.$inferInsert;
@@ -475,3 +489,5 @@ export type Rebate = typeof rebates.$inferSelect;
 export type NewRebate = typeof rebates.$inferInsert;
 export type OwnerStaff = typeof ownerStaff.$inferSelect;
 export type NewOwnerStaff = typeof ownerStaff.$inferInsert;
+export type BillingEvent = typeof billingEvents.$inferSelect;
+export type NewBillingEvent = typeof billingEvents.$inferInsert;
