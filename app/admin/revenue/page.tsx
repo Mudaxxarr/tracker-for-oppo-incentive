@@ -1,6 +1,6 @@
 import { isAuthenticated } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getRevenueSummary } from "@/lib/admin/dealers";
+import { getRevenueSummary, checkExpiringTenants } from "@/lib/admin/dealers";
 import { RevenueClient } from "./revenue-client";
 
 export const metadata = { title: "Revenue Dashboard" };
@@ -8,6 +8,7 @@ export const metadata = { title: "Revenue Dashboard" };
 export default async function AdminRevenuePage() {
   if (!(await isAuthenticated())) redirect("/login");
   const s = await getRevenueSummary();
+  checkExpiringTenants().catch((e) => console.error("checkExpiringTenants:", e));
 
   return (
     <RevenueClient
@@ -21,6 +22,7 @@ export default async function AdminRevenuePage() {
         expiringIn30: s.expiringSoon - s.expiringIn7,
         mrr: s.mrr,
         arr: s.arr,
+        collectedThisMonth: s.collectedThisMonth,
       }}
     />
   );

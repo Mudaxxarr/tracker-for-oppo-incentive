@@ -216,20 +216,29 @@ export async function getRevenueSummary() {
   const today = new Date().toISOString().slice(0, 10);
   const in7Days = addDays(today, 7);
   const in30Days = addDays(today, 30);
+  const monthStart = today.slice(0, 7) + "-01";
 
-  const rows = await db
-    .select({
-      id: schema.dealerTenants.id,
-      businessName: schema.dealerTenants.businessName,
-      ownerEmail: schema.dealerTenants.ownerEmail,
-      status: schema.dealerTenants.status,
-      expiresAt: schema.dealerTenants.expiresAt,
-      planMonths: schema.dealerTenants.planMonths,
-      monthlyFee: schema.dealerTenants.monthlyFee,
-    })
-    .from(schema.dealerTenants)
-    .where(sql`${schema.dealerTenants.id} != 'owner'`)
-    .orderBy(schema.dealerTenants.expiresAt);
+  const [rows, collectedRows] = await Promise.all([
+    db
+      .select({
+        id: schema.dealerTenants.id,
+        businessName: schema.dealerTenants.businessName,
+        ownerEmail: schema.dealerTenants.ownerEmail,
+        status: schema.dealerTenants.status,
+        expiresAt: schema.dealerTenants.expiresAt,
+        planMonths: schema.dealerTenants.planMonths,
+        monthlyFee: schema.dealerTenants.monthlyFee,
+      })
+      .from(schema.dealerTenants)
+      .where(sql`${schema.dealerTenants.id} != 'owner'`)
+      .orderBy(schema.dealerTenants.expiresAt),
+    db
+      .select({ total: sql<number>`COALESCE(SUM(${schema.billingEvents.amount}), 0)` })
+      .from(schema.billingEvents)
+      .where(sql`${schema.billingEvents.paidAt} >= ${monthStart}`),
+  ]);
+
+  const collectedThisMonth = Number(collectedRows[0]?.total ?? 0);
 
   let active = 0, expiringIn7 = 0, expiringSoon = 0, grace = 0, expired = 0, suspended = 0;
   let mrr = 0;
@@ -250,6 +259,7 @@ export async function getRevenueSummary() {
     expiringIn7,
     expiringSoon,
     grace,
+    collectedThisMonth,
     expired,
     suspended,
     mrr,
@@ -413,6 +423,55 @@ export async function deleteDealerTeamMember(
     payload: { tenantId },
   });
   return { ok: true };
+}
+
+// ── Expiry Alerts ─────────────────────────────────────────────────────────────
+
+export async function checkExpiringTenants(): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  const in7 = addDays(today, 7);
+
+  const tenants = await db
+    .select({
+      id: schema.dealerTenants.id,
+      businessName: schema.dealerTenants.businessName,
+      expiresAt: schema.dealerTenants.expiresAt,
+    })
+    .from(schema.dealerTenants)
+    .where(
+      sql`${schema.dealerTenants.status} = 'active'
+        AND ${schema.dealerTenants.expiresAt} <= ${in7}
+        AND ${schema.dealerTenants.expiresAt} >= ${today}
+        AND ${schema.dealerTenants.id} != 'owner'`,
+    );
+
+  for (const t of tenants) {
+    const entityId = `expiry_${t.id}_${t.expiresAt}`;
+    const existing = await db
+      .select({ id: schema.ownerAlerts.id })
+      .from(schema.ownerAlerts)
+      .where(
+        sql`${schema.ownerAlerts.entityId} = ${entityId} AND ${schema.ownerAlerts.isRead} = false`,
+      )
+      .limit(1);
+
+    if (existing.length > 0) continue;
+
+    const daysLeft = Math.ceil(
+      (new Date(t.expiresAt).getTime() - new Date(today).getTime()) / 86400000,
+    );
+    await db.insert(schema.ownerAlerts).values({
+      id: randomUUID(),
+      tenantId: "owner",
+      type: "tenant_expiry_warning",
+      entityType: "dealer_tenant",
+      entityId,
+      dealerId: null,
+      message: `${t.businessName} — subscription expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""} (${t.expiresAt})`,
+      isRead: false,
+      payload: JSON.stringify({ tenantId: t.id, expiresAt: t.expiresAt, daysLeft }),
+    });
+  }
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────

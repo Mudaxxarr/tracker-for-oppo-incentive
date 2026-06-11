@@ -7,6 +7,7 @@ import { DealerTopBar } from "@/components/dealer/dealer-top-bar";
 import { DealerSidebar } from "@/components/dealer/dealer-sidebar";
 import { DealerBottomNav } from "@/components/dealer/dealer-bottom-nav";
 import { DealerGraceBanner } from "@/components/dealer/dealer-grace-banner";
+import { DealerExpiryWarning } from "@/components/dealer/dealer-expiry-warning";
 import { ensureTodayBackup } from "@/lib/admin/backups";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isAuthenticated } from "@/lib/auth";
@@ -42,6 +43,7 @@ export default async function DealerLayout({
 
   const headerStore = await headers();
   const isGrace = headerStore.get("x-grace") === "true";
+  const expirySoonDays = Number(headerStore.get("x-expiry-soon") ?? "0") || null;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -52,6 +54,7 @@ export default async function DealerLayout({
         />
       )}
       <DealerTopBar businessName={businessName} isAdmin={isAdminPreview} />
+      {expirySoonDays && <DealerExpiryWarning daysLeft={expirySoonDays} />}
       {isGrace && <DealerGraceBanner />}
       <div className="flex flex-1">
         <DealerSidebar features={features} />

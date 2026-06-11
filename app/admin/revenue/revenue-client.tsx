@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { setDealerMonthlyFeeAction } from "./actions";
 import { formatDate, formatPKR } from "@/lib/format";
@@ -26,6 +27,8 @@ import {
   XCircle,
   CheckCircle2,
   Check,
+  Banknote,
+  ExternalLink,
 } from "lucide-react";
 
 interface Stats {
@@ -37,6 +40,7 @@ interface Stats {
   expiringIn30: number;
   mrr: number;
   arr: number;
+  collectedThisMonth: number;
 }
 
 interface Props {
@@ -102,7 +106,7 @@ export function RevenueClient({ tenants, stats }: Props) {
       </div>
 
       {/* MRR / ARR */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
@@ -122,6 +126,18 @@ export function RevenueClient({ tenants, stats }: Props) {
           <CardContent>
             <div className="text-2xl font-bold">{formatPKR(stats.arr)}</div>
             <div className="text-xs text-muted-foreground mt-1">Annual Recurring Revenue</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+              <Banknote className="size-4" />
+              Collected this month
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatPKR(stats.collectedThisMonth)}</div>
+            <div className="text-xs text-muted-foreground mt-1">Cash payments recorded</div>
           </CardContent>
         </Card>
         <Card className={stats.expiringIn7 > 0 ? "border-amber-300 bg-amber-50/50" : ""}>
@@ -194,6 +210,7 @@ export function RevenueClient({ tenants, stats }: Props) {
                   <TableHead>Expires</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Monthly Fee</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -223,6 +240,15 @@ export function RevenueClient({ tenants, stats }: Props) {
                       <TableCell className="text-sm text-muted-foreground">{t.planMonths}mo</TableCell>
                       <TableCell>
                         <FeeEditor tenant={t} />
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/admin/dealers/${t.id}/billing`}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <ExternalLink className="size-3" />
+                          Billing
+                        </Link>
                       </TableCell>
                     </TableRow>
                   );
