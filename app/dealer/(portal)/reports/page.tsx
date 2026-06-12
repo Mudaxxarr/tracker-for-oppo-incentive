@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
+import { isAddonEnabled } from "@/lib/dealer-addons";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
@@ -27,6 +28,10 @@ export default async function DealerReportsPage({
   if (!isFeatureEnabled(features, "reports")) return <FeatureDisabled />;
 
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  const addons = {
+    detailedPdf: isAddonEnabled(features, "addon_detailed_pdf"),
+    excel: isAddonEnabled(features, "addon_excel"),
+  };
 
   const sp = await searchParams;
   const today = new Date();
@@ -44,6 +49,7 @@ export default async function DealerReportsPage({
         report={null}
         policies={[]}
         hasDealer={false}
+        addons={addons}
       />
     );
   }
@@ -68,6 +74,7 @@ export default async function DealerReportsPage({
       report={report}
       policies={policies}
       hasDealer={true}
+      addons={addons}
     />
   );
 }

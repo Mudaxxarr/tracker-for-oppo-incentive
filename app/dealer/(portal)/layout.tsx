@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getDealerSession } from "@/lib/dealer-auth";
+import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { db, schema } from "@/lib/db/client";
 import { eq } from "drizzle-orm";
 import { DealerTopBar } from "@/components/dealer/dealer-top-bar";
@@ -30,7 +31,7 @@ export default async function DealerLayout({
     console.error("ensureTodayBackup failed:", err),
   );
 
-  const [tenantRows, features, isAdminPreview] = await Promise.all([
+  const [tenantRows, features, isAdminPreview, activeDealerId] = await Promise.all([
     db
       .select({ businessName: schema.dealerTenants.businessName })
       .from(schema.dealerTenants)
@@ -38,8 +39,20 @@ export default async function DealerLayout({
       .limit(1),
     getTenantFeaturesById(session.tenantId),
     isAuthenticated(),
+    getActiveDealerIdForTenant(session.tenantId),
   ]);
   const businessName = tenantRows[0]?.businessName ?? "Dealer Portal";
+
+  // Top bar shows the active Dealer ID's shop name when set.
+  let shopName: string | null = null;
+  if (activeDealerId) {
+    const shopRows = await db
+      .select({ shopName: schema.dealerIds.shopName })
+      .from(schema.dealerIds)
+      .where(eq(schema.dealerIds.id, activeDealerId))
+      .limit(1);
+    shopName = shopRows[0]?.shopName ?? null;
+  }
 
   const headerStore = await headers();
   const isGrace = headerStore.get("x-grace") === "true";
@@ -53,7 +66,7 @@ export default async function DealerLayout({
           businessName={businessName}
         />
       )}
-      <DealerTopBar businessName={businessName} isAdmin={isAdminPreview} />
+      <DealerTopBar businessName={businessName} shopName={shopName} isAdmin={isAdminPreview} />
       {expirySoonDays && <DealerExpiryWarning daysLeft={expirySoonDays} />}
       {isGrace && <DealerGraceBanner />}
       <div className="flex flex-1">

@@ -13,14 +13,31 @@ export function AddDealerIdForm() {
 
   return (
     <div className="space-y-2">
-      <form action={formAction} className="flex gap-2 max-w-sm">
-        <Input
-          name="name"
-          placeholder="e.g. DLR-001 or Branch A"
-          required
-          disabled={pending}
-          className="flex-1"
-        />
+      <form action={formAction} className="max-w-sm space-y-2">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground" htmlFor="dealer-id-name">
+            Dealer ID name
+          </label>
+          <Input
+            id="dealer-id-name"
+            name="name"
+            placeholder="e.g. DLR-001 or Branch A"
+            required
+            disabled={pending}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground" htmlFor="dealer-shop-name">
+            Shop name
+          </label>
+          <Input
+            id="dealer-shop-name"
+            name="shopName"
+            placeholder="e.g. Khan Mobiles, Khanewal"
+            required
+            disabled={pending}
+          />
+        </div>
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? "Adding…" : "Add ID"}
         </Button>

@@ -13,6 +13,7 @@ import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
 import { getTenantById } from "@/lib/dealer-tenant";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
+import { guardPurchaseDate } from "@/lib/date-guards";
 
 export type PurchaseFormState = {
   error?: string;
@@ -49,6 +50,9 @@ export async function createDealerPurchaseAction(
     };
   }
   const data = parsed.data;
+
+  const dateErr = guardPurchaseDate(data.purchaseDate, tenant?.backdateDays ?? 3);
+  if (dateErr) return { error: dateErr };
 
   // CR-2: flag large purchases for owner review
   const reviewStatus =
@@ -145,6 +149,10 @@ export async function createDealerBulkPurchasesAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const { purchaseDate, source, invoiceNumber, notes, lines } = parsed.data;
+
+  const bulkDateErr = guardPurchaseDate(purchaseDate, tenant?.backdateDays ?? 3);
+  if (bulkDateErr) return { error: bulkDateErr };
+
   let inserted = 0;
   try {
     for (const line of lines) {

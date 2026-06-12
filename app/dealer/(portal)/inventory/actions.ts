@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
-import { getActiveDealerIdForTenant, listDealerIdsForTenant } from "@/lib/dealer-tenant";
+import { getActiveDealerIdForTenant, listDealerIdsForTenant, getTenantById } from "@/lib/dealer-tenant";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { createActivation } from "@/lib/db/queries/activations";
 import {
@@ -16,6 +16,7 @@ import { getStockForModelAsOf, getMinForwardStock } from "@/lib/db/queries/purch
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
+import { guardActivationDate } from "@/lib/date-guards";
 import { db, schema } from "@/lib/db/client";
 import { and, asc, eq, sql } from "drizzle-orm";
 
@@ -56,6 +57,13 @@ export async function dealerQuickActivateAction(
 
   const { modelId, activationDate, quantity } = parsed.data;
   const tenantId = session.tenantId;
+
+  const tenant = await getTenantById(tenantId);
+  const futureErr = guardActivationDate(activationDate);
+  if (futureErr) return { error: futureErr };
+  const backdateDays = tenant?.backdateDays ?? 3;
+  const minDate = new Date(Date.now() - backdateDays * 86400000).toISOString().slice(0, 10);
+  if (activationDate < minDate) return { error: `Activation date cannot be more than ${backdateDays} day(s) in the past.` };
 
   const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate);
   if (stock < quantity) return { error: `Only ${stock} unit(s) available from ${activationDate} onward` };

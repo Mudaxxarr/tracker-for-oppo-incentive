@@ -122,7 +122,6 @@ export async function editDealerCrossRegionAction(
   return { ok: true };
 }
 
-// CR-1: SO can only submit for owner approval — cannot self-approve
 export async function submitCrossRegionForApprovalAction(
   id: string,
 ): Promise<{ ok: boolean; message?: string }> {
@@ -130,6 +129,46 @@ export async function submitCrossRegionForApprovalAction(
   if (!session) return { ok: false, message: "Not authenticated" };
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
   if (!dealerId) return { ok: false, message: "No active Dealer ID" };
+
+  // Dealer ADMIN is the main account owner of the ID — can self-approve without waiting for owner
+  if (session.role === "admin") {
+    const { db, schema } = await import("@/lib/db/client");
+    const { and, eq } = await import("drizzle-orm");
+    const { CROSS_REGION_STATUS: CRS } = await import("@/lib/constants");
+    const today = new Date().toISOString().slice(0, 10);
+
+    const rows = await db
+      .select({ status: schema.crossRegionTransfers.status })
+      .from(schema.crossRegionTransfers)
+      .where(and(
+        eq(schema.crossRegionTransfers.id, id),
+        eq(schema.crossRegionTransfers.tenantId, session.tenantId),
+        eq(schema.crossRegionTransfers.dealerId, dealerId),
+      ))
+      .limit(1);
+
+    if (rows.length === 0) return { ok: false, message: "Transfer not found" };
+    if (rows[0].status === CRS.REJECTED) return { ok: false, message: "Rejected transfers cannot be approved" };
+    if (rows[0].status === CRS.SHIFTED_TO_MY_ID) return { ok: false, message: "Already approved" };
+
+    await db
+      .update(schema.crossRegionTransfers)
+      .set({ status: CRS.SHIFTED_TO_MY_ID, shiftedToIdDate: today })
+      .where(eq(schema.crossRegionTransfers.id, id));
+
+    await logAudit({
+      action: "cross_region.self_approved",
+      dealerId,
+      entityType: "cross_region_transfer",
+      entityId: id,
+      summary: `[Dealer Admin] Self-approved CR transfer ${id.slice(0, 8)} — stock shifted to ID`,
+    });
+    revalidatePath("/dealer/cross-region");
+    revalidatePath("/dealer/dashboard");
+    return { ok: true };
+  }
+
+  // Exec role: must submit for owner approval
   const result = await submitCrossRegionForApproval({ id, tenantId: session.tenantId, dealerId });
   if (result.ok) {
     await createOwnerAlert({
@@ -145,7 +184,7 @@ export async function submitCrossRegionForApprovalAction(
       dealerId,
       entityType: "cross_region_transfer",
       entityId: id,
-      summary: `[Dealer] CR ${id.slice(0, 8)} submitted for owner approval`,
+      summary: `[Dealer Exec] CR ${id.slice(0, 8)} submitted for owner approval`,
     });
     revalidatePath("/dealer/cross-region");
     revalidatePath("/dealer/dashboard");

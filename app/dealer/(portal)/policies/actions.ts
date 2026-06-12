@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
-import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { getModelById } from "@/lib/db/queries/models";
 import * as Q from "@/lib/db/queries/policies";
 import { logAudit } from "@/lib/audit";
@@ -17,7 +16,7 @@ async function ctx() {
   if (!session) return null;
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
   if (!dealerId) return null;
-  return { dealerId, tenantId: OWNER_TENANT_ID };
+  return { dealerId, tenantId: session.tenantId };
 }
 
 const Period = {

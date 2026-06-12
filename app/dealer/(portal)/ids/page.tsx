@@ -41,7 +41,7 @@ export default async function DealerIdsPage() {
 
   return (
     <DealerIdsClient
-      dealers={dealers.map((d) => ({ id: d.id, name: d.name, note: d.note }))}
+      dealers={dealers.map((d) => ({ id: d.id, name: d.name, shopName: d.shopName, note: d.note }))}
       models={models}
       stats={stats}
       transfers={transfers}

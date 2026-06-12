@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,15 +21,18 @@ interface Props {
   dealerId: string;
   tenantId: string;
   role: "admin" | "exec";
+  backdateDays: number;
   onSuccess?: () => void;
 }
 
-export function DealerPurchaseForm({ models, dealerId, tenantId, role, onSuccess }: Props) {
+export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateDays, onSuccess }: Props) {
   const [state, action, pending] = useActionState<PurchaseFormState, FormData>(
     createDealerPurchaseAction,
     {},
   );
+  const [, startTransition] = useTransition();
   const today = new Date().toISOString().slice(0, 10);
+  const minDate = new Date(Date.now() - backdateDays * 86400000).toISOString().slice(0, 10);
   const [modelId, setModelId] = useState<string>("");
   const [purchaseDate, setPurchaseDate] = useState<string>(today);
   const [dealerPrice, setDealerPrice] = useState<string>("");
@@ -109,7 +112,7 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, onSuccess
       onSuccess?.();
       return;
     }
-    action(new FormData(e.currentTarget));
+    startTransition(() => action(new FormData(e.currentTarget)));
   };
 
   return (
@@ -154,6 +157,7 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, onSuccess
             type="date"
             value={purchaseDate}
             onChange={(e) => setPurchaseDate(e.target.value)}
+            min={minDate}
             max={today}
             required
           />

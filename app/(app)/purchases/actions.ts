@@ -13,6 +13,7 @@ import { getTenantById } from "@/lib/dealer-tenant";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
+import { guardPurchaseDate } from "@/lib/date-guards";
 
 const PurchaseSchema = z.object({
   modelId: z.string().min(1, "Choose a model"),
@@ -56,6 +57,9 @@ export async function createPurchaseAction(
     };
   }
   const data = parsed.data;
+  const dateErr = guardPurchaseDate(data.purchaseDate);
+  if (dateErr) return { error: dateErr };
+
   const updateMaster =
     data.updateMasterPrice === "on" || data.updateMasterPrice === "true";
 
@@ -197,6 +201,8 @@ export async function createBulkInvoiceAction(
     return { error: parsed.error.issues[0].message };
   }
   const { purchaseDate, source, invoiceNumber, notes, lines } = parsed.data;
+  const bulkDateErr = guardPurchaseDate(purchaseDate);
+  if (bulkDateErr) return { error: bulkDateErr };
 
   // #8: non-owner large lines need owner approval before counting.
   const isOwner = await isAuthenticated();
@@ -283,6 +289,9 @@ export async function updatePurchaseAction(
 
   const existing = await getPurchaseById(data.id, dealerId, OWNER_TENANT_ID);
   if (!existing) return { error: "Purchase not found" };
+
+  const updateDateErr = guardPurchaseDate(data.purchaseDate);
+  if (updateDateErr) return { error: updateDateErr };
 
   // S-2: quantity reduced — check the reduction doesn't push stock negative
   if (data.quantity < existing.quantity) {

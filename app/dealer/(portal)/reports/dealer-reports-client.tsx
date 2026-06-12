@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,15 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { formatPKR } from "@/lib/format";
-import { FileBarChart2, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { FileBarChart2, FileSpreadsheet, ChevronDown, Lock, Check } from "lucide-react";
+import { DEALER_ADDONS, type DealerAddonKey } from "@/lib/dealer-addons";
 import type { IncentiveReport } from "@/lib/incentive-engine";
 import type { PolicyAchievementEntry } from "@/lib/report-types";
+
+interface AddonState {
+  detailedPdf: boolean;
+  excel: boolean;
+}
 
 interface Props {
   dealerName: string;
@@ -21,6 +27,7 @@ interface Props {
   report: IncentiveReport | null;
   policies: PolicyAchievementEntry[];
   hasDealer: boolean;
+  addons: AddonState;
 }
 
 function getMonthRange(offset: number) {
@@ -31,7 +38,7 @@ function getMonthRange(offset: number) {
   return { start, end };
 }
 
-export function DealerReportsClient({ dealerName, initialStart, initialEnd, report, policies, hasDealer }: Props) {
+export function DealerReportsClient({ dealerName, initialStart, initialEnd, report, policies, hasDealer, addons }: Props) {
   const router = useRouter();
   const [start, setStart] = useState(initialStart);
   const [end, setEnd] = useState(initialEnd);
@@ -104,17 +111,27 @@ export function DealerReportsClient({ dealerName, initialStart, initialEnd, repo
           downloads={[
             { label: "PDF Report", icon: "pdf" as const, href: exportLink("pdf") },
             { label: "PDF (Incentive models)", icon: "pdf" as const, href: exportLink("pdf", true) },
-            { label: "Detailed Breakup PDF", icon: "pdf" as const, href: exportLink("detailed-pdf") },
-            { label: "Excel (Full)", icon: "xlsx" as const, href: exportLink("xlsx") },
-            { label: "Excel (Incentive models)", icon: "xlsx" as const, href: exportLink("xlsx", true) },
+            addons.detailedPdf
+              ? { label: "Detailed Breakup PDF", icon: "pdf" as const, href: exportLink("detailed-pdf") }
+              : { label: "Detailed Breakup PDF", icon: "pdf" as const, href: "#addons", addonKey: "addon_detailed_pdf" as const },
+            ...(addons.excel
+              ? [
+                  { label: "Excel (Full)", icon: "xlsx" as const, href: exportLink("xlsx") },
+                  { label: "Excel (Incentive models)", icon: "xlsx" as const, href: exportLink("xlsx", true) },
+                ]
+              : [{ label: "Excel Exports", icon: "xlsx" as const, href: "#addons", addonKey: "addon_excel" as const }]),
           ]}
         />
+      )}
+
+      {hasDealer && report && (!addons.detailedPdf || !addons.excel) && (
+        <AddonUpsell addons={addons} grandTotal={report.totals.grandTotal} />
       )}
     </div>
   );
 }
 
-interface DownloadItem { label: string; icon: "pdf" | "xlsx"; href: string; }
+interface DownloadItem { label: string; icon: "pdf" | "xlsx"; href: string; addonKey?: DealerAddonKey; }
 
 function ReportSection({
   dealerName, report, policies, discrepancy, onDiscrepancy, downloads,
@@ -144,17 +161,27 @@ function ReportSection({
             {dropOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setDropOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border bg-popover py-1 shadow-lg">
-                  {downloads.map((d) => (
-                    <a key={d.href} href={d.href} target="_blank" rel="noreferrer"
-                      onClick={() => setDropOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted">
-                      {d.icon === "pdf"
-                        ? <FileBarChart2 className="size-3.5 shrink-0 text-rose-500" />
-                        : <FileSpreadsheet className="size-3.5 shrink-0 text-emerald-600" />}
-                      {d.label}
-                    </a>
-                  ))}
+                <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border bg-popover py-1 shadow-lg">
+                  {downloads.map((d) =>
+                    d.addonKey ? (
+                      <a key={d.label} href="#addons"
+                        onClick={() => setDropOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                        <Lock className="size-3.5 shrink-0" />
+                        <span className="flex-1">{d.label}</span>
+                        <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium">Add-on</span>
+                      </a>
+                    ) : (
+                      <a key={d.href} href={d.href} target="_blank" rel="noreferrer"
+                        onClick={() => setDropOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted">
+                        {d.icon === "pdf"
+                          ? <FileBarChart2 className="size-3.5 shrink-0 text-rose-500" />
+                          : <FileSpreadsheet className="size-3.5 shrink-0 text-emerald-600" />}
+                        {d.label}
+                      </a>
+                    ),
+                  )}
                 </div>
               </>
             )}
@@ -306,6 +333,100 @@ function ReportSection({
             </div>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const ADDON_REQUEST_LS_KEY = "oppo_addon_requests";
+
+function AddonUpsell({ addons, grandTotal }: { addons: AddonState; grandTotal: number }) {
+  const [requested, setRequested] = useState<Record<string, boolean>>({});
+  const [pending, setPending] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ADDON_REQUEST_LS_KEY);
+      if (raw) setRequested(JSON.parse(raw) as Record<string, boolean>);
+    } catch { /* ignore */ }
+  }, []);
+
+  const request = async (key: DealerAddonKey) => {
+    setPending(key);
+    try {
+      const res = await fetch("/api/dealer/addon-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addon: key }),
+      });
+      if (res.ok) {
+        const next = { ...requested, [key]: true };
+        setRequested(next);
+        try { localStorage.setItem(ADDON_REQUEST_LS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      }
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const locked = DEALER_ADDONS.filter((a) =>
+    a.key === "addon_detailed_pdf" ? !addons.detailedPdf : !addons.excel,
+  );
+  if (locked.length === 0) return null;
+
+  return (
+    <Card id="addons" className="scroll-mt-20">
+      <CardHeader>
+        <CardTitle className="text-base">Available add-ons</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          These reports are already computed for your account every period. They just are not being delivered to you yet.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {locked.map((a) => (
+          <div key={a.key} className="rounded-lg border">
+            <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
+              <Lock className="size-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">{a.label}</span>
+              <Badge variant="secondary" className="ml-auto tabular-nums">
+                PKR {a.monthlyPrice}/month
+              </Badge>
+            </div>
+            <div className="space-y-3 px-4 py-3">
+              <div
+                aria-hidden
+                className="select-none rounded-md bg-muted/40 px-3 py-2 font-mono text-[11px] leading-relaxed text-muted-foreground [mask-image:linear-gradient(180deg,black_30%,transparent)]"
+              >
+                {a.preview.map((line) => (
+                  <div key={line} className="whitespace-pre">{line}</div>
+                ))}
+              </div>
+              <p className="max-w-prose text-sm text-muted-foreground">{a.tagline}</p>
+              {grandTotal > 0 && a.key === "addon_detailed_pdf" && (
+                <p className="text-xs text-muted-foreground">
+                  Your engine total this period is <span className="font-medium tabular-nums">{formatPKR(grandTotal)}</span>.
+                  This PDF shows exactly how every rupee of it was earned, line by line.
+                </p>
+              )}
+              <div className="flex items-center gap-3">
+                {requested[a.key] ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    <Check className="size-4" /> Requested. Your administrator has been notified.
+                  </span>
+                ) : (
+                  <>
+                    <Button size="sm" disabled={pending === a.key} onClick={() => request(a.key)}>
+                      {pending === a.key ? "Sending request…" : "Request activation"}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Added to your monthly subscription once enabled.
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

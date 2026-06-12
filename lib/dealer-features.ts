@@ -44,6 +44,18 @@ export const ALL_FEATURE_KEYS: DealerFeatureKey[] = [
   "pos",
 ];
 
+// Base plan: core modules every new tenant starts with.
+// Upsells (cross_region, policies, team, activity, pos, add-ons) stay off.
+export const BASE_PLAN_FEATURES: DealerFeatures = {
+  activations: true,
+  purchases: true,
+  inventory: true,
+  ids: true,
+  models: true,
+  reports: true,
+  settings: true,
+};
+
 export function parseDealerFeatures(raw: string): DealerFeatures {
   try {
     return JSON.parse(raw) as DealerFeatures;

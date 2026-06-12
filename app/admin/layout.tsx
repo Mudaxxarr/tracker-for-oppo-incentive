@@ -23,6 +23,7 @@ export default async function AdminLayout({
             {[
               { href: "/admin/dealers", label: "Dealers", badge: null },
               { href: "/admin/revenue", label: "Revenue", badge: null },
+              { href: "/admin/rollout", label: "Rollout", badge: null },
               { href: "/admin/alerts", label: "Alerts", badge: unreadAlerts > 0 ? unreadAlerts : null },
               { href: "/admin/staff", label: "Staff", badge: null },
             ].map((item) => (

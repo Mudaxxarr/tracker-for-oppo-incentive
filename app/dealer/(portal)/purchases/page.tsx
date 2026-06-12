@@ -9,6 +9,7 @@ import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
 import { DealerPurchasesClient } from "./dealer-purchases-client";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
+import { getTenantById } from "@/lib/dealer-tenant";
 
 interface SearchParams {
   modelId?: string;
@@ -31,7 +32,7 @@ export default async function DealerPurchasesPage({
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
   const sp = await searchParams;
 
-  const [models, purchases] = await Promise.all([
+  const [models, purchases, tenant] = await Promise.all([
     listModelsWithCurrentPrice(OWNER_TENANT_ID),
     dealerId
       ? listPurchases({
@@ -43,7 +44,9 @@ export default async function DealerPurchasesPage({
           to: sp.to || undefined,
         })
       : Promise.resolve([]),
+    getTenantById(session.tenantId),
   ]);
+  const backdateDays = tenant?.backdateDays ?? 3;
 
   return (
     <DealerPurchasesClient
@@ -54,6 +57,7 @@ export default async function DealerPurchasesPage({
       dealerId={dealerId}
       tenantId={session.tenantId}
       role={session.role as "admin" | "exec"}
+      backdateDays={backdateDays}
     />
   );
 }

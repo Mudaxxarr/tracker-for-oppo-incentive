@@ -7,7 +7,10 @@ import { logAudit } from "@/lib/audit";
 import {
   type DealerFeatures,
   parseDealerFeatures,
+  BASE_PLAN_FEATURES,
 } from "@/lib/dealer-features";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
+import { seedDealerPricesFromOwner } from "@/lib/db/queries/models";
 
 export interface TenantListRow {
   id: string;
@@ -80,6 +83,42 @@ export async function listTenants(): Promise<TenantListRow[]> {
   return rows.map((r) => ({ ...r, userCount: Number(r.userCount) }));
 }
 
+export interface TenantFeatureRow {
+  id: string;
+  businessName: string;
+  status: string;
+  features: DealerFeatures;
+}
+
+// Tenant × feature matrix for the staged-rollout console.
+export async function listTenantFeatureMatrix(): Promise<TenantFeatureRow[]> {
+  const rows = await db
+    .select({
+      id: schema.dealerTenants.id,
+      businessName: schema.dealerTenants.businessName,
+      status: schema.dealerTenants.status,
+      features: schema.dealerTenants.features,
+    })
+    .from(schema.dealerTenants)
+    .where(sql`${schema.dealerTenants.id} != 'owner'`)
+    .orderBy(asc(schema.dealerTenants.businessName));
+
+  return rows.map((r) => ({ ...r, features: parseDealerFeatures(r.features) }));
+}
+
+// Set one flag across many tenants; merges into each tenant's existing JSON.
+export async function bulkSetFeature(
+  key: string,
+  enabled: boolean,
+  tenantIds: string[],
+): Promise<void> {
+  for (const tenantId of tenantIds) {
+    const features = await getTenantFeaturesById(tenantId);
+    (features as Record<string, boolean>)[key] = enabled;
+    await updateDealerFeatures(tenantId, features);
+  }
+}
+
 export async function getTenantById(id: string): Promise<TenantDetail | null> {
   const tenantRows = await db
     .select()
@@ -147,6 +186,7 @@ export async function createTenant(
     startedAt,
     expiresAt,
     status: "active",
+    features: JSON.stringify(BASE_PLAN_FEATURES),
     createdAt: now,
   });
 
@@ -159,6 +199,9 @@ export async function createTenant(
     isActive: true,
     createdAt: now,
   });
+
+  // Seed the new tenant with current owner catalog prices so they see prices immediately
+  await seedDealerPricesFromOwner(OWNER_TENANT_ID, tenantId);
 
   await logAudit({
     action: "admin_tenant_created",

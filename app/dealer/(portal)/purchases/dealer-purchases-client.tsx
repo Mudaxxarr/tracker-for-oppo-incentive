@@ -47,9 +47,10 @@ interface Props {
   dealerId: string | null;
   tenantId: string;
   role: "admin" | "exec";
+  backdateDays: number;
 }
 
-export function DealerPurchasesClient({ models, initialPurchases, initialFilters, hasDealer, dealerId, tenantId, role }: Props) {
+export function DealerPurchasesClient({ models, initialPurchases, initialFilters, hasDealer, dealerId, tenantId, role, backdateDays }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
@@ -112,6 +113,7 @@ export function DealerPurchasesClient({ models, initialPurchases, initialFilters
                     dealerId={dealerId ?? ""}
                     tenantId={tenantId}
                     role={role}
+                    backdateDays={backdateDays}
                     onSuccess={() => {
                       setOpen(false);
                       toast.success("Purchase added");

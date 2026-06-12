@@ -49,7 +49,8 @@ export async function purgeDealerAuditLogAction(olderThanDays: number): Promise<
   if (!session) return { error: "Not authenticated" };
   const dealerRows = await listDealerIdsForTenant(session.tenantId);
   const dealerIds = dealerRows.map((d) => d.id);
-  const deleted = await purgeAuditLog(olderThanDays, dealerIds.length > 0 ? dealerIds : undefined);
+  if (dealerIds.length === 0) return { ok: true, deleted: 0 };
+  const deleted = await purgeAuditLog(olderThanDays, dealerIds);
   revalidatePath("/dealer/activity");
   return { ok: true, deleted };
 }

@@ -8,7 +8,10 @@ import {
   suspendTenant,
   reactivateTenant,
   updateMonthlyFee,
+  getTenantFeaturesById,
+  updateDealerFeatures,
 } from "@/lib/admin/dealers";
+import { getAddon } from "@/lib/dealer-addons";
 
 export type BillingActionState = { error?: string };
 
@@ -49,6 +52,30 @@ export async function updateMonthlyFeeAction(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
 
   await updateMonthlyFee(parsed.data.tenantId, parsed.data.monthlyFee);
+  redirect(`/admin/dealers/${parsed.data.tenantId}/billing`);
+}
+
+const AddonSchema = z.object({
+  tenantId: z.string().min(1),
+  addonKey: z.string().min(1),
+  enable: z.enum(["true", "false"]),
+});
+
+export async function toggleAddonAction(
+  _prev: BillingActionState,
+  fd: FormData,
+): Promise<BillingActionState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const parsed = AddonSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: "Invalid input" };
+
+  const addon = getAddon(parsed.data.addonKey);
+  if (!addon) return { error: "Unknown add-on" };
+
+  // Merge into existing flags; updateDealerFeatures replaces the whole JSON.
+  const features = await getTenantFeaturesById(parsed.data.tenantId);
+  (features as Record<string, boolean>)[addon.key] = parsed.data.enable === "true";
+  await updateDealerFeatures(parsed.data.tenantId, features);
   redirect(`/admin/dealers/${parsed.data.tenantId}/billing`);
 }
 

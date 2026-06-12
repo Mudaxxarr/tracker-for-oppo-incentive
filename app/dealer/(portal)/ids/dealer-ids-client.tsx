@@ -24,6 +24,7 @@ import {
   createDealerInterIdTransferAction,
   type DealerIdFormState,
 } from "./actions";
+import { AddDealerIdForm } from "./add-id-form";
 import { formatDate, formatPKR } from "@/lib/format";
 import { Lock, ArrowRightCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ import type { InterIdRow } from "@/lib/db/queries/transfers";
 interface DealerSummary {
   id: string;
   name: string;
+  shopName: string | null;
   note: string | null;
 }
 
@@ -96,20 +98,31 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
         </p>
       </div>
 
-      <Card className="border-dashed">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base text-muted-foreground">
-            <Lock className="size-4" />
-            Additional Dealer IDs
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Need a second Dealer ID? Additional IDs require admin approval and are subject to a separate subscription fee.
-            Contact your OPPO account manager to request one.
-          </p>
-        </CardContent>
-      </Card>
+      {dealers.length === 0 ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Create your Dealer ID</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AddDealerIdForm />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-dashed">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-muted-foreground">
+              <Lock className="size-4" />
+              Additional Dealer IDs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Need a second Dealer ID? Additional IDs require admin approval and are subject to a separate subscription fee.
+              Contact your OPPO account manager to request one.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -136,6 +149,7 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
                     <TableRow key={d.id}>
                       <TableCell>
                         <div className="font-medium">{d.name}</div>
+                        {d.shopName ? <div className="text-xs text-muted-foreground">{d.shopName}</div> : null}
                         {d.note ? <div className="text-xs text-muted-foreground">{d.note}</div> : null}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{s?.phoneCount ?? 0}</TableCell>

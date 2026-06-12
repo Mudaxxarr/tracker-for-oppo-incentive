@@ -6,17 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   addDealerPriceEntryAction,
   deleteDealerPriceEntryAction,
-  updateDealerModelAction,
   updateDealerPriceEntryAction,
   type ModelFormState,
 } from "./actions";
@@ -25,23 +19,16 @@ import { Trash2, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { ModelPriceHistory } from "@/lib/db/schema";
+import type { RebateRow } from "@/lib/db/queries/rebates";
 
 interface Props {
   model: ModelWithCurrentPrice;
   history: ModelPriceHistory[];
+  rebates: RebateRow[];
   onClose: () => void;
 }
 
-export function DealerManageModelSheet({ model, history, onClose }: Props) {
-  const [name, setName] = useState(model.name);
-  const [sku, setSku] = useState(model.sku ?? "");
-  const [isActive, setIsActive] = useState(model.isActive);
-  useEffect(() => {
-    setName(model.name);
-    setSku(model.sku ?? "");
-    setIsActive(model.isActive);
-  }, [model.id, model.name, model.sku, model.isActive]);
-
+export function DealerManageModelSheet({ model, history, rebates, onClose }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const [newDealer, setNewDealer] = useState<string>(
     model.dealerPrice != null ? String(model.dealerPrice) : "",
@@ -58,24 +45,11 @@ export function DealerManageModelSheet({ model, history, onClose }: Props) {
   }, [model.id]);
 
   const router = useRouter();
-  const [updateState, updateAction, updating] = useActionState<ModelFormState, FormData>(
-    updateDealerModelAction,
-    {},
-  );
   const [priceState, priceAction, pricePending] = useActionState<ModelFormState, FormData>(
     addDealerPriceEntryAction,
     {},
   );
   const [, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (updateState.ok) {
-      toast.success("Model updated");
-      router.refresh();
-    } else if (updateState.error) {
-      toast.error(updateState.error);
-    }
-  }, [updateState, router]);
 
   useEffect(() => {
     if (priceState.ok) {
@@ -91,20 +65,22 @@ export function DealerManageModelSheet({ model, history, onClose }: Props) {
       toast.error("Can't delete the only price entry — add a new one first");
       return;
     }
+    const linkedRebates = rebates.filter((r) => r.priceHistoryId === priceId);
+    const linkedTotal = linkedRebates.reduce((s, r) => s + r.totalRebateAmount, 0);
+    const rebateWarning =
+      linkedRebates.length > 0
+        ? `\n\n⚠️ WARNING: ${linkedRebates.length} rebate record(s) worth PKR ${linkedTotal.toLocaleString()} will also be deleted.`
+        : "";
     if (
       !confirm(
-        `Delete price entry effective ${formatDate(effectiveFrom)}? Timeline will be re-stitched automatically.`,
+        `Delete price entry effective ${formatDate(effectiveFrom)}? Timeline will be re-stitched automatically.${rebateWarning}`,
       )
     )
       return;
     startTransition(async () => {
       const r = await deleteDealerPriceEntryAction({ modelId: model.id, priceId });
-      if (r.ok) {
-        toast.success("Price entry deleted");
-        router.refresh();
-      } else {
-        toast.error(r.error ?? "Delete failed");
-      }
+      if (r.ok) { toast.success("Price entry deleted"); router.refresh(); }
+      else toast.error(r.error ?? "Delete failed");
     });
   };
 
@@ -112,40 +88,11 @@ export function DealerManageModelSheet({ model, history, onClose }: Props) {
     <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto" key={model.id}>
         <SheetHeader>
-          <SheetTitle>Manage model</SheetTitle>
+          <SheetTitle>{model.name}</SheetTitle>
         </SheetHeader>
         <div className="space-y-6 p-4">
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium">Details</h3>
-            <form action={updateAction} className="space-y-3">
-              <input type="hidden" name="id" value={model.id} />
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Model name</label>
-                <Input name="name" value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">SKU</label>
-                <Input name="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  value="on"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="size-4"
-                />
-                Active (offered to forms)
-              </label>
-              <Button type="submit" disabled={updating}>
-                {updating ? "Saving…" : "Save details"}
-              </Button>
-            </form>
-          </section>
 
-          <hr />
-
+          {/* Record a price change */}
           <section className="space-y-3">
             <h3 className="text-sm font-medium">Record a price change</h3>
             <form action={priceAction} className="grid grid-cols-2 gap-3">
@@ -195,6 +142,7 @@ export function DealerManageModelSheet({ model, history, onClose }: Props) {
 
           <hr />
 
+          {/* Price history with inline edit */}
           <section className="space-y-3">
             <h3 className="text-sm font-medium">Price history</h3>
             {history.length === 0 ? (
@@ -208,7 +156,7 @@ export function DealerManageModelSheet({ model, history, onClose }: Props) {
                       <TableHead>To</TableHead>
                       <TableHead className="text-right">Dealer ₨</TableHead>
                       <TableHead className="text-right">Invoice ₨</TableHead>
-                      <TableHead className="w-24"></TableHead>
+                      <TableHead className="w-24" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -225,6 +173,52 @@ export function DealerManageModelSheet({ model, history, onClose }: Props) {
               </div>
             )}
           </section>
+
+          {rebates.length > 0 && (
+            <>
+              <hr />
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-medium">Rebate history</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-calculated when dealer price dropped. Adjusted into your ledger.
+                  </p>
+                </div>
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Old ₨</TableHead>
+                        <TableHead className="text-right">New ₨</TableHead>
+                        <TableHead className="text-right">Per unit</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right font-semibold">Total ₨</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rebates.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="text-xs">{formatDate(r.rebateDate)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.oldDealerPrice)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.newDealerPrice)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs text-amber-600">−{formatPKR(r.rebatePerUnit)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs">{r.eligibleQty}</TableCell>
+                          <TableCell className="text-right tabular-nums text-xs font-semibold text-emerald-600">{formatPKR(r.totalRebateAmount)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Grand total:{" "}
+                  <span className="font-semibold text-emerald-700">
+                    {formatPKR(rebates.reduce((s, r) => s + r.totalRebateAmount, 0))}
+                  </span>
+                </p>
+              </section>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -266,19 +260,10 @@ function DealerPriceRow({ modelId, row, onDelete }: PriceRowProps) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) return toast.error("Effective date invalid");
     startSave(async () => {
       const r = await updateDealerPriceEntryAction({
-        modelId,
-        priceId: row.id,
-        dealerPrice: d,
-        invoicePrice: i,
-        effectiveFrom: from,
+        modelId, priceId: row.id, dealerPrice: d, invoicePrice: i, effectiveFrom: from,
       });
-      if (r.ok) {
-        toast.success("Price updated");
-        setEditing(false);
-        router.refresh();
-      } else {
-        toast.error(r.error ?? "Update failed");
-      }
+      if (r.ok) { toast.success("Price updated"); setEditing(false); router.refresh(); }
+      else toast.error(r.error ?? "Update failed");
     });
   };
 
@@ -286,32 +271,13 @@ function DealerPriceRow({ modelId, row, onDelete }: PriceRowProps) {
     return (
       <TableRow>
         <TableCell colSpan={2}>
-          <Input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="h-8 w-[150px]"
-          />
+          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 w-[150px]" />
         </TableCell>
         <TableCell className="text-right">
-          <Input
-            type="number"
-            min={0}
-            step="any"
-            value={dealer}
-            onChange={(e) => setDealer(e.target.value)}
-            className="h-8 text-right"
-          />
+          <Input type="number" min={0} step="any" value={dealer} onChange={(e) => setDealer(e.target.value)} className="h-8 text-right" />
         </TableCell>
         <TableCell className="text-right">
-          <Input
-            type="number"
-            min={0}
-            step="any"
-            value={invoice}
-            onChange={(e) => setInvoice(e.target.value)}
-            className="h-8 text-right"
-          />
+          <Input type="number" min={0} step="any" value={invoice} onChange={(e) => setInvoice(e.target.value)} className="h-8 text-right" />
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1">
@@ -340,9 +306,11 @@ function DealerPriceRow({ modelId, row, onDelete }: PriceRowProps) {
           <Button variant="ghost" size="icon-sm" aria-label="Edit" onClick={() => setEditing(true)}>
             <Pencil className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" aria-label="Delete" onClick={onDelete}>
-            <Trash2 className="size-4" />
-          </Button>
+          {row.effectiveTo === null && (
+            <Button variant="ghost" size="icon-sm" aria-label="Delete" onClick={onDelete}>
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>

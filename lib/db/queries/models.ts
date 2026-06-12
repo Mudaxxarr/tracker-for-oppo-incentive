@@ -300,6 +300,61 @@ export async function updateModel(input: {
   await db.update(schema.models).set({ name: input.name, sku: input.sku, isActive: input.isActive }).where(eq(schema.models.id, input.id));
 }
 
+/**
+ * Copy owner's current (effectiveTo=null) price entries into a newly created tenant.
+ * Called once at dealer creation so the dealer starts with the current catalog prices.
+ * Skips any model that already has a price entry for this tenant (idempotent).
+ */
+export async function seedDealerPricesFromOwner(
+  ownerTenantId: string,
+  newTenantId: string,
+): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Fetch all active owner price entries
+  const ownerPrices = await db
+    .select({
+      modelId: schema.modelPriceHistory.modelId,
+      dealerPrice: schema.modelPriceHistory.dealerPrice,
+      invoicePrice: schema.modelPriceHistory.invoicePrice,
+    })
+    .from(schema.modelPriceHistory)
+    .where(
+      and(
+        eq(schema.modelPriceHistory.tenantId, ownerTenantId),
+        isNull(schema.modelPriceHistory.effectiveTo),
+      ),
+    );
+
+  if (ownerPrices.length === 0) return;
+
+  // Find which models the dealer already has entries for (skip those)
+  const existingModelIds = new Set(
+    (
+      await db
+        .select({ modelId: schema.modelPriceHistory.modelId })
+        .from(schema.modelPriceHistory)
+        .where(eq(schema.modelPriceHistory.tenantId, newTenantId))
+    ).map((r) => r.modelId),
+  );
+
+  const toInsert = ownerPrices
+    .filter((p) => !existingModelIds.has(p.modelId))
+    .map((p) => ({
+      id: randomUUID(),
+      tenantId: newTenantId,
+      modelId: p.modelId,
+      dealerPrice: p.dealerPrice,
+      invoicePrice: p.invoicePrice,
+      effectiveFrom: today,
+      effectiveTo: null as string | null,
+    }));
+
+  if (toInsert.length > 0) {
+    await db.insert(schema.modelPriceHistory).values(toInsert);
+  }
+}
+
 export async function deleteModel(modelId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
   const [{ purchaseCount }] = await db
     .select({ purchaseCount: sql<number>`COUNT(*)` })

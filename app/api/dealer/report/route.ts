@@ -9,6 +9,8 @@ import { buildPolicyAchievements } from "@/lib/report-utils";
 import { listStockForDealer } from "@/lib/db/queries/purchases";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { logAudit } from "@/lib/audit";
+import { getTenantFeaturesById } from "@/lib/admin/dealers";
+import { isAddonEnabled } from "@/lib/dealer-addons";
 import { db, schema } from "@/lib/db/client";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 
@@ -24,6 +26,18 @@ export async function GET(req: Request) {
   const periodEnd = url.searchParams.get("periodEnd");
   const fmt = (url.searchParams.get("format") ?? "pdf").toLowerCase();
   const skipNoIncentive = url.searchParams.get("skipNoIncentive") === "1";
+
+  // Add-on gating: locked formats must be enforced server-side, not just hidden in UI.
+  if (fmt === "detailed-pdf" || fmt === "xlsx") {
+    const features = await getTenantFeaturesById(session.tenantId);
+    const requiredAddon = fmt === "detailed-pdf" ? "addon_detailed_pdf" : "addon_excel";
+    if (!isAddonEnabled(features, requiredAddon)) {
+      return NextResponse.json(
+        { error: "This export is an add-on. Ask your administrator to enable it." },
+        { status: 403 },
+      );
+    }
+  }
 
   if (!periodStart || !periodEnd) {
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });

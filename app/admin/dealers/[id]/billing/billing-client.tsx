@@ -12,8 +12,10 @@ import {
   updateMonthlyFeeAction,
   suspendTenantAction,
   reactivateTenantAction,
+  toggleAddonAction,
   type BillingActionState,
 } from "./actions";
+import { DEALER_ADDONS } from "@/lib/dealer-addons";
 import type { TenantDetail, BillingEventRow } from "@/lib/admin/dealers";
 import { differenceInDays, parseISO, format } from "date-fns";
 
@@ -55,8 +57,17 @@ export function BillingClient({ tenant, events }: Props) {
     reactivateTenantAction,
     {},
   );
+  const [addonState, addonAction, addonPending] = useActionState<BillingActionState, FormData>(
+    toggleAddonAction,
+    {},
+  );
 
   const isSuspended = tenant.status === "suspended";
+  const featureMap = tenant.features as Record<string, boolean | undefined>;
+  const addonsTotal = DEALER_ADDONS.reduce(
+    (sum, a) => sum + (featureMap[a.key] === true ? a.monthlyPrice : 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -226,6 +237,59 @@ export function BillingClient({ tenant, events }: Props) {
           </Card>
         </div>
       </div>
+
+      {/* Add-ons */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Add-ons</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Per-feature upsells. Enabling one unlocks it in the dealer portal; remember to update the monthly fee above.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {DEALER_ADDONS.map((a) => {
+            const enabled = featureMap[a.key] === true;
+            return (
+              <div
+                key={a.key}
+                className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{a.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    PKR {a.monthlyPrice.toLocaleString()}/month
+                  </p>
+                </div>
+                {enabled && <Badge>enabled</Badge>}
+                <form action={addonAction}>
+                  <input type="hidden" name="tenantId" value={tenant.id} />
+                  <input type="hidden" name="addonKey" value={a.key} />
+                  <input type="hidden" name="enable" value={enabled ? "false" : "true"} />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant={enabled ? "outline" : "default"}
+                    disabled={addonPending}
+                  >
+                    {enabled ? "Disable" : "Enable"}
+                  </Button>
+                </form>
+              </div>
+            );
+          })}
+          {addonState.error && (
+            <p className="text-sm text-destructive">{addonState.error}</p>
+          )}
+          {addonsTotal > 0 && (
+            <p className="pt-1 text-xs text-muted-foreground">
+              Active add-ons total: <span className="font-medium">PKR {addonsTotal.toLocaleString()}/month</span>
+              {tenant.monthlyFee != null && (
+                <> · suggested fee: PKR {(tenant.monthlyFee + addonsTotal).toLocaleString()} if base fee excludes add-ons</>
+              )}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Payment history */}
       <div>

@@ -43,14 +43,25 @@ export async function createDealerTenantIdAction(
 ): Promise<DealerIdFormState> {
   const session = await requireSession();
   const name = String(fd.get("name") ?? "").trim();
+  const shopName = String(fd.get("shopName") ?? "").trim();
   if (!name) return { error: "Name is required." };
   if (name.length > 120) return { error: "Name must be 120 characters or fewer." };
+  if (!shopName) return { error: "Shop name is required." };
+  if (shopName.length > 120) return { error: "Shop name must be 120 characters or fewer." };
+
+  // Locked decision: only the first Dealer ID is self-service.
+  // Additional IDs require admin approval (separate subscription fee).
+  const existing = await listDealerIdsForTenant(session.tenantId);
+  if (existing.length > 0) {
+    return { error: "Additional Dealer IDs require admin approval. Contact your OPPO account manager." };
+  }
 
   const id = randomUUID();
   await db.insert(schema.dealerIds).values({
     id,
     tenantId: session.tenantId,
     name,
+    shopName,
     note: null,
     isActive: true,
   });

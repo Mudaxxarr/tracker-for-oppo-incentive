@@ -49,6 +49,7 @@ export const dealerIds = pgTable("dealer_ids", {
     .notNull()
     .references(() => dealerTenants.id),
   name: text("name").notNull(),
+  shopName: text("shop_name"),
   note: text("note"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: isoDateTime("created_at").notNull(),
