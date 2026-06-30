@@ -18,7 +18,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DataValue } from "@/components/ui/data-value";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -33,7 +35,18 @@ import { BulkInvoiceForm } from "./bulk-invoice-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { formatDate, formatPKR } from "@/lib/format";
-import { CheckSquare, Pencil, Plus, Trash2, AlertCircle } from "lucide-react";
+import { CheckSquare, Pencil, Plus, Trash2, AlertCircle, ShoppingCart, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   deletePurchaseAction,
   updatePurchaseAction,
@@ -58,6 +71,8 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   const [filters, setFilters] = useState(initialFilters);
   const [editId, setEditId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [, startTransition] = useTransition();
 
   const purchasesByDate = useMemo(() => {
@@ -102,13 +117,16 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   };
 
   const handleDelete = (id: string, modelName: string) => {
-    if (!confirm(`Delete this ${modelName} purchase row? This cannot be undone.`)) return;
+    setPendingDelete({ id, label: modelName });
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
+    setPendingDelete(null);
     startTransition(async () => {
       const res = await deletePurchaseAction(id);
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
+      if (res.error) { toast.error(res.error); return; }
       setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
       toast.success("Purchase deleted");
       router.refresh();
@@ -116,9 +134,13 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   };
 
   const handleBulkDelete = () => {
+    if (selected.size === 0) return;
+    setPendingBulkDelete(true);
+  };
+
+  const confirmBulkDelete = () => {
     const ids = [...selected];
-    if (ids.length === 0) return;
-    if (!confirm(`Delete ${ids.length} purchase(s)? This cannot be undone.`)) return;
+    setPendingBulkDelete(false);
     startTransition(async () => {
       const { deleted, blocked } = await bulkDeletePurchasesAction(ids);
       setSelected(new Set());
@@ -157,9 +179,52 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-primary/10 text-primary">
+              <Trash2 className="size-5" />
+            </AlertDialogMedia>
+            <AlertDialogTitle className="font-semibold">Delete Purchase</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove <span className="font-medium text-foreground">{pendingDelete?.label}</span> purchase record permanently? Rows with activated units cannot be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              <Trash2 className="size-4" />
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={pendingBulkDelete} onOpenChange={(o) => { if (!o) setPendingBulkDelete(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-primary/10 text-primary">
+              <Trash2 className="size-5" />
+            </AlertDialogMedia>
+            <AlertDialogTitle className="font-semibold">
+              Delete {selected.size} Purchase{selected.size > 1 ? "s" : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Rows with activated units will be skipped automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete}>
+              <Trash2 className="size-4" />
+              Delete {selected.size}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Purchases</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Purchases</h1>
           <p className="text-sm text-muted-foreground">
             Stock arriving at your dealer ID. 4% only triggers on activation.
           </p>
@@ -298,8 +363,8 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
         <div className="space-y-3">
           {purchasesByDate.length === 0 ? (
             <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No purchases to display.
+              <CardContent className="p-0">
+                <EmptyState icon={ShoppingCart} title="No purchases to display." description="Try adjusting the filters." />
               </CardContent>
             </Card>
           ) : purchasesByDate.map(({ date, models, totalQty, totalValue }) => (
@@ -324,9 +389,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                         <TableCell className="py-2 text-right tabular-nums">{formatPKR(m.dealerTotal)}</TableCell>
                         <TableCell className="py-2 text-right">
                           {m.crossQty > 0 ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {m.crossQty} cross-region
-                            </Badge>
+                            <StatusBadge status="neutral" label={`${m.crossQty} cross-region`} />
                           ) : null}
                         </TableCell>
                       </TableRow>
@@ -383,8 +446,8 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
               <TableBody>
                 {initialPurchases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
-                      No purchases yet for this dealer ID.
+                    <TableCell colSpan={8}>
+                      <EmptyState icon={ShoppingCart} title="No purchases yet for this dealer ID." description="Add a purchase to begin tracking stock." />
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -415,19 +478,19 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                           />
                         </TableCell>
                         <TableCell className="font-medium">{p.modelName}</TableCell>
-                        <TableCell className="text-right tabular-nums">{p.quantity}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatPKR(p.unitDealerPrice)}
+                        <TableCell className="text-right"><DataValue value={p.quantity} /></TableCell>
+                        <TableCell className="text-right">
+                          <DataValue value={p.unitDealerPrice} format="currency" />
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatPKR(p.unitDealerPrice * p.quantity)}
+                        <TableCell className="text-right">
+                          <DataValue value={p.unitDealerPrice * p.quantity} format="currency" />
                         </TableCell>
                         <TableCell>{formatDate(p.purchaseDate)}</TableCell>
                         <TableCell>
                           {p.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? (
-                            <Badge variant="secondary">Cross-Region</Badge>
+                            <StatusBadge status="neutral" label="Cross-Region" />
                           ) : (
-                            <Badge>Regular</Badge>
+                            <StatusBadge status="confirmed" label="Regular" />
                           )}
                         </TableCell>
                         <TableCell>

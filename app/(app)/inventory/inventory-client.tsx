@@ -922,7 +922,7 @@ export function InventoryClient({ rows: initialRows, otherDealers, hasDealer, pe
       {/* Page header */}
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Inventory</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Inventory</h1>
           <p className="text-sm text-muted-foreground">Current stock by model and source.</p>
         </div>
         {pendingTransfers.length > 0 && (

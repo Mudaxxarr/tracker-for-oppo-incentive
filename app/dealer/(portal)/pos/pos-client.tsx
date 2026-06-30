@@ -29,11 +29,12 @@ import {
 
 interface Props {
   stock: StockRow[];
+  canReceipt: boolean;
 }
 
 type CustomerMode = "skip" | "new";
 
-export function PosClient({ stock }: Props) {
+export function PosClient({ stock, canReceipt }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -104,17 +105,19 @@ export function PosClient({ stock }: Props) {
 
         <Card>
           <CardContent className="pt-6 space-y-3">
-            <a
-              href={`/api/dealer/receipt/${state.activationId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              download
-            >
-              <Button className="w-full" variant="default">
-                <Download className="size-4 mr-2" />
-                Download Receipt PDF
-              </Button>
-            </a>
+            {canReceipt && (
+              <a
+                href={`/api/dealer/receipt/${state.activationId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+              >
+                <Button className="w-full" variant="default">
+                  <Download className="size-4 mr-2" />
+                  Download Receipt PDF
+                </Button>
+              </a>
+            )}
             <Button className="w-full" variant="outline" onClick={handleNewSale}>
               <Receipt className="size-4 mr-2" />
               New Sale

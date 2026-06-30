@@ -9,6 +9,12 @@ import {
   parseDealerFeatures,
   BASE_PLAN_FEATURES,
 } from "@/lib/dealer-features";
+import {
+  type FeatureTrials,
+  parseFeatureTrials,
+  serializeFeatureTrials,
+} from "@/lib/dealer-trials";
+import type { PreviewKey } from "@/lib/dealer-previews";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { seedDealerPricesFromOwner } from "@/lib/db/queries/models";
 
@@ -90,6 +96,26 @@ export interface TenantFeatureRow {
   features: DealerFeatures;
 }
 
+export interface TenantTrialRow {
+  id: string;
+  businessName: string;
+  featureTrials: FeatureTrials;
+}
+
+export async function listAllTenantTrials(): Promise<TenantTrialRow[]> {
+  const rows = await db
+    .select({
+      id: schema.dealerTenants.id,
+      businessName: schema.dealerTenants.businessName,
+      featureTrials: schema.dealerTenants.featureTrials,
+    })
+    .from(schema.dealerTenants)
+    .where(sql`${schema.dealerTenants.id} != 'owner'`)
+    .orderBy(asc(schema.dealerTenants.businessName));
+
+  return rows.map((r) => ({ ...r, featureTrials: parseFeatureTrials(r.featureTrials) }));
+}
+
 // Tenant × feature matrix for the staged-rollout console.
 export async function listTenantFeatureMatrix(): Promise<TenantFeatureRow[]> {
   const rows = await db
@@ -116,6 +142,35 @@ export async function bulkSetFeature(
     const features = await getTenantFeaturesById(tenantId);
     (features as Record<string, boolean>)[key] = enabled;
     await updateDealerFeatures(tenantId, features);
+  }
+}
+
+export async function bulkGrantTrial(
+  key: PreviewKey,
+  trialEntry: import("@/lib/dealer-trials").TrialEntry,
+  tenantIds: string[],
+): Promise<void> {
+  for (const tenantId of tenantIds) {
+    const trials = await getTenantTrialsById(tenantId);
+    trials[key] = trialEntry;
+    await db
+      .update(schema.dealerTenants)
+      .set({ featureTrials: serializeFeatureTrials(trials) })
+      .where(eq(schema.dealerTenants.id, tenantId));
+  }
+}
+
+export async function bulkRevokeTrial(
+  key: PreviewKey,
+  tenantIds: string[],
+): Promise<void> {
+  for (const tenantId of tenantIds) {
+    const trials = await getTenantTrialsById(tenantId);
+    delete trials[key];
+    await db
+      .update(schema.dealerTenants)
+      .set({ featureTrials: serializeFeatureTrials(trials) })
+      .where(eq(schema.dealerTenants.id, tenantId));
   }
 }
 
@@ -146,6 +201,52 @@ export async function getTenantById(id: string): Promise<TenantDetail | null> {
     features: parseDealerFeatures(tenant.features),
     users: userRows,
   };
+}
+
+export async function getTenantTrialsById(tenantId: string): Promise<FeatureTrials> {
+  const rows = await db
+    .select({ featureTrials: schema.dealerTenants.featureTrials })
+    .from(schema.dealerTenants)
+    .where(eq(schema.dealerTenants.id, tenantId))
+    .limit(1);
+  return parseFeatureTrials(rows[0]?.featureTrials ?? "{}");
+}
+
+export async function grantPreviewTrial(
+  tenantId: string,
+  key: PreviewKey,
+  trialEntry: import("@/lib/dealer-trials").TrialEntry,
+): Promise<void> {
+  const trials = await getTenantTrialsById(tenantId);
+  trials[key] = trialEntry;
+  await db
+    .update(schema.dealerTenants)
+    .set({ featureTrials: serializeFeatureTrials(trials) })
+    .where(eq(schema.dealerTenants.id, tenantId));
+  await logAudit({
+    action: "admin_preview_trial_granted",
+    summary: `Granted preview trial for ${key} to tenant ${tenantId}`,
+    entityType: "dealer_tenant",
+    entityId: tenantId,
+    payload: { key, ...trialEntry },
+  });
+}
+
+export async function markPreviewPurchased(
+  tenantId: string,
+  key: PreviewKey,
+): Promise<void> {
+  const trials = await getTenantTrialsById(tenantId);
+  if (!trials[key]) trials[key] = { trialStartedAt: "", trialUntil: "", purchased: true };
+  else trials[key]!.purchased = true;
+  await db
+    .update(schema.dealerTenants)
+    .set({ featureTrials: serializeFeatureTrials(trials) })
+    .where(eq(schema.dealerTenants.id, tenantId));
+  // Also permanently enable in features
+  const features = await getTenantFeaturesById(tenantId);
+  (features as Record<string, boolean>)[key] = true;
+  await updateDealerFeatures(tenantId, features);
 }
 
 export async function updateDealerFeatures(
@@ -380,13 +481,34 @@ export async function updateDealerSettings(
   });
 }
 
-export async function getTenantFeaturesById(tenantId: string): Promise<DealerFeatures> {
+// Raw stored flags WITHOUT trial-merge — use as the merge base when saving,
+// so we never bake a live trial permanently into features.
+export async function getRawTenantFeatures(tenantId: string): Promise<DealerFeatures> {
   const rows = await db
     .select({ features: schema.dealerTenants.features })
     .from(schema.dealerTenants)
     .where(eq(schema.dealerTenants.id, tenantId))
     .limit(1);
   return parseDealerFeatures(rows[0]?.features ?? "{}");
+}
+
+export async function getTenantFeaturesById(tenantId: string): Promise<DealerFeatures> {
+  const rows = await db
+    .select({ features: schema.dealerTenants.features, featureTrials: schema.dealerTenants.featureTrials })
+    .from(schema.dealerTenants)
+    .where(eq(schema.dealerTenants.id, tenantId))
+    .limit(1);
+  const base = parseDealerFeatures(rows[0]?.features ?? "{}");
+  // Merge active trials into features so gated pages unlock automatically
+  const trials = parseFeatureTrials(rows[0]?.featureTrials ?? "{}");
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [key, entry] of Object.entries(trials)) {
+    if (!entry) continue;
+    if (entry.purchased || today <= entry.trialUntil) {
+      (base as Record<string, boolean>)[key] = true;
+    }
+  }
+  return base;
 }
 
 function generateTempPassword(): string {

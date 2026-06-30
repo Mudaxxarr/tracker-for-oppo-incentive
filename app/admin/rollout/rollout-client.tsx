@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { setFeatureRolloutAction, type RolloutActionState } from "./actions";
+import { setFeatureRolloutAction, broadcastTrialAction, type RolloutActionState, type BroadcastTrialState } from "./actions";
+import { PREVIEW_CATALOG, BADGE_LABEL, BADGE_COLOR } from "@/lib/dealer-previews";
 import { ALL_FEATURE_KEYS, DEALER_FEATURE_LABELS } from "@/lib/dealer-features";
 import { DEALER_ADDONS } from "@/lib/dealer-addons";
 import type { TenantFeatureRow } from "@/lib/admin/dealers";
-import { FlaskConical, Rocket, Undo2 } from "lucide-react";
+import { FlaskConical, Rocket, Undo2, Sparkles, Radio } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const CANARY_LS_KEY = "oppo_rollout_canary";
 
@@ -29,6 +31,10 @@ const FLAG_ROWS: FlagRow[] = [
 export function RolloutClient({ tenants }: { tenants: TenantFeatureRow[] }) {
   const [state, action, pending] = useActionState<RolloutActionState, FormData>(
     setFeatureRolloutAction,
+    {},
+  );
+  const [broadcastState, broadcastAction, broadcastPending] = useActionState<BroadcastTrialState, FormData>(
+    broadcastTrialAction,
     {},
   );
   const [canaryId, setCanaryId] = useState("");
@@ -206,6 +212,69 @@ export function RolloutClient({ tenants }: { tenants: TenantFeatureRow[] }) {
             </Table>
           </div>
           {state.error && <p className="px-4 py-3 text-sm text-destructive">{state.error}</p>}
+        </CardContent>
+      </Card>
+
+      {/* Trial Broadcast */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Radio className="size-4 text-primary" />
+            <CardTitle className="text-base">Trial Broadcast</CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Grant a time-limited trial to all active dealers at once. They see it in their &quot;What&apos;s New&quot; page.
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Feature</TableHead>
+                  <TableHead>Trial</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {PREVIEW_CATALOG.map((preview) => (
+                  <TableRow key={preview.key}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", BADGE_COLOR[preview.badge])}>
+                          {BADGE_LABEL[preview.badge]}
+                        </span>
+                        <span className="text-sm font-medium">{preview.label}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground">{preview.trialDays}d free</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <form action={broadcastAction}>
+                          <input type="hidden" name="previewKey" value={preview.key} />
+                          <input type="hidden" name="action" value="grant" />
+                          <Button size="sm" variant="default" type="submit" disabled={broadcastPending} className="gap-1.5">
+                            <Sparkles className="size-3" />
+                            Broadcast {preview.trialDays}d Trial
+                          </Button>
+                        </form>
+                        <form action={broadcastAction}>
+                          <input type="hidden" name="previewKey" value={preview.key} />
+                          <input type="hidden" name="action" value="revoke" />
+                          <Button size="sm" variant="ghost" type="submit" disabled={broadcastPending}>
+                            Revoke All
+                          </Button>
+                        </form>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {broadcastState.error && <p className="px-4 py-3 text-sm text-destructive">{broadcastState.error}</p>}
         </CardContent>
       </Card>
     </div>

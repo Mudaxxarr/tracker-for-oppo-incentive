@@ -18,7 +18,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DataValue } from "@/components/ui/data-value";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -29,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { DealerActivationForm } from "./dealer-activation-form";
 import { DealerBulkActivationForm } from "./dealer-bulk-activation-form";
 import {
@@ -40,7 +43,7 @@ import {
   type DailyModelRow,
 } from "./actions";
 import { formatDate, formatPKR, maskImei } from "@/lib/format";
-import { Plus, Trash2, BarChart3, CalendarDays, CheckSquare } from "lucide-react";
+import { Plus, Trash2, BarChart3, CalendarDays, CheckSquare, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { ActivationRow } from "@/lib/db/queries/activations";
@@ -84,6 +87,8 @@ interface Props {
   dealerId: string | null;
   tenantId: string;
   role: "admin" | "exec";
+  canBulk: boolean;
+  canBulkDelete: boolean;
 }
 
 export function DealerActivationsClient({
@@ -95,6 +100,8 @@ export function DealerActivationsClient({
   dealerId,
   tenantId,
   role,
+  canBulk,
+  canBulkDelete,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -248,9 +255,9 @@ export function DealerActivationsClient({
                 </SheetHeader>
                 <div className="p-4">
                   <Tabs defaultValue="single">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className={cn("grid w-full", canBulk ? "grid-cols-2" : "grid-cols-1")}>
                       <TabsTrigger value="single">Single</TabsTrigger>
-                      <TabsTrigger value="bulk">Bulk by Date</TabsTrigger>
+                      {canBulk && <TabsTrigger value="bulk">Bulk by Date</TabsTrigger>}
                     </TabsList>
                     <TabsContent value="single" className="pt-3">
                       <DealerActivationForm
@@ -261,12 +268,14 @@ export function DealerActivationsClient({
                         onSuccess={() => { setOpen(false); router.refresh(); }}
                       />
                     </TabsContent>
-                    <TabsContent value="bulk" className="pt-3">
-                      <DealerBulkActivationForm
-                        stock={stock}
-                        onSuccess={() => { setOpen(false); router.refresh(); }}
-                      />
-                    </TabsContent>
+                    {canBulk && (
+                      <TabsContent value="bulk" className="pt-3">
+                        <DealerBulkActivationForm
+                          stock={stock}
+                          onSuccess={() => { setOpen(false); router.refresh(); }}
+                        />
+                      </TabsContent>
+                    )}
                   </Tabs>
                 </div>
               </SheetContent>
@@ -318,7 +327,7 @@ export function DealerActivationsClient({
             </CardContent>
           </Card>
           <Card>
-            {someSelected && (
+            {canBulkDelete && someSelected && (
               <div className="flex items-center justify-between gap-3 border-b bg-muted/50 px-4 py-2.5">
                 <span className="text-sm font-medium">
                   <CheckSquare className="mr-1.5 inline size-4 text-primary" />
@@ -349,15 +358,17 @@ export function DealerActivationsClient({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10 pl-4">
-                        <input
-                          type="checkbox"
-                          className="size-4 cursor-pointer rounded border-border accent-primary"
-                          checked={allSelected}
-                          onChange={toggleAll}
-                          aria-label="Select all"
-                        />
-                      </TableHead>
+                      {canBulkDelete && (
+                        <TableHead className="w-10 pl-4">
+                          <input
+                            type="checkbox"
+                            className="size-4 cursor-pointer rounded border-border accent-primary"
+                            checked={allSelected}
+                            onChange={toggleAll}
+                            aria-label="Select all"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead>Date</TableHead>
                       <TableHead>Model</TableHead>
                       <TableHead>IMEI</TableHead>
@@ -369,11 +380,8 @@ export function DealerActivationsClient({
                   <TableBody>
                     {initialActivations.length === 0 ? (
                       <TableRow>
-                        <TableCell
-                          colSpan={7}
-                          className="py-10 text-center text-sm text-muted-foreground"
-                        >
-                          No activations recorded yet.
+                        <TableCell colSpan={canBulkDelete ? 7 : 6}>
+                          <EmptyState icon={Smartphone} title="No activations recorded yet." description="Add your first activation to start tracking." />
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -383,24 +391,26 @@ export function DealerActivationsClient({
                           data-selected={selected.has(a.id)}
                           className="data-[selected=true]:bg-primary/5"
                         >
-                          <TableCell className="pl-4">
-                            <input
-                              type="checkbox"
-                              className="size-4 cursor-pointer rounded border-border accent-primary"
-                              checked={selected.has(a.id)}
-                              onChange={() => toggleOne(a.id)}
-                              aria-label="Select row"
-                            />
-                          </TableCell>
+                          {canBulkDelete && (
+                            <TableCell className="pl-4">
+                              <input
+                                type="checkbox"
+                                className="size-4 cursor-pointer rounded border-border accent-primary"
+                                checked={selected.has(a.id)}
+                                onChange={() => toggleOne(a.id)}
+                                aria-label="Select row"
+                              />
+                            </TableCell>
+                          )}
                           <TableCell>{formatDate(a.activationDate)}</TableCell>
                           <TableCell className="font-medium">{a.modelName}</TableCell>
                           <TableCell className="font-mono text-xs">{maskImei(a.imei)}</TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {formatPKR(a.dealerPriceSnapshot)}
+                          <TableCell className="text-right">
+                            <DataValue value={a.dealerPriceSnapshot} format="currency" />
                           </TableCell>
                           <TableCell>
                             {a.isCrossRegion ? (
-                              <Badge variant="secondary">Cross-Region</Badge>
+                              <StatusBadge status="neutral" label="Cross-Region" />
                             ) : null}
                           </TableCell>
                           <TableCell>
@@ -447,17 +457,15 @@ export function DealerActivationsClient({
                 Loading…
               </div>
             ) : summaryRows.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                No activations in this period.
-              </div>
+              <EmptyState icon={BarChart3} title="No activations in this period." />
             ) : (
               <div className="divide-y">
                 {summaryRows.map((r) => (
                   <div key={r.modelId} className="flex items-center justify-between px-4 py-3">
                     <span className="text-sm font-medium">{r.modelName}</span>
-                    <Badge variant="secondary" className="tabular-nums text-sm">
-                      {r.qty} sold
-                    </Badge>
+                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                      <DataValue value={r.qty} /> sold
+                    </span>
                   </div>
                 ))}
                 <div className="flex items-center justify-between px-4 py-3 text-sm font-medium">
@@ -493,9 +501,7 @@ export function DealerActivationsClient({
                 Loading…
               </div>
             ) : dailyRows.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                No activations in this period.
-              </div>
+              <EmptyState icon={CalendarDays} title="No activations in this period." />
             ) : (
               <div className="divide-y">
                 {dailyRows.map((day) => (
@@ -512,7 +518,7 @@ export function DealerActivationsClient({
                           <span className="max-w-[80px] truncate text-center text-[10px] leading-tight text-muted-foreground">
                             {m.modelName}
                           </span>
-                          <span className="mt-1 text-xl font-bold tabular-nums text-foreground">
+                          <span className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground">
                             {m.qty}
                           </span>
                         </div>

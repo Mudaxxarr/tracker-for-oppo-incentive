@@ -2,6 +2,8 @@ import { getDealerSession } from "@/lib/dealer-auth";
 import { redirect } from "next/navigation";
 import { getActiveDealerIdForTenant, getTenantById } from "@/lib/dealer-tenant";
 import { listStockForDealer } from "@/lib/db/queries/purchases";
+import { getTenantFeaturesById } from "@/lib/admin/dealers";
+import { isFeatureKeyOn } from "@/lib/feature-registry";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { PosClient } from "./pos-client";
 
@@ -12,9 +14,12 @@ export default async function PosPage() {
   if (!session) redirect("/dealer/login");
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
 
-  const stock = dealerId
-    ? await listStockForDealer(session.tenantId, dealerId, OWNER_TENANT_ID)
-    : [];
+  const [stock, features] = await Promise.all([
+    dealerId
+      ? listStockForDealer(session.tenantId, dealerId, OWNER_TENANT_ID)
+      : Promise.resolve([]),
+    getTenantFeaturesById(session.tenantId),
+  ]);
 
-  return <PosClient stock={stock} />;
+  return <PosClient stock={stock} canReceipt={isFeatureKeyOn(features, "pos_receipt")} />;
 }

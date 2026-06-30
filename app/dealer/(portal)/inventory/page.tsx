@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
+import { isFeatureKeyOn } from "@/lib/feature-registry";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
 import { getActiveDealerIdForTenant, listDealerIdsForTenant } from "@/lib/dealer-tenant";
 import { listInventoryForDealer } from "@/lib/db/queries/inventory";
@@ -38,6 +39,7 @@ export default async function DealerInventoryPage() {
       otherDealers={otherDealers}
       hasDealer={!!dealerId}
       pendingTransfers={pending}
+      canReceipts={isFeatureKeyOn(features, "inv_receipts")}
     />
   );
 }

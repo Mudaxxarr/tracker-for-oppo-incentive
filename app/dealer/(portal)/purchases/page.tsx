@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
+import { isFeatureKeyOn } from "@/lib/feature-registry";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { listPurchases } from "@/lib/db/queries/purchases";
@@ -58,6 +59,7 @@ export default async function DealerPurchasesPage({
       tenantId={session.tenantId}
       role={session.role as "admin" | "exec"}
       backdateDays={backdateDays}
+      canBulk={isFeatureKeyOn(features, "pur_bulk")}
     />
   );
 }

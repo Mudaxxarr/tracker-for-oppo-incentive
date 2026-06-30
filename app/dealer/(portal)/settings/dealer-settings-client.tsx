@@ -12,9 +12,11 @@ import { Download, History, Lock } from "lucide-react";
 interface Props {
   basePercent: number;
   defaultBonusPercent: number;
+  canBackup: boolean;
+  canPurge: boolean;
 }
 
-export function DealerSettingsClient({ basePercent, defaultBonusPercent }: Props) {
+export function DealerSettingsClient({ basePercent, defaultBonusPercent, canBackup, canPurge }: Props) {
   const [pwState, pwAction, pwPending] = useActionState<SettingsState, FormData>(
     changeDealerPasswordAction,
     {},
@@ -70,36 +72,40 @@ export function DealerSettingsClient({ basePercent, defaultBonusPercent }: Props
       </Card>
 
       {/* Backup */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Download className="size-4" />
-            Backup
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Download a copy of your data — purchases, activations, transfers, and policies.
-          </p>
-          <a href="/api/dealer/backup" download className={cn(buttonVariants({ variant: "outline" }))}>
-            <Download className="size-4" />
-            Download backup
-          </a>
-        </CardContent>
-      </Card>
+      {canBackup && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Download className="size-4" />
+              Backup
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Download a copy of your data — purchases, activations, transfers, and policies.
+            </p>
+            <a href="/api/dealer/backup" download className={cn(buttonVariants({ variant: "outline" }))}>
+              <Download className="size-4" />
+              Download backup
+            </a>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Activity log purge */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <History className="size-4" />
-            Activity Log Housekeeping
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PurgeAuditForm />
-        </CardContent>
-      </Card>
+      {canPurge && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="size-4" />
+              Activity Log Housekeeping
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PurgeAuditForm />
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 }

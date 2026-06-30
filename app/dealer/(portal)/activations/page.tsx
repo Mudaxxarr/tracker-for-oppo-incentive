@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
+import { isFeatureKeyOn } from "@/lib/feature-registry";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { listActivations } from "@/lib/db/queries/activations";
@@ -56,6 +57,8 @@ export default async function DealerActivationsPage({
       dealerId={dealerId}
       tenantId={session.tenantId}
       role={session.role as "admin" | "exec"}
+      canBulk={isFeatureKeyOn(features, "act_bulk")}
+      canBulkDelete={isFeatureKeyOn(features, "act_bulk_delete")}
     />
   );
 }

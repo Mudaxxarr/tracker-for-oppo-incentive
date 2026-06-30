@@ -3,9 +3,11 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
-import { bulkSetFeature, listTenantFeatureMatrix } from "@/lib/admin/dealers";
+import { bulkSetFeature, bulkGrantTrial, bulkRevokeTrial, listTenantFeatureMatrix } from "@/lib/admin/dealers";
 import { ALL_FEATURE_KEYS } from "@/lib/dealer-features";
 import { DEALER_ADDONS } from "@/lib/dealer-addons";
+import { PREVIEW_CATALOG, type PreviewKey } from "@/lib/dealer-previews";
+import { buildTrialEntry } from "@/lib/dealer-trials";
 
 export type RolloutActionState = { error?: string };
 
@@ -39,6 +41,37 @@ export async function setFeatureRolloutAction(
     const tenants = await listTenantFeatureMatrix();
     const ids = tenants.filter((t) => t.status !== "suspended").map((t) => t.id);
     await bulkSetFeature(featureKey, enable === "true", ids);
+  }
+
+  redirect("/admin/rollout");
+}
+
+export type BroadcastTrialState = { error?: string };
+
+const BroadcastSchema = z.object({
+  previewKey: z.string().min(1),
+  action: z.enum(["grant", "revoke"]),
+});
+
+export async function broadcastTrialAction(
+  _prev: BroadcastTrialState,
+  fd: FormData,
+): Promise<BroadcastTrialState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const parsed = BroadcastSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: "Invalid input" };
+
+  const { previewKey, action } = parsed.data;
+  const preview = PREVIEW_CATALOG.find((p) => p.key === previewKey);
+  if (!preview) return { error: "Unknown feature" };
+
+  const tenants = await listTenantFeatureMatrix();
+  const ids = tenants.filter((t) => t.status !== "suspended").map((t) => t.id);
+
+  if (action === "grant") {
+    await bulkGrantTrial(previewKey as PreviewKey, buildTrialEntry(preview.trialDays), ids);
+  } else {
+    await bulkRevokeTrial(previewKey as PreviewKey, ids);
   }
 
   redirect("/admin/rollout");

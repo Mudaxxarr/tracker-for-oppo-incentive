@@ -18,7 +18,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DataValue } from "@/components/ui/data-value";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -32,8 +34,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealerPurchaseForm } from "./dealer-purchase-form";
 import { DealerBulkInvoiceForm } from "./dealer-bulk-invoice-form";
 import { PURCHASE_SOURCE } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import { formatDate, formatPKR } from "@/lib/format";
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, AlertCircle, ShoppingCart } from "lucide-react";
 import { deleteDealerPurchaseAction } from "./actions";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
@@ -48,9 +51,10 @@ interface Props {
   tenantId: string;
   role: "admin" | "exec";
   backdateDays: number;
+  canBulk: boolean;
 }
 
-export function DealerPurchasesClient({ models, initialPurchases, initialFilters, hasDealer, dealerId, tenantId, role, backdateDays }: Props) {
+export function DealerPurchasesClient({ models, initialPurchases, initialFilters, hasDealer, dealerId, tenantId, role, backdateDays, canBulk }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
@@ -83,7 +87,7 @@ export function DealerPurchasesClient({ models, initialPurchases, initialFilters
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Purchases</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Purchases</h1>
           <p className="text-sm text-muted-foreground">
             Stock arriving at your dealer ID. 4% only triggers on activation.
           </p>
@@ -103,9 +107,9 @@ export function DealerPurchasesClient({ models, initialPurchases, initialFilters
             </SheetHeader>
             <div className="p-4">
               <Tabs defaultValue="single">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className={cn("grid w-full", canBulk ? "grid-cols-2" : "grid-cols-1")}>
                   <TabsTrigger value="single">Single line</TabsTrigger>
-                  <TabsTrigger value="bulk">Bulk invoice</TabsTrigger>
+                  {canBulk && <TabsTrigger value="bulk">Bulk invoice</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="single" className="pt-3">
                   <DealerPurchaseForm
@@ -121,15 +125,17 @@ export function DealerPurchasesClient({ models, initialPurchases, initialFilters
                     }}
                   />
                 </TabsContent>
-                <TabsContent value="bulk" className="pt-3">
-                  <DealerBulkInvoiceForm
-                    models={models}
-                    onSuccess={() => {
-                      setOpen(false);
-                      router.refresh();
-                    }}
-                  />
-                </TabsContent>
+                {canBulk && (
+                  <TabsContent value="bulk" className="pt-3">
+                    <DealerBulkInvoiceForm
+                      models={models}
+                      onSuccess={() => {
+                        setOpen(false);
+                        router.refresh();
+                      }}
+                    />
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
           </SheetContent>
@@ -223,27 +229,27 @@ export function DealerPurchasesClient({ models, initialPurchases, initialFilters
               <TableBody>
                 {initialPurchases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                      No purchases yet for this dealer ID.
+                    <TableCell colSpan={7}>
+                      <EmptyState icon={ShoppingCart} title="No purchases yet for this dealer ID." description="Add a purchase to begin tracking stock." />
                     </TableCell>
                   </TableRow>
                 ) : (
                   initialPurchases.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.modelName}</TableCell>
-                      <TableCell className="text-right tabular-nums">{p.quantity}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPKR(p.unitDealerPrice)}
+                      <TableCell className="text-right"><DataValue value={p.quantity} /></TableCell>
+                      <TableCell className="text-right">
+                        <DataValue value={p.unitDealerPrice} format="currency" />
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatPKR(p.unitDealerPrice * p.quantity)}
+                      <TableCell className="text-right">
+                        <DataValue value={p.unitDealerPrice * p.quantity} format="currency" />
                       </TableCell>
                       <TableCell>{formatDate(p.purchaseDate)}</TableCell>
                       <TableCell>
                         {p.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? (
-                          <Badge variant="secondary">Cross-Region</Badge>
+                          <StatusBadge status="neutral" label="Cross-Region" />
                         ) : (
-                          <Badge>Regular</Badge>
+                          <StatusBadge status="confirmed" label="Regular" />
                         )}
                       </TableCell>
                       <TableCell>

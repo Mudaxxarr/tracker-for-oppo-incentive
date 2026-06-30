@@ -28,20 +28,6 @@ function fmt(value: number, mode: "currency" | "number") {
   return mode === "currency" ? PKR_INT.format(value) : NUM_INT.format(value);
 }
 
-function progressColor(pct: number): string {
-  if (pct >= 90) return "#22c55e"; // green-500
-  if (pct >= 70) return "#84cc16"; // lime-500 (greenish-yellow)
-  if (pct >= 40) return "#f97316"; // orange-500
-  return "#ef4444";                // red-500
-}
-
-function progressBgColor(pct: number): string {
-  if (pct >= 90) return "rgba(34,197,94,0.15)";
-  if (pct >= 70) return "rgba(132,204,22,0.15)";
-  if (pct >= 40) return "rgba(249,115,22,0.15)";
-  return "rgba(239,68,68,0.15)";
-}
-
 export function KpiCard({
   label,
   value,
@@ -69,8 +55,6 @@ export function KpiCard({
   const pct = progress
     ? Math.min(100, (progress.current / Math.max(1, progress.target)) * 100)
     : 0;
-  const color = progressColor(pct);
-  const bgColor = progressBgColor(pct);
 
   return (
     <Card className={cn(dimmed && "opacity-60", className)}>
@@ -79,42 +63,18 @@ export function KpiCard({
         {icon ? <span className="text-muted-foreground">{icon}</span> : null}
       </CardHeader>
       <CardContent className="space-y-1.5">
-        <motion.div className="text-2xl font-semibold tabular-nums">{text}</motion.div>
+        <motion.div className="font-mono text-xl font-semibold tabular-nums">{text}</motion.div>
         {progress ? (
           <div className="space-y-1">
-            {/* Track */}
-            <div
-              className="relative h-2 overflow-hidden rounded-full"
-              style={{ background: bgColor }}
-            >
-              {/* Fill bar with color */}
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
               <motion.div
-                className="absolute inset-y-0 left-0 rounded-full"
-                style={{ background: color }}
+                className="h-full rounded-full bg-primary"
                 initial={{ width: "0%" }}
                 animate={{ width: `${pct}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
               />
-              {/* Shimmer overlay — always animating */}
-              <motion.div
-                className="absolute inset-y-0 w-16 skew-x-[-20deg] rounded-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)",
-                }}
-                animate={{ left: ["-4rem", "110%"] }}
-                transition={{
-                  duration: 1.6,
-                  ease: "easeInOut",
-                  repeat: Infinity,
-                  repeatDelay: 0.6,
-                }}
-              />
             </div>
-            <p
-              className="text-[11px] font-medium tabular-nums"
-              style={{ color }}
-            >
+            <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
               {progress.current} / {progress.target} ({Math.round(pct)}%)
             </p>
           </div>

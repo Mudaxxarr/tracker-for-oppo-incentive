@@ -49,22 +49,21 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
   useEffect(() => {
     if (!modelId || !/^\d{4}-\d{2}-\d{2}$/.test(purchaseDate)) {
       setPricedAt(null);
+      setPriceTouched(false);
       return;
     }
     let cancelled = false;
+    // Reset priceTouched here so we don't need a separate effect that causes a second render
+    setPriceTouched(false);
     getPriceOnDateForDealer(modelId, purchaseDate).then((p) => {
       if (cancelled) return;
       setPricedAt(p ? { dealer: p.dealerPrice, invoice: p.invoicePrice } : null);
-      if (!priceTouched) {
-        setDealerPrice(p ? String(p.dealerPrice) : "");
-        setInvoicePrice(p ? String(p.invoicePrice) : "");
-      }
+      setDealerPrice(p ? String(p.dealerPrice) : "");
+      setInvoicePrice(p ? String(p.invoicePrice) : "");
     });
     return () => { cancelled = true; };
-  }, [modelId, purchaseDate, priceTouched]);
-
-  useEffect(() => {
-    setPriceTouched(false);
+  // priceTouched intentionally excluded — manual edits don't re-fetch
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelId, purchaseDate]);
 
   useEffect(() => {

@@ -38,6 +38,7 @@ interface Props {
   otherDealers: DealerOption[];
   hasDealer: boolean;
   pendingTransfers: PendingTransferRow[];
+  canReceipts: boolean;
 }
 type SortKey = "name" | "qty_desc" | "qty_asc" | "value_desc";
 type ViewMode = "grid" | "list";
@@ -644,7 +645,7 @@ function SummaryTile({ label, value, sub }: { label: string; value: number | str
   );
 }
 
-export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTransfers }: Props) {
+export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTransfers, canReceipts }: Props) {
   const [activateRow, setActivateRow] = useState<InventoryModelRow | null>(null);
   const [moveRow, setMoveRow] = useState<InventoryModelRow | null>(null);
   const [historyRow, setHistoryRow] = useState<InventoryModelRow | null>(null);
@@ -692,7 +693,7 @@ export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTr
     <div className="space-y-5">
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Inventory</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Inventory</h1>
           <p className="text-sm text-muted-foreground">Current stock by model and source.</p>
         </div>
         {pendingTransfers.length > 0 && (
@@ -790,24 +791,26 @@ export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTr
       )}
 
       {/* Date receipts filter */}
-      <div className="flex items-center gap-2">
-        <CalendarSearch className="size-4 shrink-0 text-muted-foreground" />
-        <label className="text-sm text-muted-foreground whitespace-nowrap">Check receipts by date:</label>
-        <Input
-          type="date"
-          value={receiptsDate}
-          max={new Date().toISOString().slice(0, 10)}
-          onChange={(e) => setReceiptsDate(e.target.value)}
-          className="h-8 w-44 text-sm"
-        />
-        {receiptsDate && (
-          <button onClick={() => setReceiptsDate("")} className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
-            Clear
-          </button>
-        )}
-      </div>
+      {canReceipts && (
+        <div className="flex items-center gap-2">
+          <CalendarSearch className="size-4 shrink-0 text-muted-foreground" />
+          <label className="text-sm text-muted-foreground whitespace-nowrap">Check receipts by date:</label>
+          <Input
+            type="date"
+            value={receiptsDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setReceiptsDate(e.target.value)}
+            className="h-8 w-44 text-sm"
+          />
+          {receiptsDate && (
+            <button onClick={() => setReceiptsDate("")} className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
-      {receiptsDate && <ReceiptsPanel date={receiptsDate} />}
+      {canReceipts && receiptsDate && <ReceiptsPanel date={receiptsDate} />}
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">

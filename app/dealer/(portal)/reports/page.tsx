@@ -3,6 +3,7 @@ import { getDealerSession } from "@/lib/dealer-auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
 import { isAddonEnabled } from "@/lib/dealer-addons";
+import { isFeatureKeyOn } from "@/lib/feature-registry";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
@@ -31,6 +32,7 @@ export default async function DealerReportsPage({
   const addons = {
     detailedPdf: isAddonEnabled(features, "addon_detailed_pdf"),
     excel: isAddonEnabled(features, "addon_excel"),
+    incentivePdf: isFeatureKeyOn(features, "rep_incentive_pdf"),
   };
 
   const sp = await searchParams;

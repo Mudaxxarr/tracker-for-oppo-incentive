@@ -18,6 +18,7 @@ import type { PolicyAchievementEntry } from "@/lib/report-types";
 interface AddonState {
   detailedPdf: boolean;
   excel: boolean;
+  incentivePdf: boolean;
 }
 
 interface Props {
@@ -110,7 +111,9 @@ export function DealerReportsClient({ dealerName, initialStart, initialEnd, repo
           onDiscrepancy={setDiscrepancy}
           downloads={[
             { label: "PDF Report", icon: "pdf" as const, href: exportLink("pdf") },
-            { label: "PDF (Incentive models)", icon: "pdf" as const, href: exportLink("pdf", true) },
+            ...(addons.incentivePdf
+              ? [{ label: "PDF (Incentive models)", icon: "pdf" as const, href: exportLink("pdf", true) }]
+              : []),
             addons.detailedPdf
               ? { label: "Detailed Breakup PDF", icon: "pdf" as const, href: exportLink("detailed-pdf") }
               : { label: "Detailed Breakup PDF", icon: "pdf" as const, href: "#addons", addonKey: "addon_detailed_pdf" as const },

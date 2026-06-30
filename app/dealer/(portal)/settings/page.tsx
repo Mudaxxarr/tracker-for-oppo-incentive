@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
+import { isFeatureKeyOn } from "@/lib/feature-registry";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
 import { db, schema } from "@/lib/db/client";
 import { eq } from "drizzle-orm";
@@ -85,6 +86,8 @@ export default async function DealerSettingsPage() {
       <DealerSettingsClient
         basePercent={constants.basePercent}
         defaultBonusPercent={constants.defaultBonusPercent}
+        canBackup={isFeatureKeyOn(features, "set_backup")}
+        canPurge={isFeatureKeyOn(features, "set_purge")}
       />
     </div>
   );

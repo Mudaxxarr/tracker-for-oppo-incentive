@@ -18,7 +18,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DataValue } from "@/components/ui/data-value";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -39,7 +41,7 @@ import {
   type DailyModelRow,
 } from "./data-actions";
 import { formatDate, formatPKR, maskImei } from "@/lib/format";
-import { Pencil, Plus, Trash2, BarChart3, CalendarDays, CheckSquare } from "lucide-react";
+import { Pencil, Plus, Trash2, BarChart3, CalendarDays, CheckSquare, Smartphone } from "lucide-react";
 import {
   deleteActivationAction,
   bulkDeleteActivationsAction,
@@ -257,7 +259,7 @@ export function ActivationsClient({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Activations</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Activations</h1>
           <p className="text-sm text-muted-foreground">
             Each row locks the dealer price effective on activation date.
           </p>
@@ -393,8 +395,8 @@ export function ActivationsClient({
                   <TableBody>
                     {initialActivations.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                          No activations recorded yet.
+                        <TableCell colSpan={7}>
+                          <EmptyState icon={Smartphone} title="No activations recorded yet." description="Add your first activation to start tracking." />
                         </TableCell>
                       </TableRow>
                     ) : initialActivations.map((a) => {
@@ -426,11 +428,11 @@ export function ActivationsClient({
                           <TableCell>{formatDate(a.activationDate)}</TableCell>
                           <TableCell className="font-medium">{a.modelName}</TableCell>
                           <TableCell className="font-mono text-xs">{maskImei(a.imei)}</TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {formatPKR(a.dealerPriceSnapshot)}
+                          <TableCell className="text-right">
+                            <DataValue value={a.dealerPriceSnapshot} format="currency" />
                           </TableCell>
                           <TableCell>
-                            {a.isCrossRegion ? <Badge variant="secondary">Cross-Region</Badge> : null}
+                            {a.isCrossRegion ? <StatusBadge status="neutral" label="Cross-Region" /> : null}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -480,8 +482,8 @@ export function ActivationsClient({
         <div className="space-y-3">
           {activationsByDate.length === 0 ? (
             <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No activations to display. Try adjusting the filters.
+              <CardContent className="p-0">
+                <EmptyState icon={Smartphone} title="No activations to display." description="Try adjusting the filters." />
               </CardContent>
             </Card>
           ) : activationsByDate.map(({ date, models, totalQty }) => (
@@ -507,9 +509,7 @@ export function ActivationsClient({
                         </TableCell>
                         <TableCell className="py-2 text-right">
                           {m.crossQty > 0 ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {m.crossQty} cross-region
-                            </Badge>
+                            <StatusBadge status="neutral" label={`${m.crossQty} cross-region`} />
                           ) : null}
                         </TableCell>
                       </TableRow>
@@ -543,15 +543,15 @@ export function ActivationsClient({
             {analyticsLoading ? (
               <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">Loading…</div>
             ) : summaryRows.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">No activations in this period.</div>
+              <EmptyState icon={BarChart3} title="No activations in this period." />
             ) : (
               <div className="divide-y">
                 {summaryRows.map((r) => (
                   <div key={r.modelId} className="flex items-center justify-between px-4 py-3">
                     <span className="text-sm font-medium">{r.modelName}</span>
-                    <Badge variant="secondary" className="tabular-nums text-sm">
-                      {r.qty} sold
-                    </Badge>
+                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                      <DataValue value={r.qty} /> sold
+                    </span>
                   </div>
                 ))}
                 <div className="flex items-center justify-between px-4 py-3 font-medium text-sm">
@@ -585,7 +585,7 @@ export function ActivationsClient({
             {analyticsLoading ? (
               <div className="p-6 text-center text-sm text-muted-foreground animate-pulse">Loading…</div>
             ) : dailyRows.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">No activations in this period.</div>
+              <EmptyState icon={CalendarDays} title="No activations in this period." />
             ) : (
               <div className="divide-y">
                 {dailyRows.map((day) => (
@@ -602,7 +602,7 @@ export function ActivationsClient({
                           <span className="text-[10px] text-muted-foreground leading-tight text-center truncate max-w-[80px]">
                             {m.modelName}
                           </span>
-                          <span className="mt-1 text-xl font-bold tabular-nums text-foreground">
+                          <span className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground">
                             {m.qty}
                           </span>
                         </div>
