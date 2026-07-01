@@ -11,6 +11,9 @@ import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
 import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
 import { sumRebatesForPeriod } from "@/lib/db/queries/rebates";
 import { getConstants } from "@/lib/settings";
+import { db, schema } from "@/lib/db/client";
+import { PURCHASE_REVIEW_STATUS } from "@/lib/constants";
+import { and, eq, gte, lte, ne, sql } from "drizzle-orm";
 import Link from "next/link";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -87,7 +90,7 @@ export default async function DealerDashboardPage({
 
   const sixMonths = lastSixMonths();
 
-  const [report, crLoss, initialSales, rebateEarned, sixMonthEarnings] = await Promise.all([
+  const [report, crLoss, initialSales, rebateEarned, sixMonthEarnings, periodPurchaseQtyRows, stockOldestRaw] = await Promise.all([
     buildIncentiveReport({ dealerId, periodStart: startStr, periodEnd: endStr, dataTenantId: stats.tenantId }),
     getCrCaughtLoss(stats.tenantId, dealerId, startStr, endStr, constants.basePercent),
     dealerGetModelSalesAction(startStr, endStr),
@@ -99,6 +102,32 @@ export default async function DealerDashboardPage({
           .catch(() => 0),
       ),
     ),
+    db
+      .select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+      .from(schema.purchases)
+      .where(
+        and(
+          eq(schema.purchases.tenantId, stats.tenantId),
+          eq(schema.purchases.dealerId, dealerId),
+          gte(schema.purchases.purchaseDate, startStr),
+          lte(schema.purchases.purchaseDate, endStr),
+          ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW),
+        ),
+      ),
+    db
+      .select({
+        modelId: schema.purchases.modelId,
+        oldest: sql<string>`MIN(${schema.purchases.purchaseDate})`,
+      })
+      .from(schema.purchases)
+      .where(
+        and(
+          eq(schema.purchases.tenantId, stats.tenantId),
+          eq(schema.purchases.dealerId, dealerId),
+          ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW),
+        ),
+      )
+      .groupBy(schema.purchases.modelId),
   ]);
 
   // Merge per-month earnings into the activation trend (both are last-6-months, same order).
@@ -111,6 +140,24 @@ export default async function DealerDashboardPage({
   const crFines = crLoss?.totalFines ?? 0;
   const lostIncentive = crLoss?.lostIncentive ?? 0;
   const riskExposure = lostIncentive + crFines;
+  const periodPurchaseUnits = Number(periodPurchaseQtyRows[0]?.qty ?? 0);
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const agedCutoff = cutoff.toISOString().slice(0, 10);
+  const oldestByModel = new Map(stockOldestRaw.map((r) => [r.modelId, r.oldest]));
+  const agedStock = stats.stock.reduce(
+    (acc, item) => {
+      const oldest = oldestByModel.get(item.modelId);
+      if (!oldest || oldest > agedCutoff) return acc;
+      return {
+        units: acc.units + item.quantity,
+        value: acc.value + item.quantity * (item.dealerPrice ?? 0),
+        modelCount: acc.modelCount + 1,
+      };
+    },
+    { units: 0, value: 0, modelCount: 0 },
+  );
 
   const modelsWithIncentive = new Set(
     report.rows.filter((r) => r.total > 0 || r.stockInEarned > 0).map((r) => r.modelId)
@@ -133,6 +180,8 @@ export default async function DealerDashboardPage({
     rebateEarned,
     crFines,
     riskExposure,
+    periodPurchaseUnits,
+    agedStock,
     stock: stats.stock,
     sixMonthTrend,
     report: {
@@ -169,6 +218,7 @@ export default async function DealerDashboardPage({
 
   return (
     <div className="space-y-4">
+      <h1 className="sr-only">Dealer dashboard</h1>
       <LowStockBanner tenantId={stats.tenantId} dealerId={dealerId} />
       <DealerDashboardClient data={dashData} />
     </div>

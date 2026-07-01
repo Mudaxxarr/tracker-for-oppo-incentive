@@ -11,26 +11,73 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPKR } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface Props {
   data: Array<{ label: string; activations: number; earnings: number }>;
+  className?: string;
+  contentClassName?: string;
 }
 
 const compact = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
 
-export function DealerTrendChart({ data }: Props) {
+export function DealerTrendChart({ data, className, contentClassName }: Props) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">Earnings — last 6 months</CardTitle>
+    <Card className={cn(
+      "dashboard-card-live h-full min-w-0 rounded-xl border border-border bg-card shadow-none",
+      className,
+    )}>
+      <CardHeader className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-sm font-medium">Earnings trend</CardTitle>
+          <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <span className="size-2 rounded-full bg-primary" />
+              Earnings
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="size-2 rounded-full bg-muted-foreground" />
+              Activations
+            </span>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-            <XAxis dataKey="label" className="text-xs" />
-            <YAxis className="text-xs" width={44} tickFormatter={(v) => compact(Number(v))} />
+      <CardContent className={cn("h-64 min-w-0", contentClassName)}>
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={1}
+          minHeight={1}
+          initialDimension={{ width: 640, height: 260 }}
+          debounce={50}
+        >
+          <LineChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.28} vertical={false} />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tickMargin={10}
+              className="text-xs"
+            />
+            <YAxis
+              yAxisId="earnings"
+              axisLine={false}
+              tickLine={false}
+              width={44}
+              className="text-xs"
+              tickFormatter={(v) => compact(Number(v))}
+            />
+            <YAxis
+              yAxisId="activations"
+              orientation="right"
+              axisLine={false}
+              tickLine={false}
+              width={28}
+              className="text-xs"
+              tickFormatter={(v) => String(v)}
+            />
             <Tooltip
               formatter={(v, name) =>
                 name === "earnings"
@@ -47,20 +94,23 @@ export function DealerTrendChart({ data }: Props) {
               }}
             />
             <Line
+              yAxisId="earnings"
               type="monotone"
               dataKey="earnings"
               stroke="var(--primary)"
-              strokeWidth={2.5}
+              strokeWidth={2.25}
               dot={{ r: 3 }}
+              activeDot={{ r: 4 }}
             />
             <Line
+              yAxisId="activations"
               type="monotone"
               dataKey="activations"
-              stroke="var(--color-chart-3)"
-              strokeWidth={1.5}
+              stroke="var(--muted-foreground)"
+              strokeWidth={1.75}
               strokeDasharray="4 3"
               dot={false}
-              opacity={0.55}
+              opacity={0.65}
             />
           </LineChart>
         </ResponsiveContainer>

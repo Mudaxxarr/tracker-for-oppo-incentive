@@ -13,8 +13,8 @@ interface DealerTopBarProps {
 
 export function DealerTopBar({ businessName, shopName, isAdmin }: DealerTopBarProps) {
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/90 px-3 backdrop-blur md:px-4">
-      <div className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
+    <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-card px-3 md:px-4">
+      <div className="flex min-w-0 flex-1 items-center gap-2 font-medium">
         <DealerLogoTrigger isAdmin={isAdmin} />
         <span className="truncate text-sm">{shopName ?? businessName}</span>
       </div>

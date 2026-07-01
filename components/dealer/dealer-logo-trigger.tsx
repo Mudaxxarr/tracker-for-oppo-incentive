@@ -32,7 +32,7 @@ export function DealerLogoTrigger({ isAdmin }: Props) {
       <button
         type="button"
         onClick={handleClick}
-        className="shrink-0 text-primary focus:outline-none"
+        className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary transition-[transform,background-color] duration-150 hover:bg-muted active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Home"
       >
         <Activity className="size-5" />
@@ -46,9 +46,9 @@ export function DealerLogoTrigger({ isAdmin }: Props) {
             onClick={() => setOpen(false)}
           />
           {/* panel */}
-          <div className="relative z-10 w-72 rounded-xl border bg-card shadow-2xl">
+          <div className="relative z-10 w-72 rounded-xl border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b px-4 py-3">
-              <span className="text-sm font-semibold text-muted-foreground">Admin Access</span>
+              <span className="text-sm font-medium text-muted-foreground">Admin Access</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}

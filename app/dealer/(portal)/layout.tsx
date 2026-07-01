@@ -59,7 +59,7 @@ export default async function DealerLayout({
   const expirySoonDays = Number(headerStore.get("x-expiry-soon") ?? "0") || null;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="dealer-apple-shell flex min-h-screen flex-col">
       {isAdminPreview && (
         <AdminPreviewBanner
           tenantId={session.tenantId}

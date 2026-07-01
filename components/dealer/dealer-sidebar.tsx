@@ -76,7 +76,7 @@ function SlidingNav({ items, pathname }: SlidingNavProps) {
       {pill && (
         <div
           aria-hidden
-          className="absolute inset-x-0 rounded-md bg-primary transition-[top,height] duration-[220ms] ease-out pointer-events-none"
+          className="absolute inset-x-0 rounded-xl bg-primary transition-[top,height] duration-[180ms] ease-out pointer-events-none"
           style={{ top: pill.top, height: pill.height }}
         />
       )}
@@ -89,12 +89,12 @@ function SlidingNav({ items, pathname }: SlidingNavProps) {
             href={item.href}
             data-active={active ? "true" : undefined}
             className={cn(
-              "relative z-10 flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+              "relative z-10 flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-[transform,background-color,color] duration-200 active:scale-[0.98]",
               active
                 ? pill
                   ? "font-medium text-primary-foreground"
                   : "bg-primary font-medium text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             )}
           >
             <Icon className="size-4 shrink-0" />
@@ -115,14 +115,14 @@ export function DealerSidebar({ features }: Props) {
   const visible = NAV.filter((item) => !item.feature || isFeatureEnabled(features, item.feature));
 
   return (
-    <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:bg-sidebar">
+    <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-border md:bg-card">
       <nav className="flex flex-1 flex-col gap-1 p-3">
         <SlidingNav items={visible} pathname={pathname} />
         <div className="mt-auto border-t pt-2">
           <form action={logoutAction}>
             <button
               type="submit"
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-[transform,background-color,color] duration-150 hover:bg-secondary hover:text-foreground active:scale-[0.98]"
             >
               <LogOut className="size-4 shrink-0" />
               Sign Out
