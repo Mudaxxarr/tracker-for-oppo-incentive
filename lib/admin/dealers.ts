@@ -139,7 +139,7 @@ export async function bulkSetFeature(
   tenantIds: string[],
 ): Promise<void> {
   for (const tenantId of tenantIds) {
-    const features = await getTenantFeaturesById(tenantId);
+    const features = await getRawTenantFeatures(tenantId);
     (features as Record<string, boolean>)[key] = enabled;
     await updateDealerFeatures(tenantId, features);
   }
