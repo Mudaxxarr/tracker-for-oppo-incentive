@@ -345,16 +345,16 @@ export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ delete
   let deleted = 0;
   const blocked: string[] = [];
   const deletedPurchases: { modelId: string; purchaseDate: string }[] = [];
-  await db.transaction(async () => {
+  await db.transaction(async (tx) => {
     for (const id of ids) {
       const purchase = await getPurchaseById(id, dealerId, OWNER_TENANT_ID);
       if (!purchase) continue;
-      const stock = await getStockForModel(OWNER_TENANT_ID, dealerId, purchase.modelId);
+      const stock = await getStockForModel(OWNER_TENANT_ID, dealerId, purchase.modelId, tx);
       if (stock < purchase.quantity) {
         blocked.push(id);
         continue;
       }
-      await deletePurchase(id, dealerId, OWNER_TENANT_ID);
+      await deletePurchase(id, dealerId, OWNER_TENANT_ID, tx);
       deletedPurchases.push({ modelId: purchase.modelId, purchaseDate: purchase.purchaseDate });
       deleted++;
     }

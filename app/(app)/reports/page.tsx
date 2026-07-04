@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { listDealerIds, getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
+import { getStaffSession } from "@/lib/staff-auth";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
 import { buildPolicyAchievements } from "@/lib/report-utils";
 import { getConstants } from "@/lib/settings";
@@ -19,6 +21,10 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  // Reports is accountant-only among staff (SO handles cross-region, not reports)
+  const staffSession = await getStaffSession();
+  if (staffSession?.role === "so") redirect("/dashboard");
+
   const sp = await searchParams;
   const dealers = await listDealerIds();
   const active = await getActiveDealerId();

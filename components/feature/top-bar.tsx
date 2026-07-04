@@ -20,7 +20,7 @@ export function TopBar({ dealers, activeDealerId }: TopBarProps) {
         <span className="hidden truncate sm:inline lg:hidden">OPPO ID Tracker</span>
         <span className="truncate sm:hidden">OPPO</span>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="hidden shrink-0 items-center gap-2 md:flex">
         <span className="hidden text-xs text-muted-foreground xl:inline">{monthLabel}</span>
         <DealerSwitcher options={dealers} activeId={activeDealerId} />
         <ThemeToggle />

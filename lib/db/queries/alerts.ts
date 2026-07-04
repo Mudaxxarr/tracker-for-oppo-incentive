@@ -25,8 +25,9 @@ export async function createOwnerAlert(input: {
   });
 }
 
-export async function getAlertById(id: string) {
-  const rows = await db.select().from(schema.ownerAlerts).where(eq(schema.ownerAlerts.id, id)).limit(1);
+export async function getAlertById(id: string, tenantId: string) {
+  const rows = await db.select().from(schema.ownerAlerts)
+    .where(and(eq(schema.ownerAlerts.id, id), eq(schema.ownerAlerts.tenantId, tenantId))).limit(1);
   return rows[0] ?? null;
 }
 
@@ -49,8 +50,9 @@ export async function countUnreadAlerts(tenantId: string): Promise<number> {
   return Number(n);
 }
 
-export async function markAlertRead(id: string): Promise<void> {
-  await db.update(schema.ownerAlerts).set({ isRead: true }).where(eq(schema.ownerAlerts.id, id));
+export async function markAlertRead(id: string, tenantId: string): Promise<void> {
+  await db.update(schema.ownerAlerts).set({ isRead: true })
+    .where(and(eq(schema.ownerAlerts.id, id), eq(schema.ownerAlerts.tenantId, tenantId)));
 }
 
 export async function markAllAlertsRead(tenantId: string): Promise<void> {

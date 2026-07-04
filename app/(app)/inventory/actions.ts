@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
+import { getStaffSession } from "@/lib/staff-auth";
 import { getActiveDealerId, listDealerIds, OWNER_TENANT_ID } from "@/lib/dealer";
 import { createActivation } from "@/lib/db/queries/activations";
 import {
@@ -250,13 +251,16 @@ export async function crCaughtAction(
   const priceSnap = priceInfo?.dealerPrice ?? 0;
 
   const isOwner = await isAuthenticated();
-  // SO-submitted CR-caught requires owner approval before stock is deducted
-  const status = isOwner ? "active" : "pending_owner_approval";
+  const staffSession = isOwner ? null : await getStaffSession();
+  // Owner and accountant are trusted — CR-caught goes active immediately.
+  // SO-submitted CR-caught requires owner approval before stock is deducted.
+  const isTrusted = isOwner || staffSession?.role === "accountant";
+  const status = isTrusted ? "active" : "pending_owner_approval";
 
   const id = await createCrCaught({ tenantId, dealerId, modelId, quantity, fineAmount: fineAmount ?? 0, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null, status });
   const m = await getModelById(modelId);
 
-  if (!isOwner) {
+  if (!isTrusted) {
     await createOwnerAlert({
       tenantId,
       type: OWNER_ALERT_TYPE.CR_CAUGHT_PENDING_APPROVAL,
@@ -270,15 +274,15 @@ export async function crCaughtAction(
   await logAudit({
     action: "cr.caught",
     entityType: "cr_caught",
-    summary: `CR Caught${isOwner ? "" : " (pending approval)"}: ${quantity} × ${m?.name ?? "?"} on ${caughtDate}`,
+    summary: `CR Caught${isTrusted ? "" : " (pending approval)"}: ${quantity} × ${m?.name ?? "?"} on ${caughtDate}`,
     payload: { modelId, quantity, caughtDate, status },
   });
 
   revalidatePath("/inventory");
   revalidatePath("/dashboard");
-  // Owner-created CR-caught deducts stock immediately → recompute rebates.
-  if (isOwner && quantity > 0) await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
-  return { ok: true, pendingApproval: !isOwner };
+  // Trusted (owner/accountant) CR-caught deducts stock immediately → recompute rebates.
+  if (isTrusted && quantity > 0) await reEvaluateRebatesForDealer(tenantId, dealerId, modelId, caughtDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return { ok: true, pendingApproval: !isTrusted };
 }
 
 const CashFineSchema = z.object({

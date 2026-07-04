@@ -153,6 +153,7 @@
 }
 
 :root {
+  color-scheme: light;
   --background: oklch(0.984 0.003 247.858);   /* slate-50  #F8FAFC */
   --foreground: oklch(0.129 0.042 264.695);   /* slate-900 #0F172A */
   --card: oklch(1 0 0);                        /* white     #FFFFFF */
@@ -188,6 +189,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

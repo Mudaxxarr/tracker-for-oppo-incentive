@@ -6,6 +6,8 @@ import { randomUUID } from "node:crypto";
 import type { PurchaseSource } from "@/lib/constants";
 import { getCrCaughtForStockCalc, getCrCaughtAsOf, getCrCaughtBefore } from "./cr-caught";
 
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export interface StockRow {
   modelId: string;
   modelName: string;
@@ -80,15 +82,15 @@ export async function listStockForDealer(tenantId: string, dealerId: string, pri
     .sort((a, b) => a.modelName.localeCompare(b.modelName));
 }
 
-export async function getStockForModel(tenantId: string, dealerId: string, modelId: string): Promise<number> {
+export async function getStockForModel(tenantId: string, dealerId: string, modelId: string, executor: Executor = db): Promise<number> {
   const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
-    db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+    executor.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
       .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))),
-    db.select({ qty: sql<number>`COUNT(*)` })
+    executor.select({ qty: sql<number>`COUNT(*)` })
       .from(schema.activations)
       .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId))),
-    db.select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+    executor.select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
       .from(schema.interIdTransfers)
       .where(and(
         eq(schema.interIdTransfers.tenantId, tenantId),
@@ -134,8 +136,6 @@ export async function getStockForModelAsOf(tenantId: string, dealerId: string, m
  * balance ever reaches on or after `fromDate`. A consuming event of qty is safe
  * iff this value >= qty.
  */
-type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 export async function getMinForwardStock(
   tenantId: string,
   dealerId: string,
@@ -386,8 +386,8 @@ export async function getPurchaseById(id: string, dealerId: string, tenantId: st
   return rows[0] ?? null;
 }
 
-export async function deletePurchase(id: string, dealerId: string, tenantId: string): Promise<void> {
-  await db.delete(schema.purchases).where(and(eq(schema.purchases.id, id), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.tenantId, tenantId)));
+export async function deletePurchase(id: string, dealerId: string, tenantId: string, executor: Executor = db): Promise<void> {
+  await executor.delete(schema.purchases).where(and(eq(schema.purchases.id, id), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.tenantId, tenantId)));
 }
 
 export interface CrShiftedValueResult {

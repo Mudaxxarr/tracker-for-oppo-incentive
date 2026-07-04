@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
+import { getStaffSession } from "@/lib/staff-auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import {
   createCrossRegion,
@@ -33,6 +34,9 @@ export async function createCrossRegionAction(
   fd: FormData
 ): Promise<CrFormState> {
   if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
+  // Cross-Region is SO-only among staff (accountant handles reports/reconciliation, not CR)
+  const staffSession = await getStaffSession();
+  if (staffSession?.role === "accountant") return { error: "Not authorized for this role" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
   const tenantId = OWNER_TENANT_ID;
@@ -194,6 +198,9 @@ export async function crOutwardAction(
   fd: FormData
 ): Promise<OutwardState> {
   if (!(await isAnyAuthenticated())) return { error: "Not authenticated" };
+  // Cross-Region is SO-only among staff (accountant handles reports/reconciliation, not CR)
+  const staffSession = await getStaffSession();
+  if (staffSession?.role === "accountant") return { error: "Not authorized for this role" };
   const dealerId = await getActiveDealerId();
   if (!dealerId) return { error: "No active Dealer ID" };
   const tenantId = OWNER_TENANT_ID;

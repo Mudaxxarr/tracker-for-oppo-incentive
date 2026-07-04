@@ -7,7 +7,6 @@ import { listDealerIds, getActiveDealerId } from "@/lib/dealer";
 import { TopBar } from "@/components/feature/top-bar";
 import { Sidebar } from "@/components/feature/sidebar";
 import { BottomNav } from "@/components/feature/bottom-nav";
-import { PageTransition } from "@/components/feature/page-transition";
 import { OfflineSync } from "@/components/pwa/offline-sync";
 import type { StaffRole } from "@/lib/constants";
 
@@ -31,12 +30,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1">
         <Sidebar staffRole={staffRole} />
         <main className="flex flex-1 flex-col overflow-x-hidden pb-16 md:pb-0 bg-slate-50">
-          <PageTransition>
-            <div className="px-3 py-4 md:px-6 md:py-6">{children}</div>
-          </PageTransition>
+          <div className="px-3 py-4 md:px-6 md:py-6">{children}</div>
         </main>
       </div>
-      <BottomNav staffRole={staffRole} />
+      <BottomNav
+        staffRole={staffRole}
+        dealers={dealers.map((d) => ({ id: d.id, name: d.name }))}
+        activeDealerId={activeDealerId}
+      />
       <OfflineSync />
     </div>
   );

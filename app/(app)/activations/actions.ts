@@ -365,14 +365,14 @@ export async function updateActivationAction(
   // date from the new date onward. If it would oversell, throw to roll back.
   let guardError: string | null = null;
   try {
-    await db.transaction(async () => {
+    await db.transaction(async (tx) => {
       await updateActivation(data.id, dealerId, tenantId, {
         activationDate: data.activationDate,
         imei: data.imei || null,
         isCrossRegion: isCR,
         dealerPriceSnapshot: price.dealerPrice,
-      });
-      const minStock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate);
+      }, tx);
+      const minStock = await getMinForwardStock(tenantId, dealerId, data.modelId, data.activationDate, tx);
       if (minStock < 0) {
         const m = await getModelById(data.modelId);
         guardError = `Cannot move activation to ${data.activationDate} — it would oversell ${m?.name ?? "this model"} (stock goes negative).`;

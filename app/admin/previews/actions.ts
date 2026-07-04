@@ -6,6 +6,7 @@ import { bulkGrantTrial, bulkRevokeTrial, markPreviewPurchased, listTenantFeatur
 import { PREVIEW_CATALOG, type PreviewKey } from "@/lib/dealer-previews";
 import { buildTrialEntry } from "@/lib/dealer-trials";
 import { markAlertRead } from "@/lib/db/queries/alerts";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 
 export async function broadcastAction(formData: FormData): Promise<void> {
   if (!(await isAuthenticated())) throw new Error("Not authenticated");
@@ -34,7 +35,7 @@ export async function approvePurchaseAction(formData: FormData): Promise<void> {
   if (!tenantId || !key) throw new Error("Missing fields");
 
   await markPreviewPurchased(tenantId, key);
-  if (alertId) await markAlertRead(alertId);
+  if (alertId) await markAlertRead(alertId, OWNER_TENANT_ID);
 
   redirect("/admin/previews");
 }

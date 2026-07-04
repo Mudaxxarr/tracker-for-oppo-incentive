@@ -154,9 +154,10 @@ export async function updateActivation(
     imei: string | null;
     isCrossRegion: boolean;
     dealerPriceSnapshot: number;
-  }
+  },
+  executor: Executor = db
 ): Promise<void> {
-  await db
+  await executor
     .update(schema.activations)
     .set({
       activationDate: input.activationDate,

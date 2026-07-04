@@ -15,7 +15,7 @@ import type { QueuedActivation, QueuedPurchase } from "@/lib/offline-queue";
 
 export async function markAlertReadAction(id: string): Promise<void> {
   if (!(await isAuthenticated())) throw new Error("Not authenticated");
-  await markAlertRead(id);
+  await markAlertRead(id, OWNER_TENANT_ID);
   revalidatePath("/admin/alerts");
 }
 
@@ -28,7 +28,7 @@ export async function markAllReadAction(): Promise<void> {
 export async function approveCrCaughtAction(alertId: string, crCaughtId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const ref = await approveCrCaught(crCaughtId);
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "cr.caught_approved", entityType: "cr_caught", entityId: crCaughtId, summary: `Approved CR-caught record ${crCaughtId.slice(0, 8)}` });
   revalidatePath("/admin/alerts");
   revalidatePath("/inventory");
@@ -41,7 +41,7 @@ export async function approveCrCaughtAction(alertId: string, crCaughtId: string)
 export async function rejectCrCaughtAction(alertId: string, crCaughtId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const ref = await rejectCrCaught(crCaughtId);
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "cr.caught_rejected", entityType: "cr_caught", entityId: crCaughtId, summary: `Rejected CR-caught record ${crCaughtId.slice(0, 8)}` });
   revalidatePath("/admin/alerts");
   revalidatePath("/inventory");
@@ -55,7 +55,7 @@ export async function approvePurchaseReviewAction(alertId: string, purchaseId: s
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const p = await approvePurchaseReview(purchaseId, OWNER_TENANT_ID);
   if (!p) return { error: "Purchase not found (may already be approved)" };
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "purchase.review_approved", entityType: "purchase", entityId: purchaseId, summary: `Owner approved large purchase ${purchaseId.slice(0, 8)} — now counts toward stock & incentives` });
   revalidatePath("/admin/alerts");
   revalidatePath("/purchases");
@@ -69,7 +69,7 @@ export async function rejectPurchaseReviewAction(alertId: string, purchaseId: st
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const p = await rejectPurchaseReview(purchaseId, OWNER_TENANT_ID);
   if (!p) return { error: "Purchase not found (may already be removed)" };
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "purchase.review_rejected", entityType: "purchase", entityId: purchaseId, summary: `Owner rejected large purchase ${purchaseId.slice(0, 8)} — removed` });
   revalidatePath("/admin/alerts");
   revalidatePath("/purchases");
@@ -87,7 +87,7 @@ export async function approveCrInwardAction(alertId: string, transferId: string)
     status: CROSS_REGION_STATUS.SHIFTED_TO_MY_ID, priceTenantId: OWNER_TENANT_ID,
   });
   if (!result.ok) return { error: result.message ?? "Approval failed" };
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "cross_region.approved", entityType: "cross_region_transfer", entityId: transferId, summary: `Owner approved CR inward ${transferId.slice(0, 8)} — shifted into ID` });
   revalidatePath("/admin/alerts");
   revalidatePath("/cross-region");
@@ -106,7 +106,7 @@ export async function rejectCrInwardAction(alertId: string, transferId: string):
     id: transferId, tenantId: OWNER_TENANT_ID, dealerId: transfer.dealerId, status: CROSS_REGION_STATUS.REJECTED,
   });
   if (!result.ok) return { error: result.message ?? "Rejection failed" };
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "cross_region.rejected", entityType: "cross_region_transfer", entityId: transferId, summary: `Owner rejected CR inward ${transferId.slice(0, 8)}` });
   revalidatePath("/admin/alerts");
   revalidatePath("/cross-region");
@@ -120,7 +120,7 @@ export async function approveActivationDeletionAction(alertId: string, activatio
   const activation = await getActivationById(activationId, dealerId, OWNER_TENANT_ID);
   if (!activation) return { error: "Activation not found (may have already been deleted)" };
   await deleteActivation(activationId, dealerId, OWNER_TENANT_ID);
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "activation.delete_approved", entityType: "activation", entityId: activationId, summary: `Owner approved deletion of activation ${activationId.slice(0, 8)}` });
   revalidatePath("/admin/alerts");
   revalidatePath("/activations");
@@ -130,7 +130,7 @@ export async function approveActivationDeletionAction(alertId: string, activatio
 
 export async function approveOfflineActivationAction(alertId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
-  const alert = await getAlertById(alertId);
+  const alert = await getAlertById(alertId, OWNER_TENANT_ID);
   if (!alert?.payload) return { error: "Alert not found or missing data" };
   const item = JSON.parse(alert.payload) as QueuedActivation;
   try {
@@ -148,7 +148,7 @@ export async function approveOfflineActivationAction(alertId: string): Promise<{
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Activation failed" };
   }
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "offline_activation.approved", entityType: "offline_activation", entityId: alertId, summary: `Approved offline activation: ${item.modelName} × ${item.quantity}` });
   reEvaluateRebatesForDealer(OWNER_TENANT_ID, item.dealerId, item.modelId, item.activationDate).catch(
     (e: unknown) => console.error("[rebate-reeval]", e),
@@ -161,7 +161,7 @@ export async function approveOfflineActivationAction(alertId: string): Promise<{
 
 export async function approveOfflinePurchaseAction(alertId: string): Promise<{ ok?: boolean; error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
-  const alert = await getAlertById(alertId);
+  const alert = await getAlertById(alertId, OWNER_TENANT_ID);
   if (!alert?.payload) return { error: "Alert not found or missing data" };
   const item = JSON.parse(alert.payload) as QueuedPurchase;
   try {
@@ -179,7 +179,7 @@ export async function approveOfflinePurchaseAction(alertId: string): Promise<{ o
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Purchase creation failed" };
   }
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "offline_purchase.approved", entityType: "offline_purchase", entityId: alertId, summary: `Approved offline purchase: ${item.modelName} × ${item.quantity}` });
   reEvaluateRebatesForDealer(OWNER_TENANT_ID, item.dealerId, item.modelId, item.purchaseDate).catch(
     (e: unknown) => console.error("[rebate-reeval]", e),
@@ -192,7 +192,7 @@ export async function approveOfflinePurchaseAction(alertId: string): Promise<{ o
 
 export async function rejectOfflineItemAction(alertId: string): Promise<void> {
   if (!(await isAuthenticated())) return;
-  await markAlertRead(alertId);
+  await markAlertRead(alertId, OWNER_TENANT_ID);
   await logAudit({ action: "offline_item.rejected", entityType: "offline_item", entityId: alertId, summary: `Owner rejected offline queued item` });
   revalidatePath("/admin/alerts");
 }
