@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 // Production URL — update before building APK
-const SERVER_URL = process.env.CAPACITOR_SERVER_URL ?? "https://app.alhamdtelecom.com";
+const SERVER_URL = process.env.CAPACITOR_SERVER_URL ?? "https://oppo-tracker.vercel.app";
 
 const config: CapacitorConfig = {
   appId: "com.alhamdtelecom.salesconsole",
