@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -21,6 +22,8 @@ export function BottomNav({
   activeDealerId?: string | null;
 }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [pathname]);
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
@@ -57,7 +60,7 @@ export function BottomNav({
           </Link>
         );
       })}
-      <Sheet>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
           render={
             <button className="relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-slate-400" />

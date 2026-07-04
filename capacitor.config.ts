@@ -5,7 +5,7 @@ const SERVER_URL = process.env.CAPACITOR_SERVER_URL ?? "https://oppo-tracker.ver
 
 const config: CapacitorConfig = {
   appId: "com.alhamdtelecom.salesconsole",
-  appName: "Alhamd Sales Console",
+  appName: "Incento",
   webDir: "out", // not used in server mode; required by Capacitor schema
   server: {
     url: SERVER_URL,
@@ -19,6 +19,7 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: "Light",
       backgroundColor: "#0A6E5C",
+      overlaysWebView: false,
     },
     SplashScreen: {
       launchShowDuration: 1500,

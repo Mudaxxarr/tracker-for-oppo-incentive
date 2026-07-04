@@ -1,8 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,7 +13,7 @@ import {
 } from "./actions";
 import { lockAction } from "@/app/(app)/actions";
 import { toast } from "sonner";
-import { Download, Lock, History, Users } from "lucide-react";
+import { Lock, History, Users } from "lucide-react";
 import Link from "next/link";
 
 interface Props {
@@ -128,17 +127,9 @@ export function SettingsClient({ initial }: Props) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Download a copy of your SQLite database. Keep it safe — it contains all your purchases,
-            activations, policies, and dealer IDs.
+            Database backups are now managed by Supabase (automatic, off-site). Use the Supabase
+            dashboard to download a snapshot if you need one.
           </p>
-          <a
-            href="/api/backup"
-            download
-            className={cn(buttonVariants({ variant: "outline" }))}
-          >
-            <Download className="size-4" />
-            Download backup
-          </a>
         </CardContent>
       </Card>
 

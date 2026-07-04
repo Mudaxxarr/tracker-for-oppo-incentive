@@ -95,6 +95,42 @@ Scope: stock formula, rebate engine, reconciliation, tenant isolation, transacti
 
 Verified: type-check clean, 14/14 tests passing.
 
+## 8. Real-device testing via adb (found after physical phone connected)
+
+Once the phone was connected via USB, used `adb exec-out screencap` to visually inspect the actual native app (not just an emulated browser viewport) — this surfaced a bug the browser-based audit couldn't have caught.
+
+**Renamed app label to "Incento"** (user request, since the icon was already Incento-branded but the app name still said "Alhamd Sales Console") — updated `android/app/src/main/res/values/strings.xml` (`app_name`, `title_activity_main`) and `capacitor.config.ts`'s `appName`.
+
+**Status bar overlap bug found + fixed:** the app's own top bar (logo/branding) was rendering directly under/overlapping the phone's system status bar (clock, signal, wifi icons) — confirmed via on-device screenshot. Root cause: Android 15+ (targetSdk 35+, this project targets 36) forces edge-to-edge layout by default, and `@capacitor/status-bar@8.0.2`'s `overlaysWebView` option only toggles deprecated `View.SYSTEM_UI_FLAG_*` flags, which no longer have effect on this SDK version — so `overlaysWebView: false` in `capacitor.config.ts` was silently a no-op. A native `WindowCompat.setDecorFitsSystemWindows(window, true)` attempt in `MainActivity.java` also didn't reliably work (likely fighting the plugin's own deprecated flag calls at a different point in the activity lifecycle).
+
+**Real fix:** moved the safe-area handling to CSS instead of fighting native/plugin timing — added `padding-top: env(safe-area-inset-top)` to the outer sticky `<header>` wrapper (with a separate inner `h-14` content row so the toolbar's own height/centering isn't affected) in all three top bars: `components/feature/top-bar.tsx` (owner + admin), `components/dealer/dealer-top-bar.tsx`, `components/feature/team-top-bar.tsx`. This works reliably because Android's WebView populates `safe-area-inset-*` based on real system-bar geometry regardless of the app's edge-to-edge/decorFitsSystemWindows state. Also fixed the admin mobile-menu floating button's bottom offset the same way (`calc(1rem + env(safe-area-inset-bottom))`) since it had the same class of bug at the bottom edge.
+
+Verified: type-check clean, confirmed visually fixed via a fresh on-device screenshot after redeploying to Vercel and reinstalling the APK. `MainActivity.java`'s `setDecorFitsSystemWindows` call was left in place (harmless, doesn't hurt) even though the CSS fix is what actually solved it.
+
+## 9. Full on-device visual sweep (Dashboard, Purchases, Activations, Reports, Settings, "More" drawer)
+
+Confirmed working correctly, no issues: Dashboard, Reports (date fields already properly labeled "Start"/"End" here — good existing pattern), Settings' PIN/Constants sections, the "More" side drawer (opens from the right, dealer switcher + theme + sign-out at top, clean vertical list below — matches today's earlier fixes exactly).
+
+**Found + fixed: unlabeled "From/To date" filters.** Purchases and Activations pages both had two blank `<input type="date">` filters with no visible label — when empty, Android's native date picker shows no placeholder hint text (unlike desktop browsers' "mm/dd/yyyy"), so the fields looked broken/empty even though tapping them correctly opened a working native date picker. Added visible "From date"/"To date" labels above each input in `app/(app)/purchases/purchases-client.tsx` and `app/(app)/activations/activations-client.tsx`, matching the labeling pattern already used on the Reports page.
+
+**Found + fixed: dead "Download backup" button in owner Settings.** `app/api/backup/route.ts` now always returns `410 Gone` ("Database backup is now managed by Supabase") — the DB migrated from SQLite to Postgres/Supabase a while ago, but `app/(app)/settings/settings-client.tsx` still showed a "Download a copy of your SQLite database" button that silently failed when clicked. Replaced with accurate text pointing users to the Supabase dashboard, removed the dead link and now-unused imports (`Download` icon, `buttonVariants`, `cn`). Confirmed the dealer-portal equivalent (`app/api/dealer/backup/route.ts`) is NOT stale — it's a fully working live export, no change needed there.
+
+Verified: type-check clean, 14/14 tests passing. Deployed to Vercel.
+
+## 10. Full sweep of remaining screens (Models, Inventory, Cross-Region, Policies, IDs, Low Stock, Activity, Team View)
+
+Clean, no issues: Inventory, Cross-Region (form), Policies (form), IDs, Low Stock, Team View dashboard (top bar clean, chart renders correctly — confirms the page-fade and status-bar fixes hold up here too).
+
+**Found + fixed: "More" drawer (and admin's mobile menu) didn't auto-close after tapping a nav link** — user had to manually tap the backdrop to dismiss it. Made both `Sheet`s controlled (`open`/`onOpenChange` state) and close automatically whenever `pathname` changes, in `components/feature/bottom-nav.tsx`. For the admin panel, extracted the mobile menu into a new client component `components/admin/admin-mobile-nav.tsx` (since `app/admin/layout.tsx` is a server component and can't hold `useState` itself) with the same auto-close behavior, and simplified `app/admin/layout.tsx` to just render `<AdminMobileNav items={navItems} />`.
+
+**Found + fixed: same unlabeled "From/To date" filters also on the Activity Log page** — added visible labels in `app/(app)/activity/activity-client.tsx`, matching the fix already applied to Purchases/Activations.
+
+**Found + fixed: data tables have no horizontal-scroll hint.** Models/Cross-Region/Policies/IDs tables all have more columns than fit on a phone screen — scrolling sideways works, but nothing indicated it was possible. Added a subtle right-edge fade gradient (mobile-only) directly in the shared `components/ui/table.tsx` wrapper, so every table in the app gets the hint from one change.
+
+**Found + fixed: Inventory's search/sort/view-toggle row got cramped on mobile**, clipping the "Search models…" placeholder — the row packed a flexible search input + a fixed-width sort dropdown + 3 view-toggle buttons into one line with no wrapping. Changed `app/(app)/inventory/inventory-client.tsx`'s row to `flex flex-wrap` with a `min-w-[200px]` floor on the search input so it drops to its own line on narrow screens instead of getting squeezed.
+
+Verified: type-check clean, 14/14 tests passing.
+
 ## Next step
 
-All backend findings (#1, #2, #4, #5, #6 fixed; #3 confirmed not a bug) and all frontend findings (page-fade, Recharts warning, admin mobile nav) are now fixed locally. Deploying frontend batch to Vercel now.
+Everything found across both the browser-based audit and the full on-device sweep is now fixed: all 5 backend bugs, all frontend/UI bugs (page-fade, Recharts warning, admin mobile nav, status-bar overlap, unlabeled date filters on 3 pages, dead backup button, drawer auto-close, table scroll hint, Inventory toolbar wrapping). App renamed to "Incento" natively. Deploying this batch to Vercel now.

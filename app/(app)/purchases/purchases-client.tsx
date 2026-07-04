@@ -343,18 +343,24 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                 </SelectItem>
               </SelectContent>
             </Select>
-            <Input
-              type="date"
-              value={filters.from ?? ""}
-              onChange={(e) => updateFilter("from", e.target.value || undefined)}
-              aria-label="From date"
-            />
-            <Input
-              type="date"
-              value={filters.to ?? ""}
-              onChange={(e) => updateFilter("to", e.target.value || undefined)}
-              aria-label="To date"
-            />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">From date</span>
+              <Input
+                type="date"
+                value={filters.from ?? ""}
+                onChange={(e) => updateFilter("from", e.target.value || undefined)}
+                aria-label="From date"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">To date</span>
+              <Input
+                type="date"
+                value={filters.to ?? ""}
+                onChange={(e) => updateFilter("to", e.target.value || undefined)}
+                aria-label="To date"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

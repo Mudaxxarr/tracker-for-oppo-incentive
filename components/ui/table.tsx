@@ -15,6 +15,9 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
       />
+      {/* Hints that the table scrolls horizontally — mobile tables are often
+          wider than the screen with no other affordance to show more columns exist. */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-black/10 to-transparent md:hidden" />
     </div>
   )
 }
