@@ -264,7 +264,7 @@ export function ActivationsClient({
             Each row locks the dealer price effective on activation date.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View switcher */}
           <div className="flex rounded-lg border overflow-hidden text-xs">
             {([["records", "Records"], ["by-date", "By Date"], ["summary", "Summary"], ["daily", "Daily"]] as const).map(([v, label]) => (
@@ -431,10 +431,10 @@ export function ActivationsClient({
                               aria-label="Select row"
                             />
                           </TableCell>
-                          <TableCell>{formatDate(a.activationDate)}</TableCell>
+                          <TableCell label="Date">{formatDate(a.activationDate)}</TableCell>
                           <TableCell className="font-medium">{a.modelName}</TableCell>
-                          <TableCell className="font-mono text-xs">{maskImei(a.imei)}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell label="IMEI" className="font-mono text-xs">{maskImei(a.imei)}</TableCell>
+                          <TableCell label="Price ₨" className="text-right">
                             <DataValue value={a.dealerPriceSnapshot} format="currency" />
                           </TableCell>
                           <TableCell>
@@ -505,12 +505,12 @@ export function ActivationsClient({
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <Table className="table-plain">
                   <TableBody>
                     {models.map((m) => (
                       <TableRow key={m.modelId}>
                         <TableCell className="py-2 font-medium">{m.modelName}</TableCell>
-                        <TableCell className="py-2 text-right tabular-nums font-semibold">
+                        <TableCell label="Qty" className="py-2 text-right tabular-nums font-semibold">
                           {m.qty}
                         </TableCell>
                         <TableCell className="py-2 text-right">

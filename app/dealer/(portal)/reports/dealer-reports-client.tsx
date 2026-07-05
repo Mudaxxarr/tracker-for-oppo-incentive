@@ -262,23 +262,23 @@ function ReportSection({
                   report.rows.map((r) => (
                     <TableRow key={r.modelId}>
                       <TableCell className="font-medium">{r.modelName}</TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell label="Qty" className="text-right tabular-nums">
                         {r.qtyActivated}
                         {r.qtyActivatedCrossRegion > 0 && (
                           <Badge variant="secondary" className="ml-2">{r.qtyActivatedCrossRegion} CR</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
+                      <TableCell label="Price split" className="whitespace-nowrap text-right text-xs text-muted-foreground">
                         {r.priceSubperiods.map((s, i) => (
                           <span key={i} className="ml-1 tabular-nums">{s.qty}@{formatPKR(s.dealerPrice)}</span>
                         ))}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatPKR(r.basePercentEarned)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatPKR(r.bonusPercentEarned)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatPKR(r.activationIncentiveEarned)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatPKR(r.dealerIncentiveEarned)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatPKR(r.stockInEarned)}</TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">{formatPKR(r.total)}</TableCell>
+                      <TableCell label="4%" className="text-right tabular-nums">{formatPKR(r.basePercentEarned)}</TableCell>
+                      <TableCell label="1%" className="text-right tabular-nums">{formatPKR(r.bonusPercentEarned)}</TableCell>
+                      <TableCell label="Activation" className="text-right tabular-nums">{formatPKR(r.activationIncentiveEarned)}</TableCell>
+                      <TableCell label="Dealer" className="text-right tabular-nums">{formatPKR(r.dealerIncentiveEarned)}</TableCell>
+                      <TableCell label="Stock-In" className="text-right tabular-nums">{formatPKR(r.stockInEarned)}</TableCell>
+                      <TableCell label="Total" className="text-right font-medium tabular-nums">{formatPKR(r.total)}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -315,14 +315,14 @@ function ReportSection({
                   {policies.map((p, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-xs font-medium capitalize">{p.type.replace(/-/g, " ")}</TableCell>
-                      <TableCell className="text-xs">{p.modelName ?? <span className="text-muted-foreground">All models</span>}</TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{p.periodStart} → {p.periodEnd}</TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">{p.targetQty ?? "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">
+                      <TableCell label="Model" className="text-xs">{p.modelName ?? <span className="text-muted-foreground">All models</span>}</TableCell>
+                      <TableCell label="Period" className="whitespace-nowrap text-xs text-muted-foreground">{p.periodStart} → {p.periodEnd}</TableCell>
+                      <TableCell label="Target" className="text-right tabular-nums text-xs">{p.targetQty ?? "—"}</TableCell>
+                      <TableCell label="Per unit / %" className="text-right tabular-nums text-xs">
                         {p.type === "target-bonus" ? `${p.perUnitAmount}%` : formatPKR(p.perUnitAmount)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums text-xs">{p.actualQty}</TableCell>
-                      <TableCell className="text-right tabular-nums text-xs font-medium">{formatPKR(p.earned)}</TableCell>
+                      <TableCell label="Actual" className="text-right tabular-nums text-xs">{p.actualQty}</TableCell>
+                      <TableCell label="Earned" className="text-right tabular-nums text-xs font-medium">{formatPKR(p.earned)}</TableCell>
                       <TableCell className="text-right">
                         {p.eligible
                           ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">Met ✓</span>

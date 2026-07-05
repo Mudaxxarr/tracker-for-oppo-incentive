@@ -223,7 +223,7 @@ export function DealerActivationsClient({
             Each row locks the dealer price effective on activation date.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex overflow-hidden rounded-lg border text-xs">
             {(
               [
@@ -402,10 +402,10 @@ export function DealerActivationsClient({
                               />
                             </TableCell>
                           )}
-                          <TableCell>{formatDate(a.activationDate)}</TableCell>
+                          <TableCell label="Date">{formatDate(a.activationDate)}</TableCell>
                           <TableCell className="font-medium">{a.modelName}</TableCell>
-                          <TableCell className="font-mono text-xs">{maskImei(a.imei)}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell label="IMEI" className="font-mono text-xs">{maskImei(a.imei)}</TableCell>
+                          <TableCell label="Price ₨" className="text-right">
                             <DataValue value={a.dealerPriceSnapshot} format="currency" />
                           </TableCell>
                           <TableCell>

@@ -6,18 +6,12 @@ import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
+    <div data-slot="table-container" className="relative w-full">
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
       />
-      {/* Hints that the table scrolls horizontally — mobile tables are often
-          wider than the screen with no other affordance to show more columns exist. */}
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-black/10 to-transparent md:hidden" />
     </div>
   )
 }
@@ -81,10 +75,15 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   )
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+function TableCell({
+  className,
+  label,
+  ...props
+}: React.ComponentProps<"td"> & { label?: string }) {
   return (
     <td
       data-slot="table-cell"
+      data-label={label}
       className={cn(
         "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className

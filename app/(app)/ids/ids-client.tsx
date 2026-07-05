@@ -162,11 +162,11 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
                       <div className="font-medium">{d.name}</div>
                       {d.note ? <div className="text-xs text-muted-foreground">{d.note}</div> : null}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{s?.phoneCount ?? 0}</TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell label="Phones (lifetime)" className="text-right tabular-nums">{s?.phoneCount ?? 0}</TableCell>
+                    <TableCell label="4% this month" className="text-right tabular-nums">
                       {formatPKR(s?.thisMonthBase ?? 0)}
                     </TableCell>
-                    <TableCell>{s?.lastActivity ? formatDate(s.lastActivity) : "—"}</TableCell>
+                    <TableCell label="Last activity">{s?.lastActivity ? formatDate(s.lastActivity) : "—"}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -289,10 +289,10 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
                 {transfers.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell>{formatDate(t.transferDate)}</TableCell>
-                    <TableCell>{dealerName(t.fromDealerId)}</TableCell>
-                    <TableCell>{dealerName(t.toDealerId)}</TableCell>
-                    <TableCell>{t.modelName}</TableCell>
-                    <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
+                    <TableCell label="From">{dealerName(t.fromDealerId)}</TableCell>
+                    <TableCell label="To">{dealerName(t.toDealerId)}</TableCell>
+                    <TableCell label="Model">{t.modelName}</TableCell>
+                    <TableCell label="Qty" className="text-right tabular-nums">{t.quantity}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

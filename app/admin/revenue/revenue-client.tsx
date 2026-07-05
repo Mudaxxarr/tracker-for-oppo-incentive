@@ -226,7 +226,7 @@ export function RevenueClient({ tenants, stats }: Props) {
                         <div className="font-medium">{t.businessName}</div>
                         <div className="text-xs text-muted-foreground">{t.ownerEmail}</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell label="Status">
                         <Badge variant={STATUS_VARIANT[t.status] ?? "outline"}>
                           {t.status}
                         </Badge>
@@ -234,11 +234,11 @@ export function RevenueClient({ tenants, stats }: Props) {
                           <Badge variant="secondary" className="ml-1 text-amber-700 bg-amber-100">⚠ Soon</Badge>
                         )}
                       </TableCell>
-                      <TableCell className={`text-sm ${t.expiresAt <= today ? "text-destructive font-medium" : t.expiresAt <= in7 ? "text-amber-600 font-medium" : ""}`}>
+                      <TableCell label="Expires" className={`text-sm ${t.expiresAt <= today ? "text-destructive font-medium" : t.expiresAt <= in7 ? "text-amber-600 font-medium" : ""}`}>
                         {formatDate(t.expiresAt)}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{t.planMonths}mo</TableCell>
-                      <TableCell>
+                      <TableCell label="Plan" className="text-sm text-muted-foreground">{t.planMonths}mo</TableCell>
+                      <TableCell label="Monthly Fee">
                         <FeeEditor tenant={t} />
                       </TableCell>
                       <TableCell>

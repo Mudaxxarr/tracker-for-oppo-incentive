@@ -202,8 +202,7 @@ export function ModelsClient({ models, history, rebates }: Props) {
                     <TableHead className="text-right">Invoice ₨</TableHead>
                     <TableHead className="text-right">Price entries</TableHead>
                     <TableHead></TableHead>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="w-20"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -213,16 +212,16 @@ export function ModelsClient({ models, history, rebates }: Props) {
                     return (
                       <TableRow key={m.id}>
                         <TableCell className="font-medium">{m.name}</TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
+                        <TableCell label="SKU" className="font-mono text-xs text-muted-foreground">
                           {m.sku ?? "—"}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell label="Dealer ₨" className="text-right tabular-nums">
                           {m.dealerPrice != null ? formatPKR(m.dealerPrice) : "—"}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell label="Invoice ₨" className="text-right tabular-nums">
                           {m.invoicePrice != null ? formatPKR(m.invoicePrice) : "—"}
                         </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
+                        <TableCell label="Price entries" className="text-right text-xs text-muted-foreground tabular-nums">
                           {h.length}{" "}
                           {lastChange ? (
                             <span className="text-[10px]">
@@ -234,24 +233,24 @@ export function ModelsClient({ models, history, rebates }: Props) {
                           {m.isActive ? null : <Badge variant="secondary">Inactive</Badge>}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Manage"
-                            onClick={() => setManageId(m.id)}
-                          >
-                            <Settings2 className="size-4" />
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Delete"
-                            onClick={() => onDelete(m.id, m.name)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Manage"
+                              onClick={() => setManageId(m.id)}
+                            >
+                              <Settings2 className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Delete"
+                              onClick={() => onDelete(m.id, m.name)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

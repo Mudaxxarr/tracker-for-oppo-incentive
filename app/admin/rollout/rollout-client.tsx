@@ -166,8 +166,8 @@ export function RolloutClient({ tenants }: { tenants: TenantFeatureRow[] }) {
                         <span className="text-sm font-medium">{f.label}</span>
                         <span className="ml-2 font-mono text-[11px] text-muted-foreground">{f.key}</span>
                       </TableCell>
-                      <TableCell>{stageBadge(enabled.length, canaryOn)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
+                      <TableCell label="Stage">{stageBadge(enabled.length, canaryOn)}</TableCell>
+                      <TableCell label="Enabled" className="text-right font-mono text-sm tabular-nums">
                         {enabled.length} / {total}
                       </TableCell>
                       <TableCell>
@@ -247,7 +247,7 @@ export function RolloutClient({ tenants }: { tenants: TenantFeatureRow[] }) {
                         <span className="text-sm font-medium">{preview.label}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell label="Trial">
                       <span className="text-xs text-muted-foreground">{preview.trialDays}d free</span>
                     </TableCell>
                     <TableCell>

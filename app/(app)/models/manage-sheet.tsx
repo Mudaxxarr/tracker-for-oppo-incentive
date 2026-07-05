@@ -285,12 +285,12 @@ export function ManageModelSheet({ model, history, rebates, onClose }: Props) {
                       {rebates.map((r) => (
                         <TableRow key={r.id}>
                           <TableCell className="text-xs">{formatDate(r.rebateDate)}</TableCell>
-                          <TableCell className="text-xs">{r.dealerName}</TableCell>
-                          <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.oldDealerPrice)}</TableCell>
-                          <TableCell className="text-right tabular-nums text-xs">{formatPKR(r.newDealerPrice)}</TableCell>
-                          <TableCell className="text-right tabular-nums text-xs text-amber-600">−{formatPKR(r.rebatePerUnit)}</TableCell>
-                          <TableCell className="text-right tabular-nums text-xs">{r.eligibleQty}</TableCell>
-                          <TableCell className="text-right tabular-nums text-xs font-semibold text-emerald-600">{formatPKR(r.totalRebateAmount)}</TableCell>
+                          <TableCell label="Dealer" className="text-xs">{r.dealerName}</TableCell>
+                          <TableCell label="Old ₨" className="text-right tabular-nums text-xs">{formatPKR(r.oldDealerPrice)}</TableCell>
+                          <TableCell label="New ₨" className="text-right tabular-nums text-xs">{formatPKR(r.newDealerPrice)}</TableCell>
+                          <TableCell label="Per unit" className="text-right tabular-nums text-xs text-amber-600">−{formatPKR(r.rebatePerUnit)}</TableCell>
+                          <TableCell label="Qty" className="text-right tabular-nums text-xs">{r.eligibleQty}</TableCell>
+                          <TableCell label="Total ₨" className="text-right tabular-nums text-xs font-semibold text-emerald-600">{formatPKR(r.totalRebateAmount)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -373,7 +373,7 @@ function PriceRow({ modelId, row, onDelete }: PriceRowProps) {
             className="h-8 w-[150px]"
           />
         </TableCell>
-        <TableCell className="text-right">
+        <TableCell label="Dealer ₨" className="text-right">
           <Input
             type="number"
             min={0}
@@ -383,7 +383,7 @@ function PriceRow({ modelId, row, onDelete }: PriceRowProps) {
             className="h-8 text-right"
           />
         </TableCell>
-        <TableCell className="text-right">
+        <TableCell label="Invoice ₨" className="text-right">
           <Input
             type="number"
             min={0}
@@ -422,17 +422,17 @@ function PriceRow({ modelId, row, onDelete }: PriceRowProps) {
   return (
     <TableRow>
       <TableCell className="text-xs">{formatDate(row.effectiveFrom)}</TableCell>
-      <TableCell className="text-xs">
+      <TableCell label="To" className="text-xs">
         {row.effectiveTo ? (
           formatDate(row.effectiveTo)
         ) : (
           <span className="text-emerald-600">current</span>
         )}
       </TableCell>
-      <TableCell className="text-right tabular-nums">
+      <TableCell label="Dealer ₨" className="text-right tabular-nums">
         {formatPKR(row.dealerPrice)}
       </TableCell>
-      <TableCell className="text-right tabular-nums">
+      <TableCell label="Invoice ₨" className="text-right tabular-nums">
         {formatPKR(row.invoicePrice)}
       </TableCell>
       <TableCell>

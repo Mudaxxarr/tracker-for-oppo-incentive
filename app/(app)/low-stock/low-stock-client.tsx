@@ -113,12 +113,12 @@ export function LowStockClient({ models, alerts }: Props) {
                   {alerts.map((a, i) => (
                     <TableRow key={i} className="hover:bg-amber-50/50">
                       <TableCell className="font-medium">{a.dealerName}</TableCell>
-                      <TableCell>{a.modelName}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell label="Model">{a.modelName}</TableCell>
+                      <TableCell label="Stock" className="text-right">
                         <Badge variant="destructive">{a.currentStock}</Badge>
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground">{a.threshold}</TableCell>
-                      <TableCell className="text-right text-amber-600 font-semibold">
+                      <TableCell label="Threshold" className="text-right text-muted-foreground">{a.threshold}</TableCell>
+                      <TableCell label="Deficit" className="text-right text-amber-600 font-semibold">
                         -{a.threshold - a.currentStock}
                       </TableCell>
                     </TableRow>
@@ -155,7 +155,7 @@ export function LowStockClient({ models, alerts }: Props) {
                   .map((m) => (
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">{m.name}</TableCell>
-                      <TableCell>
+                      <TableCell label="Threshold">
                         <ThresholdInput model={m as ModelWithCurrentPrice & { lowStockThreshold?: number | null }} />
                       </TableCell>
                     </TableRow>

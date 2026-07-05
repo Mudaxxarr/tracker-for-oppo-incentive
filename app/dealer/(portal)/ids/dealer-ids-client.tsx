@@ -152,11 +152,11 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
                         {d.shopName ? <div className="text-xs text-muted-foreground">{d.shopName}</div> : null}
                         {d.note ? <div className="text-xs text-muted-foreground">{d.note}</div> : null}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{s?.phoneCount ?? 0}</TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell label="Phones (lifetime)" className="text-right tabular-nums">{s?.phoneCount ?? 0}</TableCell>
+                      <TableCell label="4% this month" className="text-right tabular-nums">
                         {formatPKR(s?.thisMonthBase ?? 0)}
                       </TableCell>
-                      <TableCell>{s?.lastActivity ? formatDate(s.lastActivity) : "—"}</TableCell>
+                      <TableCell label="Last activity">{s?.lastActivity ? formatDate(s.lastActivity) : "—"}</TableCell>
                     </TableRow>
                   );
                 })
@@ -283,11 +283,11 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
                 {transfers.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell>{formatDate(t.transferDate)}</TableCell>
-                    <TableCell>{dealerName(t.fromDealerId)}</TableCell>
-                    <TableCell>{dealerName(t.toDealerId)}</TableCell>
-                    <TableCell>{t.modelName}</TableCell>
-                    <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
-                    <TableCell>{statusBadge(t.status)}</TableCell>
+                    <TableCell label="From">{dealerName(t.fromDealerId)}</TableCell>
+                    <TableCell label="To">{dealerName(t.toDealerId)}</TableCell>
+                    <TableCell label="Model">{t.modelName}</TableCell>
+                    <TableCell label="Qty" className="text-right tabular-nums">{t.quantity}</TableCell>
+                    <TableCell label="Status">{statusBadge(t.status)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

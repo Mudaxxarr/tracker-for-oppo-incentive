@@ -241,11 +241,11 @@ export function CrossRegionClient({ models, initial, hasDealer, staffRole, initi
                       return (
                         <TableRow key={t.id}>
                           <TableCell className="font-medium">{t.modelName}</TableCell>
-                          <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
-                          <TableCell>{formatDate(t.reportedDate)}</TableCell>
-                          <TableCell>{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
-                          <TableCell>
+                          <TableCell label="Qty" className="text-right tabular-nums">{t.quantity}</TableCell>
+                          <TableCell label="Reported">{formatDate(t.reportedDate)}</TableCell>
+                          <TableCell label="Shifted">{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
+                          <TableCell label="Source" className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
+                          <TableCell label="Status">
                             {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
                               <Badge variant="outline">Pending</Badge>
                             ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
@@ -399,16 +399,16 @@ export function CrossRegionClient({ models, initial, hasDealer, staffRole, initi
                     ) : initialCrCaughtRows.map((r) => (
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">{r.modelName}</TableCell>
-                        <TableCell className="text-right tabular-nums">{r.quantity}</TableCell>
-                        <TableCell>{formatDate(r.caughtDate)}</TableCell>
-                        <TableCell className="text-right tabular-nums font-mono text-xs">
+                        <TableCell label="Qty" className="text-right tabular-nums">{r.quantity}</TableCell>
+                        <TableCell label="Date">{formatDate(r.caughtDate)}</TableCell>
+                        <TableCell label="Price Snap" className="text-right tabular-nums font-mono text-xs">
                           {r.quantity > 0 ? formatPKR(r.dealerPriceSnapshot) : "—"}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums font-mono text-xs text-destructive">
+                        <TableCell label="Fine" className="text-right tabular-nums font-mono text-xs text-destructive">
                           {(r.fineAmount ?? 0) > 0 ? formatPKR(r.fineAmount ?? 0) : "—"}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{r.note ?? "—"}</TableCell>
-                        <TableCell>
+                        <TableCell label="Note" className="text-muted-foreground text-xs">{r.note ?? "—"}</TableCell>
+                        <TableCell label="Status">
                           {r.status === "pending_owner_approval" ? (
                             <Badge variant="secondary">Pending</Badge>
                           ) : (

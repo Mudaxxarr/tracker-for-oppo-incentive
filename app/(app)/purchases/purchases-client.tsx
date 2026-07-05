@@ -386,13 +386,13 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <Table className="table-plain">
                   <TableBody>
                     {models.map((m) => (
                       <TableRow key={m.modelId}>
                         <TableCell className="py-2 font-medium">{m.modelName}</TableCell>
-                        <TableCell className="py-2 text-right tabular-nums">{m.qty} units</TableCell>
-                        <TableCell className="py-2 text-right tabular-nums">{formatPKR(m.dealerTotal)}</TableCell>
+                        <TableCell label="Qty" className="py-2 text-right tabular-nums">{m.qty} units</TableCell>
+                        <TableCell label="Total ₨" className="py-2 text-right tabular-nums">{formatPKR(m.dealerTotal)}</TableCell>
                         <TableCell className="py-2 text-right">
                           {m.crossQty > 0 ? (
                             <StatusBadge status="neutral" label={`${m.crossQty} cross-region`} />
@@ -484,15 +484,15 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                           />
                         </TableCell>
                         <TableCell className="font-medium">{p.modelName}</TableCell>
-                        <TableCell className="text-right"><DataValue value={p.quantity} /></TableCell>
-                        <TableCell className="text-right">
+                        <TableCell label="Qty" className="text-right"><DataValue value={p.quantity} /></TableCell>
+                        <TableCell label="Unit ₨" className="text-right">
                           <DataValue value={p.unitDealerPrice} format="currency" />
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell label="Total ₨" className="text-right">
                           <DataValue value={p.unitDealerPrice * p.quantity} format="currency" />
                         </TableCell>
-                        <TableCell>{formatDate(p.purchaseDate)}</TableCell>
-                        <TableCell>
+                        <TableCell label="Date">{formatDate(p.purchaseDate)}</TableCell>
+                        <TableCell label="Source">
                           {p.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? (
                             <StatusBadge status="neutral" label="Cross-Region" />
                           ) : (

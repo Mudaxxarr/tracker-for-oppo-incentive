@@ -197,9 +197,9 @@ export function PoliciesClient(props: Props) {
                     return (
                       <TableRow key={p.id}>
                         <TableCell>{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{p.targetActivationsQty}</TableCell>
-                        <TableCell className="text-right tabular-nums">{p.bonusPercent}%</TableCell>
-                        <TableCell>
+                        <TableCell label="Target qty" className="text-right tabular-nums">{p.targetActivationsQty}</TableCell>
+                        <TableCell label="Bonus %" className="text-right tabular-nums">{p.bonusPercent}%</TableCell>
+                        <TableCell label="Purchased">
                           <MiniProgress current={count} target={p.targetActivationsQty} />
                         </TableCell>
                         <TableCell>
@@ -261,10 +261,10 @@ export function PoliciesClient(props: Props) {
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.modelName}</TableCell>
-                        <TableCell>{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatPKR(p.perUnitAmount)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{minQ ?? "—"}</TableCell>
-                        <TableCell>
+                        <TableCell label="Period">{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
+                        <TableCell label="Per unit ₨" className="text-right tabular-nums">{formatPKR(p.perUnitAmount)}</TableCell>
+                        <TableCell label="Min qty" className="text-right tabular-nums">{minQ ?? "—"}</TableCell>
+                        <TableCell label="Purchased">
                           {minQ != null
                             ? <MiniProgress current={count} target={minQ} />
                             : <AchievementBadge count={count} label="units" />}
@@ -327,10 +327,10 @@ export function PoliciesClient(props: Props) {
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.modelName}</TableCell>
-                        <TableCell>{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatPKR(p.perUnitAmount)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{p.targetQty ?? "—"}</TableCell>
-                        <TableCell>
+                        <TableCell label="Period">{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
+                        <TableCell label="Per unit ₨" className="text-right tabular-nums">{formatPKR(p.perUnitAmount)}</TableCell>
+                        <TableCell label="Target" className="text-right tabular-nums">{p.targetQty ?? "—"}</TableCell>
+                        <TableCell label="Achievement">
                           {p.targetQty != null
                             ? <MiniProgress current={count} target={p.targetQty} />
                             : <AchievementBadge count={count} label="activated" />}
@@ -397,9 +397,9 @@ export function PoliciesClient(props: Props) {
                         <TableCell className="font-medium">
                           {p.modelName ?? <span className="text-xs text-muted-foreground">All models</span>}
                         </TableCell>
-                        <TableCell>{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatPKR(p.perUnitAmount)}</TableCell>
-                        <TableCell>
+                        <TableCell label="Period">{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
+                        <TableCell label="Per unit ₨" className="text-right tabular-nums">{formatPKR(p.perUnitAmount)}</TableCell>
+                        <TableCell label="Achievement">
                           <div className="flex flex-col gap-0.5">
                             <MiniProgress current={count} target={p.targetTotalActivations} />
                             <span className="text-xs text-muted-foreground tabular-nums">Target: {p.targetTotalActivations} total</span>

@@ -166,13 +166,13 @@ export function DealerActivityClient({ rows, initialFilters, hasDealer }: Props)
                                 {when}
                               </span>
                             </TableCell>
-                            <TableCell>
+                            <TableCell label="Action">
                               <Badge variant={isErr ? "destructive" : "outline"} className="font-mono text-[10px]">
                                 {isErr ? <AlertOctagon className="mr-1 size-3" /> : <CheckCircle2 className="mr-1 size-3" />}
                                 {r.action}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-sm">{r.summary}</TableCell>
+                            <TableCell label="Summary" className="text-sm">{r.summary}</TableCell>
                           </TableRow>
                           {isOpen ? (
                             <TableRow className="bg-muted/30 hover:bg-muted/30">

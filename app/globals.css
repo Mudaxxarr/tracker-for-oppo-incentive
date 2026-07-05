@@ -106,6 +106,73 @@
   }
 }
 
+/* ── Tables stack into cards below md — no horizontal scroll on any data table ── */
+@media (max-width: 767.98px) {
+  [data-slot="table"] thead {
+    display: none;
+  }
+  [data-slot="table"],
+  [data-slot="table"] tbody,
+  [data-slot="table"] tr,
+  [data-slot="table"] td {
+    display: block;
+    width: 100%;
+    border: none;
+  }
+  [data-slot="table"] tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.625rem 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+  [data-slot="table"] tr:last-child {
+    margin-bottom: 0;
+  }
+  [data-slot="table"] td {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 0.3rem 0;
+    border: none !important;
+    text-align: left;
+    white-space: normal;
+  }
+  [data-slot="table"] td[data-label] {
+    justify-content: space-between;
+  }
+  [data-slot="table"] td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    text-align: left;
+    white-space: nowrap;
+  }
+  [data-slot="table"] td:empty {
+    display: none;
+  }
+  /* Full-row cells (empty states, inline edit forms) keep normal block flow
+     instead of the label/value flex layout meant for single-value cells. */
+  [data-slot="table"] td[colspan] {
+    display: block;
+  }
+
+  /* Nested/grouped tables (already inside a card) get a quiet divider
+     instead of a boxed card, so cards don't nest inside cards. */
+  [data-slot="table"].table-plain tr {
+    border: none;
+    border-radius: 0;
+    padding: 0.375rem 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  [data-slot="table"].table-plain tr:last-child {
+    border-bottom: none;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

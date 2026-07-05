@@ -237,15 +237,15 @@ export function DealerPurchasesClient({ models, initialPurchases, initialFilters
                   initialPurchases.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.modelName}</TableCell>
-                      <TableCell className="text-right"><DataValue value={p.quantity} /></TableCell>
-                      <TableCell className="text-right">
+                      <TableCell label="Qty" className="text-right"><DataValue value={p.quantity} /></TableCell>
+                      <TableCell label="Unit ₨" className="text-right">
                         <DataValue value={p.unitDealerPrice} format="currency" />
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell label="Total ₨" className="text-right">
                         <DataValue value={p.unitDealerPrice * p.quantity} format="currency" />
                       </TableCell>
-                      <TableCell>{formatDate(p.purchaseDate)}</TableCell>
-                      <TableCell>
+                      <TableCell label="Date">{formatDate(p.purchaseDate)}</TableCell>
+                      <TableCell label="Source">
                         {p.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? (
                           <StatusBadge status="neutral" label="Cross-Region" />
                         ) : (

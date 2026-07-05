@@ -189,11 +189,11 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
                     return (
                       <TableRow key={t.id}>
                         <TableCell className="font-medium">{t.modelName}</TableCell>
-                        <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
-                        <TableCell>{formatDate(t.reportedDate)}</TableCell>
-                        <TableCell>{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
-                        <TableCell>
+                        <TableCell label="Qty" className="text-right tabular-nums">{t.quantity}</TableCell>
+                        <TableCell label="Reported">{formatDate(t.reportedDate)}</TableCell>
+                        <TableCell label="Shifted">{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
+                        <TableCell label="Source" className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
+                        <TableCell label="Status">
                           {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
                             <Badge variant="outline">Pending</Badge>
                           ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (

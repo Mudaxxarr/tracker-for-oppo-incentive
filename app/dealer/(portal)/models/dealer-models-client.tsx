@@ -96,16 +96,16 @@ export function DealerModelsClient({ models, history, rebates, role }: Props) {
                     return (
                       <TableRow key={m.id}>
                         <TableCell className="font-medium">{m.name}</TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
+                        <TableCell label="SKU" className="font-mono text-xs text-muted-foreground">
                           {m.sku ?? "—"}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell label="Dealer ₨" className="text-right tabular-nums">
                           {m.dealerPrice != null ? formatPKR(m.dealerPrice) : "—"}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell label="Invoice ₨" className="text-right tabular-nums">
                           {m.invoicePrice != null ? formatPKR(m.invoicePrice) : "—"}
                         </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
+                        <TableCell label="Price entries" className="text-right text-xs text-muted-foreground tabular-nums">
                           {h.length}
                           {lastChange ? (
                             <span className="text-[10px]"> · last {formatDate(lastChange)}</span>

@@ -199,20 +199,20 @@ export function ActivityClient({ dealers, rows, initialFilters }: Props) {
                             {when}
                           </span>
                         </TableCell>
-                        <TableCell className="text-xs">{dealerName(r.dealerId)}</TableCell>
-                        <TableCell>
+                        <TableCell label="Dealer ID" className="text-xs">{dealerName(r.dealerId)}</TableCell>
+                        <TableCell label="Action">
                           <Badge variant={isErr ? "destructive" : "outline"} className="font-mono text-[10px]">
                             {isErr ? <AlertOctagon className="mr-1 size-3" /> : <CheckCircle2 className="mr-1 size-3" />}
                             {r.action}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-sm">{r.summary}</TableCell>
+                        <TableCell label="Summary" className="text-sm">{r.summary}</TableCell>
                         <TableCell></TableCell>
                       </TableRow>
                       {isOpen ? (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
                           <TableCell colSpan={5} className="text-xs">
-                            <dl className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                            <dl className="grid w-full grid-cols-1 gap-1 sm:grid-cols-2">
                               <Detail k="ID" v={r.id} mono />
                               <Detail k="Entity" v={r.entityType ? `${r.entityType} ${r.entityId?.slice(0, 8) ?? ""}` : "—"} />
                               <Detail k="IP" v={r.ipAddress ?? "—"} />
