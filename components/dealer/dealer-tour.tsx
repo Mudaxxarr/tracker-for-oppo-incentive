@@ -51,7 +51,11 @@ export function DealerTour() {
         } catch {
           /* ignore */
         }
-        if (forced) router.replace("/dealer/dashboard"); // strip ?tour=1
+        // strip ?tour=1 — only if still on the dashboard (guards against a
+        // navigation-triggered destroy yanking the user back).
+        if (forced && window.location.pathname === "/dealer/dashboard") {
+          router.replace("/dealer/dashboard");
+        }
       },
     });
 
