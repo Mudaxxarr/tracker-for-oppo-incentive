@@ -39,6 +39,7 @@ import { CheckCircle2, XCircle, Trash2, ArrowRightCircle, Pencil } from "lucide-
 import { toast } from "sonner";
 import type { CrossRegionRow } from "@/lib/db/queries/transfers";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
+import { HelpTip } from "@/components/dealer/help-tip";
 
 interface Props {
   models: ModelWithCurrentPrice[];
@@ -116,7 +117,9 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Cross-Region transfers</h1>
+        <h1 className="text-2xl font-semibold inline-flex items-center gap-1.5">
+          Cross-Region transfers <HelpTip term="cr-exposure" />
+        </h1>
         <p className="text-sm text-muted-foreground">
           Report stock that OPPO has sent (or is about to send) into your dealer ID from another region.
         </p>
