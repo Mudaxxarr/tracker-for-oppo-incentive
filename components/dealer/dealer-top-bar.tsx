@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { logoutAction } from "@/app/dealer/actions";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DealerLogoTrigger } from "./dealer-logo-trigger";
-import { LogOut } from "lucide-react";
+import { LogOut, HelpCircle } from "lucide-react";
 
 interface DealerTopBarProps {
   businessName: string;
@@ -23,6 +24,15 @@ export function DealerTopBar({ businessName, shopName, isAdmin }: DealerTopBarPr
           <span className="truncate text-sm">{shopName ?? businessName}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/dealer/help"
+            data-tour="help-button"
+            aria-label="Help"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1.5")}
+          >
+            <HelpCircle className="size-4" />
+            <span className="hidden sm:inline">Help</span>
+          </Link>
           <ThemeToggle />
           <form action={logoutAction}>
             <button
