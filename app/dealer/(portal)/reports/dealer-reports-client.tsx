@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import {
 import { formatPKR } from "@/lib/format";
 import { FileBarChart2, FileSpreadsheet, ChevronDown, Lock, Check } from "lucide-react";
 import { DEALER_ADDONS, type DealerAddonKey } from "@/lib/dealer-addons";
+import { HelpTip } from "@/components/dealer/help-tip";
 import type { IncentiveReport } from "@/lib/incentive-engine";
 import type { PolicyAchievementEntry } from "@/lib/report-types";
 
@@ -204,9 +206,18 @@ function ReportSection({
                 : `${report.targetBonus.actualQty}/${report.targetBonus.targetQty ?? "—"} purchased — not met`
             }
           />
-          <Stat label="Activation incentive" value={formatPKR(report.totals.activationIncentiveEarned)} />
-          <Stat label="Dealer incentive" value={formatPKR(report.totals.dealerIncentiveEarned)} />
-          <Stat label="Stock-in" value={formatPKR(report.totals.stockInEarned)} />
+          <Stat
+            label={<span className="inline-flex items-center gap-1">Activation bonus <HelpTip term="activation-incentive" /></span>}
+            value={formatPKR(report.totals.activationIncentiveEarned)}
+          />
+          <Stat
+            label={<span className="inline-flex items-center gap-1">Dealer bonus <HelpTip term="dealer-incentive" /></span>}
+            value={formatPKR(report.totals.dealerIncentiveEarned)}
+          />
+          <Stat
+            label={<span className="inline-flex items-center gap-1">Stock bonus <HelpTip term="stock-in-incentive" /></span>}
+            value={formatPKR(report.totals.stockInEarned)}
+          />
         </div>
 
         <div className="rounded-md border p-3">
@@ -245,9 +256,11 @@ function ReportSection({
                   <TableHead className="text-right">Old / New price split</TableHead>
                   <TableHead className="text-right">4%</TableHead>
                   <TableHead className="text-right">1%</TableHead>
-                  <TableHead className="text-right">Activation</TableHead>
+                  <TableHead className="text-right">Activation bonus</TableHead>
                   <TableHead className="text-right">Dealer</TableHead>
-                  <TableHead className="text-right">Stock-In</TableHead>
+                  <TableHead className="text-right">
+                    <span className="inline-flex items-center justify-end gap-1">Stock bonus <HelpTip term="stock-in-incentive" /></span>
+                  </TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -275,9 +288,9 @@ function ReportSection({
                       </TableCell>
                       <TableCell label="4%" className="text-right tabular-nums">{formatPKR(r.basePercentEarned)}</TableCell>
                       <TableCell label="1%" className="text-right tabular-nums">{formatPKR(r.bonusPercentEarned)}</TableCell>
-                      <TableCell label="Activation" className="text-right tabular-nums">{formatPKR(r.activationIncentiveEarned)}</TableCell>
+                      <TableCell label="Activation bonus" className="text-right tabular-nums">{formatPKR(r.activationIncentiveEarned)}</TableCell>
                       <TableCell label="Dealer" className="text-right tabular-nums">{formatPKR(r.dealerIncentiveEarned)}</TableCell>
-                      <TableCell label="Stock-In" className="text-right tabular-nums">{formatPKR(r.stockInEarned)}</TableCell>
+                      <TableCell label="Stock bonus" className="text-right tabular-nums">{formatPKR(r.stockInEarned)}</TableCell>
                       <TableCell label="Total" className="text-right font-medium tabular-nums">{formatPKR(r.total)}</TableCell>
                     </TableRow>
                   ))
@@ -435,7 +448,7 @@ function AddonUpsell({ addons, grandTotal }: { addons: AddonState; grandTotal: n
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({ label, value, sub }: { label: ReactNode; value: string; sub?: string }) {
   return (
     <div className="rounded-md border p-3">
       <div className="text-xs text-muted-foreground">{label}</div>

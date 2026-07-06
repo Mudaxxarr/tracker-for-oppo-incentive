@@ -15,6 +15,7 @@ import { formatPKR } from "@/lib/format";
 import { addToQueue } from "@/lib/offline-queue";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
+import { HelpTip } from "@/components/dealer/help-tip";
 
 interface Props {
   models: ModelWithCurrentPrice[];
@@ -203,19 +204,21 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
 
       <input type="hidden" name="source" value={source} />
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Source</label>
+        <label className="text-sm font-medium inline-flex items-center gap-1">
+          Source <HelpTip term="cr-exposure" />
+        </label>
         <Select value={source} onValueChange={(v) => typeof v === "string" && setSource(v)}>
           <SelectTrigger className="w-full">
             <span>
               {source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN
-                ? "Cross-Region Transfer-In"
+                ? "Cross-region stock (received from another region)"
                 : "Regular"}
             </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={PURCHASE_SOURCE.REGULAR}>Regular</SelectItem>
             <SelectItem value={PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN}>
-              Cross-Region Transfer-In
+              Cross-region stock (received from another region)
             </SelectItem>
           </SelectContent>
         </Select>

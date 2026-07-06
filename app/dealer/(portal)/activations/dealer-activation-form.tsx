@@ -14,6 +14,7 @@ import { formatPKR } from "@/lib/format";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offline-queue";
 import type { StockRow } from "@/lib/db/queries/purchases";
+import { HelpTip } from "@/components/dealer/help-tip";
 
 interface Props {
   stock: StockRow[];
@@ -159,7 +160,9 @@ export function DealerActivationForm({ stock, dealerId, tenantId, role, onSucces
 
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="isCrossRegion" value="on" className="size-4" />
-        <span>This phone arrived via cross-region transfer</span>
+        <span className="inline-flex items-center gap-1">
+          Cross-region (sold outside your area) <HelpTip term="cr-exposure" />
+        </span>
       </label>
 
       <Button type="submit" className="w-full" disabled={pending || !modelId || overStock}>

@@ -21,6 +21,7 @@ import {
   Receipt,
   CreditCard,
   Sparkles,
+  HelpCircle,
 } from "lucide-react";
 import { logoutAction } from "@/app/dealer/actions";
 import type { DealerFeatureKey, DealerFeatures } from "@/lib/dealer-features";
@@ -48,6 +49,7 @@ const NAV: {
   { href: "/dealer/billing", label: "Billing", icon: CreditCard },
   { href: "/dealer/team", label: "Team View", icon: Users, feature: "team" },
   { href: "/dealer/whats-new", label: "What's New", icon: Sparkles },
+  { href: "/dealer/help", label: "Help", icon: HelpCircle },
 ];
 
 export const DEALER_NAV = NAV;
@@ -116,7 +118,7 @@ export function DealerSidebar({ features }: Props) {
 
   return (
     <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-border md:bg-card">
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav data-tour="main-nav" className="flex flex-1 flex-col gap-1 p-3">
         <SlidingNav items={visible} pathname={pathname} />
         <div className="mt-auto border-t pt-2">
           <form action={logoutAction}>

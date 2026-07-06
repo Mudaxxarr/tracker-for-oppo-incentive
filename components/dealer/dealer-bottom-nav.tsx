@@ -23,6 +23,7 @@ export function DealerBottomNav({ features }: Props) {
 
   return (
     <nav
+      data-tour="main-nav"
       className="fixed inset-x-0 bottom-0 z-30 grid border-t bg-background/95 backdrop-blur md:hidden"
       style={{
         gridTemplateColumns: `repeat(${visible.length}, 1fr)`,

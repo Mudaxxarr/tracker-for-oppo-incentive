@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HelpTip } from "@/components/dealer/help-tip";
 import { DaysRemainingAlert } from "./days-remaining-alert";
 import { DealerTrendChart } from "./dealer-trend-chart";
 import { formatPKR } from "@/lib/format";
@@ -104,24 +105,24 @@ export function DealerDashboardClient({ data }: { data: DashboardData }) {
   const topModels = salesSorted.slice(0, 3);
 
   const breakdownRows = report ? [
-    { label: `Base Incentive (${report.baseIncentivePercent}%)`, value: report.totals.basePercentEarned, color: "bg-primary" },
-    { label: `Target Bonus (${tb?.bonusPercent ?? 0}%)`, value: report.totals.bonusPercentEarned, color: "bg-foreground/80" },
-    { label: "Stock-In Incentive", value: report.totals.stockInEarned, color: "bg-muted-foreground" },
-    { label: "Activation Incentive", value: report.totals.activationIncentiveEarned, color: "bg-foreground/60" },
-    { label: "Dealer Incentive", value: report.totals.dealerIncentiveEarned, color: "bg-muted-foreground/75" },
-    { label: "Price-drop Rebate", value: data.rebateEarned, color: "bg-border" },
-    { label: "CR / Fines / Deductions", value: -data.crFines, color: "bg-destructive" },
+    { label: `Base bonus (${report.baseIncentivePercent}%)`, value: report.totals.basePercentEarned, color: "bg-primary" },
+    { label: `Target bonus (${tb?.bonusPercent ?? 0}%)`, value: report.totals.bonusPercentEarned, color: "bg-foreground/80" },
+    { label: "Stock bonus", value: report.totals.stockInEarned, color: "bg-muted-foreground" },
+    { label: "Activation bonus", value: report.totals.activationIncentiveEarned, color: "bg-foreground/60" },
+    { label: "Dealer bonus", value: report.totals.dealerIncentiveEarned, color: "bg-muted-foreground/75" },
+    { label: "Price-drop refund", value: data.rebateEarned, color: "bg-border" },
+    { label: "Fines & deductions", value: -data.crFines, color: "bg-destructive" },
   ] : [];
 
   const kpis: KpiProps[] = [
-    { icon: Wallet, label: "Net receivable", value: formatPKR(netReceivable), accent: true, sub: data.label },
-    { icon: Gauge, label: "Incentive earned", value: formatPKR(grand), sub: "before rebates/fines" },
-    { icon: Target, label: "Target gap", value: hasTarget ? String(pendingTarget) : "No target", sub: hasTarget ? `${Math.round(targetPct)}% achieved` : `${periodActs} activations` },
-    { icon: data.riskExposure > 0 ? ShieldAlert : ShieldCheck, label: "CR exposure", value: formatPKR(data.riskExposure), danger: data.riskExposure > 0, sub: data.riskExposure > 0 ? `${crUnits} CR units flagged` : "No CR risk" },
-    { icon: Layers, label: "Stock value on hand", value: formatPKR(stockValue), sub: `${data.totalStock} units / ${data.stock.length} models` },
-    { icon: Clock3, label: "Aged stock", value: formatPKR(data.agedStock.value), sub: `${data.agedStock.units} units / ${data.agedStock.modelCount} models` },
-    { icon: BarChart3, label: "Sell-through", value: `${salesVelocityPct}%`, sub: sellThroughFooter },
-    { icon: Smartphone, label: "Today activations", value: String(data.todayActivations), sub: "logged today" },
+    { icon: Wallet, label: "Your net payout", helpTerm: "net-receivable", value: formatPKR(netReceivable), accent: true, sub: data.label },
+    { icon: Gauge, label: "Bonus earned", helpTerm: "incentive-earned", value: formatPKR(grand), sub: "before rebates/fines" },
+    { icon: Target, label: "Units left to target", helpTerm: "target-gap", value: hasTarget ? String(pendingTarget) : "No target", sub: hasTarget ? `${Math.round(targetPct)}% achieved` : `${periodActs} activations` },
+    { icon: data.riskExposure > 0 ? ShieldAlert : ShieldCheck, label: "At-risk amount", helpTerm: "cr-exposure", value: formatPKR(data.riskExposure), danger: data.riskExposure > 0, sub: data.riskExposure > 0 ? `${crUnits} CR units flagged` : "No CR risk" },
+    { icon: Layers, label: "Stock value", helpTerm: "stock-value", value: formatPKR(stockValue), sub: `${data.totalStock} units / ${data.stock.length} models` },
+    { icon: Clock3, label: "Old stock (30+ days)", helpTerm: "aged-stock", value: formatPKR(data.agedStock.value), sub: `${data.agedStock.units} units / ${data.agedStock.modelCount} models` },
+    { icon: BarChart3, label: "Sold vs stock", helpTerm: "sell-through", value: `${salesVelocityPct}%`, sub: sellThroughFooter },
+    { icon: Smartphone, label: "Activations today", helpTerm: "today-activations", value: String(data.todayActivations), sub: "logged today" },
   ];
 
   return (
@@ -143,10 +144,13 @@ export function DealerDashboardClient({ data }: { data: DashboardData }) {
       <DaysRemainingAlert daysLeft={data.daysLeft} expiresAt={data.expiresAt} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-stretch">
-        <div className={cn(cardSurface, "flex flex-col p-5 xl:col-span-5 xl:min-h-[276px]")}>
+        <div data-tour="net-payout" className={cn(cardSurface, "flex flex-col p-5 xl:col-span-5 xl:min-h-[276px]")}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-normal text-muted-foreground">Net receivable</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-normal text-muted-foreground">Your net payout</p>
+                <HelpTip term="net-receivable" />
+              </div>
               <p className="mt-1 font-mono text-[1.65rem] font-normal leading-tight tabular-nums text-primary">{formatPKR(netReceivable)}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{data.label}</p>
             </div>
@@ -199,21 +203,21 @@ export function DealerDashboardClient({ data }: { data: DashboardData }) {
 
           <div className="mt-4 grid gap-2 border-t pt-3 text-xs">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Gross receivable</span>
+              <span className="text-muted-foreground">Total before fines</span>
               <span className="font-mono font-normal tabular-nums">{formatPKR(grossReceivable)}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Less CR fines</span>
+              <span className="text-muted-foreground">Less fines</span>
               <span className="font-mono font-normal tabular-nums text-destructive">-{formatPKR(data.crFines)}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="font-medium">Net receivable</span>
+              <span className="font-medium">Your net payout</span>
               <span className="font-mono font-normal tabular-nums text-primary">{formatPKR(netReceivable)}</span>
             </div>
           </div>
         </div>
 
-        <div className="h-full xl:col-span-7">
+        <div data-tour="earnings-chart" className="h-full xl:col-span-7">
           {data.sixMonthTrend.length > 0 ? (
             <DealerTrendChart data={data.sixMonthTrend} className="h-full" contentClassName="h-[260px] xl:h-[210px]" />
           ) : (
@@ -363,7 +367,7 @@ function QuickActions({
   className?: string;
 }) {
   return (
-    <div className={cn(cardSurface, "grid grid-cols-2 gap-2 p-3 sm:grid-cols-4 lg:flex lg:items-center lg:justify-end", className)}>
+    <div data-tour="quick-actions" className={cn(cardSurface, "grid grid-cols-2 gap-2 p-3 sm:grid-cols-4 lg:flex lg:items-center lg:justify-end", className)}>
       <Link
         href="/dealer/activations"
         style={{ touchAction: "manipulation" }}
@@ -594,9 +598,10 @@ interface KpiProps {
   sub?: string;
   accent?: boolean;
   danger?: boolean;
+  helpTerm?: string;
 }
 
-function KpiCard({ icon: Icon, label, value, sub, accent = false, danger = false }: KpiProps) {
+function KpiCard({ icon: Icon, label, value, sub, accent = false, danger = false, helpTerm }: KpiProps) {
   return (
     <div className={cn(
       cardSurface,
@@ -604,7 +609,10 @@ function KpiCard({ icon: Icon, label, value, sub, accent = false, danger = false
       danger && "bg-destructive/5",
     )}>
       <div className="flex h-full min-w-0 flex-col">
-        <p className="line-clamp-2 min-h-[2.1rem] text-[11px] font-medium leading-tight text-foreground/70">{label}</p>
+        <div className="flex items-center gap-1">
+          <p className="line-clamp-2 min-h-[2.1rem] text-[11px] font-medium leading-tight text-foreground/70">{label}</p>
+          {helpTerm && <HelpTip term={helpTerm} />}
+        </div>
         <p
           title={value}
           className={cn(

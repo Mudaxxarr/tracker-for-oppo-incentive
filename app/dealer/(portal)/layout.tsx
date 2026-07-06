@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { db, schema } from "@/lib/db/client";
@@ -15,6 +16,7 @@ import { isAuthenticated } from "@/lib/auth";
 import { AdminPreviewBanner } from "@/components/dealer/admin-preview-banner";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { OfflineSync } from "@/components/pwa/offline-sync";
+import { DealerTour } from "@/components/dealer/dealer-tour";
 
 export default async function DealerLayout({
   children,
@@ -78,6 +80,9 @@ export default async function DealerLayout({
       <DealerBottomNav features={features} />
       <InstallPrompt />
       <OfflineSync />
+      <Suspense fallback={null}>
+        <DealerTour />
+      </Suspense>
     </div>
   );
 }
