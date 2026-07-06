@@ -3,6 +3,7 @@
 import {
   useEffect, useState, useTransition, useActionState, useMemo,
 } from "react";
+import type { ReactNode } from "react";
 import {
   motion, useMotionValue, useTransform, animate,
   AnimatePresence,
@@ -31,6 +32,7 @@ import {
 import { formatPKR, formatDate } from "@/lib/format";
 import type { InventoryModelRow } from "@/lib/db/queries/inventory";
 import type { PendingTransferRow } from "@/lib/db/queries/transfers";
+import { HelpTip } from "@/components/dealer/help-tip";
 
 interface DealerOption { id: string; name: string }
 interface Props {
@@ -632,7 +634,7 @@ function ReceiptsPanel({ date }: { date: string }) {
   );
 }
 
-function SummaryTile({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
+function SummaryTile({ label, value, sub }: { label: ReactNode; value: number | string; sub?: string }) {
   const isNum = typeof value === "number";
   return (
     <div className="flex flex-col gap-0.5">
@@ -727,7 +729,10 @@ export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTr
             <div className="w-px bg-border" />
             <SummaryTile label="Total Units" value={totalUnits} />
             <div className="w-px bg-border" />
-            <SummaryTile label="Stock Value" value={totalValue > 0 ? formatPKR(totalValue) : "—"} />
+            <SummaryTile
+              label={<span className="inline-flex items-center gap-1">Stock Value <HelpTip term="stock-value" /></span>}
+              value={totalValue > 0 ? formatPKR(totalValue) : "—"}
+            />
           </div>
           {totalUnits > 0 && (
             <div className="border-t px-5 py-3">
