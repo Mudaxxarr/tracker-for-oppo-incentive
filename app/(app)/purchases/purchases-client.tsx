@@ -39,6 +39,7 @@ import { PurchaseBillTimeline } from "./purchase-bill-timeline";
 import { PurchaseTopModelsPanel } from "./purchase-top-models-panel";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { formatDate, formatPKR } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { CheckSquare, Pencil, Plus, Trash2, AlertCircle, ShoppingCart, ShoppingCart as ShoppingCartKpi, AlertTriangle, Boxes, Wallet, Tag, Layers, ArrowLeftRight, Filter } from "lucide-react";
 import type { PurchaseOverviewStats } from "@/lib/db/queries/purchases";
 import type { BillGroup } from "@/lib/purchases/purchase-stats";
@@ -321,7 +322,76 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
           </div>
         ) : null}
 
-        {/* mobileTab === "overview" content added in Task 14 */}
+        {mobileTab === "overview" && overview ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <PurchaseKpiCard icon={ShoppingCartKpi} label="Bills" value={String(overview.current.billCount)} />
+              <PurchaseKpiCard icon={Boxes} label="Quantity" value={String(overview.current.totalQty)} />
+              <PurchaseKpiCard icon={Wallet} label="Amount" value={formatPKR(overview.current.totalAmount)} />
+              <PurchaseKpiCard icon={Tag} label="Avg. Price / Unit" value={formatPKR(overview.current.avgPricePerUnit)} />
+              <PurchaseKpiCard icon={Layers} label="Models" value={String(overview.current.uniqueModels)} />
+              <PurchaseKpiCard icon={ArrowLeftRight} label="Cross-Region" value={String(overview.current.crossRegionQty)} />
+            </div>
+
+            <div className="rounded-2xl bg-primary p-5 text-primary-foreground">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm opacity-80">Total Amount</p>
+                  <p className="text-2xl font-semibold tabular-nums">{formatPKR(overview.current.totalAmount)}</p>
+                </div>
+                <span className="grid size-9 place-items-center rounded-full bg-white/15">
+                  <ShoppingCartKpi className="size-4" />
+                </span>
+              </div>
+              <PurchaseTrendChart
+                data={overview.current.dailySeries}
+                dataKey="amount"
+                variant="sparkline"
+                color="var(--primary-foreground)"
+                valueFormatter={(v) => formatPKR(v)}
+                className="mt-3"
+              />
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="mb-2 text-sm font-medium">QTY Over Days</p>
+              <PurchaseTrendChart data={overview.current.dailySeries} dataKey="qty" valueFormatter={(v) => String(v)} />
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="mb-3 text-sm font-medium">Highlights</p>
+              <dl className="divide-y">
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <dt className="text-muted-foreground">Highest Bill</dt>
+                  <dd className="font-medium tabular-nums">{overview.current.highestBill ? formatPKR(overview.current.highestBill.amount) : "—"}</dd>
+                </div>
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <dt className="text-muted-foreground">Lowest Bill</dt>
+                  <dd className="font-medium tabular-nums">{overview.current.lowestBill ? formatPKR(overview.current.lowestBill.amount) : "—"}</dd>
+                </div>
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <dt className="text-muted-foreground">Top Model (Qty)</dt>
+                  <dd className="font-medium">{overview.current.topModels[0] ? `${overview.current.topModels[0].modelName} · ${overview.current.topModels[0].qty}` : "—"}</dd>
+                </div>
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <dt className="text-muted-foreground">Low Stock Risk</dt>
+                  <dd className={cn("font-medium", lowStockCount > 0 && "text-destructive")}>{lowStockCount} Model{lowStockCount === 1 ? "" : "s"}</dd>
+                </div>
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <dt className="text-muted-foreground">Purchase Growth %</dt>
+                  <dd className={cn("font-medium tabular-nums", (overview.growthPercent ?? 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                    {overview.growthPercent != null ? `${overview.growthPercent}%` : "—"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="mb-3 text-sm font-medium">Top Models by Quantity</p>
+              <PurchaseTopModelsPanel models={overview.current.topModels} />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="hidden md:block">
