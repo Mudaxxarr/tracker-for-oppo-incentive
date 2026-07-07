@@ -55,7 +55,8 @@ export function PurchaseTrendChart({ data, dataKey, variant = "card", valueForma
             stroke={color}
             strokeWidth={sparkline ? 1.75 : 2.25}
             fill={`url(#purchase-trend-${dataKey})`}
-            dot={false}
+            dot={{ r: sparkline ? 2 : 3.5, fill: color, strokeWidth: 0 }}
+            activeDot={{ r: sparkline ? 3 : 5 }}
             isAnimationActive={!sparkline}
           />
         </AreaChart>

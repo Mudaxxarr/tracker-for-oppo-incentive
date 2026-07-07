@@ -4,6 +4,7 @@ import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { CROSS_REGION_STATUS, INTER_ID_STATUS, PURCHASE_SOURCE } from "@/lib/constants";
 import { getPriceOnDate } from "./models";
+import { getNextBillNumber } from "./purchases";
 
 export interface CrossRegionRow {
   id: string; modelId: string; modelName: string; quantity: number;
@@ -104,12 +105,14 @@ export async function updateCrossRegionStatus(input: {
     // Wrap purchase creation + status update atomically so a crash between the two
     // writes cannot leave stock credited with the transfer still showing pending.
     await db.transaction(async (tx) => {
+      const billNumber = await getNextBillNumber(input.tenantId, transfer.dealerId, effectiveDate, tx);
       await tx.insert(schema.purchases).values({
         id: randomUUID(), tenantId: input.tenantId, dealerId: transfer.dealerId,
         modelId: transfer.modelId, quantity: transfer.quantity,
         unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
         purchaseDate: effectiveDate, source: PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN,
         referenceNote: `Cross-region: ${transfer.sourceRegionNote ?? "—"}`,
+        billNumber,
         crossRegionTransferId: transfer.id,
       });
       await tx.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: effectiveDate }).where(eq(schema.crossRegionTransfers.id, transfer.id));
@@ -189,11 +192,13 @@ export async function acceptInterIdTransfer(tenantId: string, id: string, toDeal
   if (transfer.status !== INTER_ID_STATUS.PENDING) return { ok: false, message: "Transfer is not pending" };
   const price = await getPriceOnDate(tenantId, transfer.modelId, transfer.transferDate);
   if (!price) return { ok: false, message: "No dealer price defined for this model on the transfer date" };
+  const billNumber = await getNextBillNumber(tenantId, toDealerId, transfer.transferDate);
   await db.insert(schema.purchases).values({
     id: randomUUID(), tenantId, dealerId: toDealerId, modelId: transfer.modelId,
     quantity: transfer.quantity, unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
     purchaseDate: transfer.transferDate, source: PURCHASE_SOURCE.REGULAR,
     referenceNote: `Inter-ID transfer in (${id.slice(0, 8)})`,
+    billNumber,
   });
   await db.update(schema.interIdTransfers).set({ status: INTER_ID_STATUS.ACCEPTED }).where(eq(schema.interIdTransfers.id, id));
   return { ok: true };

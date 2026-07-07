@@ -325,19 +325,23 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                 <SelectContent>
                   <SelectItem value="all">All models</SelectItem>
                   {models.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>
+                      <span className="flex w-full items-center justify-between gap-3">
+                        <span>{m.name}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{m.dealerPrice != null ? formatPKR(m.dealerPrice) : "no price"}</span>
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select
-                value={filters.source ?? "all"}
-                onValueChange={(v) => updateFilter("source", typeof v === "string" && v !== "all" ? v : undefined)}
+                value={filters.source ?? PURCHASE_SOURCE.REGULAR}
+                onValueChange={(v) => typeof v === "string" && updateFilter("source", v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All sources" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All sources</SelectItem>
                   <SelectItem value={PURCHASE_SOURCE.REGULAR}>Regular</SelectItem>
                   <SelectItem value={PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN}>Cross-Region</SelectItem>
                 </SelectContent>
@@ -470,22 +474,22 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                 <SelectItem value="all">All models</SelectItem>
                 {models.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
-                    {m.name}
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <span>{m.name}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{m.dealerPrice != null ? formatPKR(m.dealerPrice) : "no price"}</span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select
-              value={filters.source ?? "all"}
-              onValueChange={(v) =>
-                updateFilter("source", typeof v === "string" && v !== "all" ? v : undefined)
-              }
+              value={filters.source ?? PURCHASE_SOURCE.REGULAR}
+              onValueChange={(v) => typeof v === "string" && updateFilter("source", v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="All sources" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All sources</SelectItem>
                 <SelectItem value={PURCHASE_SOURCE.REGULAR}>Regular</SelectItem>
                 <SelectItem value={PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN}>
                   Cross-Region

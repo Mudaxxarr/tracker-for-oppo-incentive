@@ -1,6 +1,7 @@
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
 import { listPurchases, listPurchaseBills, getPurchaseOverviewStats, listStockForDealer } from "@/lib/db/queries/purchases";
+import { PURCHASE_SOURCE } from "@/lib/constants";
 import { PurchasesClient } from "./purchases-client";
 
 interface SearchParams {
@@ -29,7 +30,9 @@ export default async function PurchasesPage({
   const sp = await searchParams;
   const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
 
-  const source = (sp.source as "REGULAR" | "CROSS_REGION_TRANSFER_IN" | undefined) || undefined;
+  // No "all sources" option in the UI — default to Regular so cross-region
+  // purchases only show up when the dealer deliberately switches the filter.
+  const source = (sp.source as "REGULAR" | "CROSS_REGION_TRANSFER_IN" | undefined) || PURCHASE_SOURCE.REGULAR;
   const page = Math.max(1, Number(sp.page) || 1);
   // The Records/Filters card has no default range (shows all history when unset).
   // The Overview/Daily-Purchase views default to the current calendar month so the
@@ -60,7 +63,7 @@ export default async function PurchasesPage({
     <PurchasesClient
       models={models}
       initialPurchases={purchases}
-      initialFilters={sp}
+      initialFilters={{ ...sp, source }}
       hasDealer={!!dealerId}
       bills={billsResult.bills}
       billsTotal={billsResult.total}

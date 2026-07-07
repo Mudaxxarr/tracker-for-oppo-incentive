@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { formatBillNumber, computePreviousPeriod, percentChange, groupIntoBills, aggregatePurchaseStats, groupBillsByDate, type PurchaseStatsRow } from "@/lib/purchases/purchase-stats";
 
 describe("formatBillNumber", () => {
-  it("formats YYMMDD + zero-padded 3-digit sequence", () => {
-    expect(formatBillNumber("2025-05-31", 1)).toBe("INV-250531-001");
-    expect(formatBillNumber("2025-05-01", 12)).toBe("INV-250501-012");
+  it("formats DDMMYY + zero-padded 3-digit sequence", () => {
+    expect(formatBillNumber("2025-05-31", 1)).toBe("INV-310525-001");
+    expect(formatBillNumber("2025-05-01", 12)).toBe("INV-010525-012");
   });
 });
 

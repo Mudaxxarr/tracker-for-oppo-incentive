@@ -1,7 +1,7 @@
-/** Auto-generated bill label — never user-typed. Restarts at 1 per (tenant, dealer, date). */
+/** Auto-generated bill label — never user-typed. Restarts at 1 per (tenant, dealer, date). Format: INV-DDMMYY-NNN. */
 export function formatBillNumber(purchaseDate: string, seq: number): string {
-  const yymmdd = purchaseDate.slice(2).replace(/-/g, "");
-  return `INV-${yymmdd}-${String(seq).padStart(3, "0")}`;
+  const [yyyy, mm, dd] = purchaseDate.split("-");
+  return `INV-${dd}${mm}${yyyy.slice(2)}-${String(seq).padStart(3, "0")}`;
 }
 
 function addDays(dateStr: string, days: number): string {
