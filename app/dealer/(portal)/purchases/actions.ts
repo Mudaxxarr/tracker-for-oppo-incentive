@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
-import { createPurchase, deletePurchase, getPurchaseById, getStockForModel } from "@/lib/db/queries/purchases";
+import { createPurchase, deletePurchase, getPurchaseById, getStockForModel, getNextBillNumber } from "@/lib/db/queries/purchases";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
@@ -153,6 +153,7 @@ export async function createDealerBulkPurchasesAction(
   const bulkDateErr = guardPurchaseDate(purchaseDate, tenant?.backdateDays ?? 3);
   if (bulkDateErr) return { error: bulkDateErr };
 
+  const billNumber = await getNextBillNumber(session.tenantId, dealerId, purchaseDate);
   let inserted = 0;
   try {
     for (const line of lines) {
@@ -172,6 +173,7 @@ export async function createDealerBulkPurchasesAction(
         purchaseDate,
         source,
         referenceNote: ref,
+        billNumber,
         reviewStatus,
       });
       if (reviewStatus === PURCHASE_REVIEW_STATUS.PENDING_REVIEW) {

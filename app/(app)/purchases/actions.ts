@@ -5,7 +5,7 @@ import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { db } from "@/lib/db/client";
-import { createPurchase, deletePurchase, getPurchaseById, updatePurchase, getStockForModel, getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { createPurchase, deletePurchase, getPurchaseById, updatePurchase, getStockForModel, getStockForModelAsOf, getNextBillNumber } from "@/lib/db/queries/purchases";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
 import { PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
@@ -214,6 +214,7 @@ export async function createBulkInvoiceAction(
   try {
     // All-or-nothing: a failed line must not leave a half-recorded invoice.
     await db.transaction(async (tx) => {
+      const billNumber = await getNextBillNumber(tenantId, dealerId, purchaseDate, tx);
       for (const line of lines) {
         const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
         const isPending = threshold != null && line.quantity >= threshold;
@@ -227,6 +228,7 @@ export async function createBulkInvoiceAction(
           purchaseDate,
           source,
           referenceNote: ref,
+          billNumber,
           reviewStatus: isPending ? PURCHASE_REVIEW_STATUS.PENDING_REVIEW : PURCHASE_REVIEW_STATUS.ACTIVE,
         }, tx);
         if (isPending) pendingAlerts.push({ id, quantity: line.quantity });
