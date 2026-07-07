@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +33,15 @@ import {
 import { PurchaseForm } from "./purchase-form";
 import { BulkInvoiceForm } from "./bulk-invoice-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PurchaseKpiCard } from "./purchase-kpi-card";
+import { PurchaseTrendChart } from "./purchase-trend-chart";
+import { PurchaseBillTimeline } from "./purchase-bill-timeline";
+import { PurchaseTopModelsPanel } from "./purchase-top-models-panel";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { formatDate, formatPKR } from "@/lib/format";
-import { CheckSquare, Pencil, Plus, Trash2, AlertCircle, ShoppingCart, AlertTriangle } from "lucide-react";
+import { CheckSquare, Pencil, Plus, Trash2, AlertCircle, ShoppingCart, ShoppingCart as ShoppingCartKpi, AlertTriangle, Boxes, Wallet, Tag, Layers, ArrowLeftRight, Filter } from "lucide-react";
+import type { PurchaseOverviewStats } from "@/lib/db/queries/purchases";
+import type { BillGroup } from "@/lib/purchases/purchase-stats";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,48 +68,31 @@ interface Props {
   initialPurchases: PurchaseRow[];
   initialFilters: { modelId?: string; source?: string; from?: string; to?: string };
   hasDealer: boolean;
+  bills: BillGroup[];
+  billsTotal: number;
+  billsPage: number;
+  billsPageSize: number;
+  overview: PurchaseOverviewStats | null;
+  overviewRange: { from: string; to: string };
+  lowStockCount: number;
 }
 
-export function PurchasesClient({ models, initialPurchases, initialFilters, hasDealer }: Props) {
+function percentChangeSafe(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+export function PurchasesClient({ models, initialPurchases, initialFilters, hasDealer, bills, billsTotal, billsPage, billsPageSize, overview, overviewRange, lowStockCount }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"records" | "by-date">("records");
+  const [view, setView] = useState<"records" | "overview">("overview");
+  const [mobileTab, setMobileTab] = useState<"daily" | "overview">("daily");
   const [filters, setFilters] = useState(initialFilters);
   const [editId, setEditId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [, startTransition] = useTransition();
-
-  const purchasesByDate = useMemo(() => {
-    const map = new Map<string, { modelId: string; modelName: string; qty: number; dealerTotal: number; crossQty: number }[]>();
-    for (const p of initialPurchases) {
-      if (!map.has(p.purchaseDate)) map.set(p.purchaseDate, []);
-      const list = map.get(p.purchaseDate)!;
-      const entry = list.find((e) => e.modelId === p.modelId);
-      if (entry) {
-        entry.qty += p.quantity;
-        entry.dealerTotal += p.unitDealerPrice * p.quantity;
-        if (p.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN) entry.crossQty += p.quantity;
-      } else {
-        list.push({
-          modelId: p.modelId,
-          modelName: p.modelName,
-          qty: p.quantity,
-          dealerTotal: p.unitDealerPrice * p.quantity,
-          crossQty: p.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? p.quantity : 0,
-        });
-      }
-    }
-    return [...map.entries()]
-      .sort(([a], [b]) => (a < b ? 1 : -1))
-      .map(([date, models]) => ({
-        date,
-        models: models.sort((a, b) => a.modelName.localeCompare(b.modelName)),
-        totalQty: models.reduce((s, m) => s + m.qty, 0),
-        totalValue: models.reduce((s, m) => s + m.dealerTotal, 0),
-      }));
-  }, [initialPurchases]);
 
   const updateFilter = (key: keyof typeof filters, value: string | undefined) => {
     const next = { ...filters, [key]: value || undefined };
@@ -113,6 +102,13 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
     Object.entries(next).forEach(([k, v]) => {
       if (v) search.set(k, v);
     });
+    router.replace(`/purchases${search.size ? `?${search}` : ""}`);
+  };
+
+  const setBillsPage = (page: number) => {
+    const search = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v) search.set(k, v); });
+    if (page > 1) search.set("page", String(page));
     router.replace(`/purchases${search.size ? `?${search}` : ""}`);
   };
 
@@ -231,7 +227,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border overflow-hidden text-xs">
-            {(["records", "by-date"] as const).map((v) => (
+            {(["records", "overview"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -241,7 +237,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                     : "bg-background text-muted-foreground hover:bg-muted"
                 }`}
               >
-                {v === "records" ? "Records" : "By Date"}
+                {v === "records" ? "Records" : "Overview"}
               </button>
             ))}
           </div>
@@ -365,46 +361,38 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
         </CardContent>
       </Card>
 
-      {view === "by-date" ? (
-        <div className="space-y-3">
-          {purchasesByDate.length === 0 ? (
-            <Card>
-              <CardContent className="p-0">
-                <EmptyState icon={ShoppingCart} title="No purchases to display." description="Try adjusting the filters." />
-              </CardContent>
-            </Card>
-          ) : purchasesByDate.map(({ date, models, totalQty, totalValue }) => (
-            <Card key={date}>
-              <CardHeader className="pb-2 pt-3 px-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {purchaseDateLabel(date)}
-                  </CardTitle>
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    {totalQty} units · {formatPKR(totalValue)}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table className="table-plain">
-                  <TableBody>
-                    {models.map((m) => (
-                      <TableRow key={m.modelId}>
-                        <TableCell className="py-2 font-medium">{m.modelName}</TableCell>
-                        <TableCell label="Qty" className="py-2 text-right tabular-nums">{m.qty} units</TableCell>
-                        <TableCell label="Total ₨" className="py-2 text-right tabular-nums">{formatPKR(m.dealerTotal)}</TableCell>
-                        <TableCell className="py-2 text-right">
-                          {m.crossQty > 0 ? (
-                            <StatusBadge status="neutral" label={`${m.crossQty} cross-region`} />
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ))}
+      {view === "overview" && overview ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            <PurchaseKpiCard icon={ShoppingCartKpi} label="Bills" value={String(overview.current.billCount)} deltaPercent={percentChangeSafe(overview.current.billCount, overview.previous.billCount)} deltaLabel={`vs ${formatDate(overview.previousLabel.from)}`} />
+            <PurchaseKpiCard icon={Boxes} label="Quantity" value={String(overview.current.totalQty)} deltaPercent={percentChangeSafe(overview.current.totalQty, overview.previous.totalQty)} />
+            <PurchaseKpiCard icon={Wallet} label="Amount" value={formatPKR(overview.current.totalAmount)} deltaPercent={overview.growthPercent} />
+            <PurchaseKpiCard icon={Tag} label="Avg. Price / Unit" value={formatPKR(overview.current.avgPricePerUnit)} />
+            <PurchaseKpiCard icon={Layers} label="Models" value={String(overview.current.uniqueModels)} />
+            <PurchaseKpiCard icon={ArrowLeftRight} label="Cross-Region Qty" value={String(overview.current.crossRegionQty)} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card p-4 xl:col-span-2">
+              <p className="mb-2 text-sm font-medium">Purchases Over Time (Amount)</p>
+              <PurchaseTrendChart data={overview.current.dailySeries} dataKey="amount" valueFormatter={(v) => formatPKR(v)} />
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="mb-3 text-sm font-medium">Top Models by Quantity</p>
+              <PurchaseTopModelsPanel models={overview.current.topModels} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            <PurchaseKpiCard icon={Boxes} label="Avg Qty / Bill" value={overview.current.avgQtyPerBill.toFixed(1)} />
+            <PurchaseKpiCard icon={Wallet} label="Avg Amount / Bill" value={formatPKR(overview.current.avgAmountPerBill)} />
+            <PurchaseKpiCard icon={Wallet} label="Highest Bill" value={overview.current.highestBill ? formatPKR(overview.current.highestBill.amount) : "—"} />
+            <PurchaseKpiCard icon={Wallet} label="Lowest Bill" value={overview.current.lowestBill ? formatPKR(overview.current.lowestBill.amount) : "—"} />
+            <PurchaseKpiCard icon={Layers} label="Models This Range" value={String(overview.current.uniqueModels)} />
+            <PurchaseKpiCard icon={AlertTriangle} label="Low Stock Risk" value={`${lowStockCount} Model${lowStockCount === 1 ? "" : "s"}`} danger={lowStockCount > 0} />
+          </div>
+
+          <PurchaseBillTimeline bills={bills} total={billsTotal} page={billsPage} pageSize={billsPageSize} onPageChange={setBillsPage} />
         </div>
       ) : null}
 
@@ -531,17 +519,6 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
       ) : null}
     </div>
   );
-}
-
-function purchaseDateLabel(dateStr: string): string {
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const dayBefore = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
-  if (dateStr === today) return "Today";
-  if (dateStr === yesterday) return "Yesterday";
-  if (dateStr === dayBefore) return "Day before yesterday";
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-PK", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function EditPurchaseRow({
