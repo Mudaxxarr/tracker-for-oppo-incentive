@@ -114,6 +114,7 @@ export const purchases = pgTable(
     purchaseDate: isoDate("purchase_date").notNull(),
     source: text("source").notNull(),
     referenceNote: text("reference_note"),
+    billNumber: text("bill_number"), // auto-generated display label "INV-YYMMDD-NNN"; nullable — see Global Constraints
     crossRegionTransferId: text("cross_region_transfer_id"),
     reviewStatus: text("review_status").notNull().default("active"), // 'active'|'pending_review'|'approved'
     createdAt: isoDateTime("created_at").notNull(),

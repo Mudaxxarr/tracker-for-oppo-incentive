@@ -57,6 +57,13 @@
       "when": 1782700000000,
       "tag": "0007_cr_caught_fine",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783400000000,
+      "tag": "0009_purchases_bill_number",
+      "breakpoints": true
     }
   ]
 }
