@@ -286,6 +286,45 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
         </div>
       </div>
 
+      <div className="md:hidden">
+        <div className="mb-3 flex rounded-lg border overflow-hidden text-xs">
+          {(["daily", "overview"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setMobileTab(t)}
+              className={`flex-1 px-3 py-2 transition-colors ${
+                mobileTab === t ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {t === "daily" ? "Daily Purchase" : "Overview"}
+            </button>
+          ))}
+        </div>
+
+        {mobileTab === "daily" && overview ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                {formatDate(overviewRange.from)} – {formatDate(overviewRange.to)}
+              </p>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <Filter className="size-3.5" /> Filter
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <PurchaseKpiCard icon={ShoppingCartKpi} label="Total Purchases" value={String(overview.current.billCount)} />
+              <PurchaseKpiCard icon={Boxes} label="Total Quantity" value={String(overview.current.totalQty)} />
+              <PurchaseKpiCard icon={Wallet} label="Total Amount" value={formatPKR(overview.current.totalAmount)} />
+              <PurchaseKpiCard icon={Tag} label="Avg. Price" value={formatPKR(overview.current.avgPricePerUnit)} />
+            </div>
+            <PurchaseBillTimeline bills={bills} total={billsTotal} page={billsPage} pageSize={billsPageSize} onPageChange={setBillsPage} />
+          </div>
+        ) : null}
+
+        {/* mobileTab === "overview" content added in Task 14 */}
+      </div>
+
+      <div className="hidden md:block">
       {!hasDealer ? (
         <Card>
           <CardHeader className="flex-row items-center gap-2">
@@ -517,6 +556,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
         </CardContent>
       </Card>
       ) : null}
+      </div>
     </div>
   );
 }
