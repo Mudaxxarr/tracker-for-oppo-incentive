@@ -103,7 +103,6 @@ export function BulkInvoiceForm({ models, onSuccess }: Props) {
 
   const submitDisabled =
     pending ||
-    !invoiceNumber.trim() ||
     lines.length === 0 ||
     lines.some(
       (l) =>
@@ -134,12 +133,11 @@ export function BulkInvoiceForm({ models, onSuccess }: Props) {
     <form action={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Invoice #</label>
+          <label className="text-sm font-medium">Invoice # <span className="font-normal text-muted-foreground">(optional — a bill number is generated automatically)</span></label>
           <Input
             value={invoiceNumber}
             onChange={(e) => setInvoiceNumber(e.target.value)}
-            placeholder="e.g., INV-2026-0123"
-            required
+            placeholder="e.g., distributor's own invoice #"
           />
         </div>
         <div className="space-y-1.5">

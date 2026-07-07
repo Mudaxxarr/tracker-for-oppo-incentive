@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDate, formatPKR } from "@/lib/format";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import type { BillGroup } from "@/lib/purchases/purchase-stats";
+import { groupBillsByDate, type BillGroup } from "@/lib/purchases/purchase-stats";
 
 interface Props {
   bills: BillGroup[];
@@ -20,6 +20,7 @@ interface Props {
 }
 
 export function PurchaseBillTimeline({ bills, total, page, pageSize, onPageChange }: Props) {
+  const dateGroups = groupBillsByDate(bills);
   const [openBill, setOpenBill] = useState<string | null>(bills[0]?.billNumber ?? null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -30,59 +31,69 @@ export function PurchaseBillTimeline({ bills, total, page, pageSize, onPageChang
   }
 
   return (
-    <div className="space-y-3">
-      {bills.map((bill) => {
-        const open = openBill === bill.billNumber;
-        return (
-          <div key={bill.billNumber} className="overflow-hidden rounded-xl border border-border">
-            <button
-              type="button"
-              onClick={() => setOpenBill(open ? null : bill.billNumber)}
-              className="flex w-full flex-wrap items-center justify-between gap-2 bg-muted/30 px-4 py-3 text-left"
-            >
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <span className="font-mono text-xs text-muted-foreground">{formatDate(bill.purchaseDate)}</span>
-                <span className="font-medium">Bill No. {bill.billNumber}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">{bill.modelCount} Model{bill.modelCount === 1 ? "" : "s"}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">Total Qty: {bill.totalQty}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="font-medium tabular-nums">{formatPKR(bill.totalAmount)}</span>
-              </div>
-              {open ? <ChevronUp className="size-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="size-4 shrink-0 text-muted-foreground" />}
-            </button>
-            {open && (
-              <div className="overflow-x-auto border-t">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Model</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-28"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bill.lines.map((line, i) => (
-                      <TableRow key={`${bill.billNumber}-${line.modelId}-${i}`}>
-                        <TableCell className="font-medium">{line.modelName}</TableCell>
-                        <TableCell label="Quantity" className="text-right tabular-nums">{line.quantity}</TableCell>
-                        <TableCell label="Unit Price" className="text-right tabular-nums">{formatPKR(line.unitDealerPrice)}</TableCell>
-                        <TableCell label="Amount" className="text-right font-medium tabular-nums">{formatPKR(line.amount)}</TableCell>
-                        <TableCell className="text-right">
-                          {line.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? <StatusBadge status="neutral" label="Cross-Region" /> : null}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+    <div className="space-y-4">
+      {dateGroups.map((group) => (
+        <div key={group.date} className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{formatDate(group.date)}</span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {group.bills.length} bill{group.bills.length === 1 ? "" : "s"} · {group.totalQty} units · {formatPKR(group.totalAmount)}
+            </span>
           </div>
-        );
-      })}
+
+          {group.bills.map((bill) => {
+            const open = openBill === bill.billNumber;
+            return (
+              <div key={bill.billNumber} className="overflow-hidden rounded-xl border border-border">
+                <button
+                  type="button"
+                  onClick={() => setOpenBill(open ? null : bill.billNumber)}
+                  className="flex w-full flex-wrap items-center justify-between gap-2 bg-muted/30 px-4 py-3 text-left"
+                >
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    <span className="font-medium">Bill No. {bill.billNumber}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">{bill.modelCount} Model{bill.modelCount === 1 ? "" : "s"}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">Total Qty: {bill.totalQty}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="font-medium tabular-nums">{formatPKR(bill.totalAmount)}</span>
+                  </div>
+                  {open ? <ChevronUp className="size-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="size-4 shrink-0 text-muted-foreground" />}
+                </button>
+                {open && (
+                  <div className="overflow-x-auto border-t">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Model</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="w-28"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bill.lines.map((line, i) => (
+                          <TableRow key={`${bill.billNumber}-${line.modelId}-${i}`}>
+                            <TableCell className="font-medium">{line.modelName}</TableCell>
+                            <TableCell label="Quantity" className="text-right tabular-nums">{line.quantity}</TableCell>
+                            <TableCell label="Unit Price" className="text-right tabular-nums">{formatPKR(line.unitDealerPrice)}</TableCell>
+                            <TableCell label="Amount" className="text-right font-medium tabular-nums">{formatPKR(line.amount)}</TableCell>
+                            <TableCell className="text-right">
+                              {line.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? <StatusBadge status="neutral" label="Cross-Region" /> : null}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-sm text-muted-foreground">
         <span>Showing {rangeStart} to {rangeEnd} of {total} entries</span>

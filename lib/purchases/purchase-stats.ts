@@ -70,6 +70,29 @@ export function groupIntoBills(rows: PurchaseStatsRow[]): BillGroup[] {
   return bills.sort((a, b) => (a.purchaseDate === b.purchaseDate ? (a.billNumber < b.billNumber ? 1 : -1) : a.purchaseDate < b.purchaseDate ? 1 : -1));
 }
 
+export interface BillDateGroup {
+  date: string;
+  totalQty: number;
+  totalAmount: number;
+  bills: BillGroup[];
+}
+
+/** Groups already-sorted (newest-first) bills under their shared purchase date, for the timeline view. */
+export function groupBillsByDate(bills: BillGroup[]): BillDateGroup[] {
+  const byDate = new Map<string, BillDateGroup>();
+  for (const b of bills) {
+    let group = byDate.get(b.purchaseDate);
+    if (!group) {
+      group = { date: b.purchaseDate, totalQty: 0, totalAmount: 0, bills: [] };
+      byDate.set(b.purchaseDate, group);
+    }
+    group.bills.push(b);
+    group.totalQty += b.totalQty;
+    group.totalAmount += b.totalAmount;
+  }
+  return [...byDate.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
 export interface TopModel { modelId: string; modelName: string; qty: number; }
 export interface DailyPoint { date: string; amount: number; qty: number; }
 export interface BillExtreme { billNumber: string; purchaseDate: string; amount: number; }

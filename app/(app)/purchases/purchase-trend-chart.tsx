@@ -16,8 +16,17 @@ interface Props {
 
 export function PurchaseTrendChart({ data, dataKey, variant = "card", valueFormatter, color = "var(--primary)", className }: Props) {
   const sparkline = variant === "sparkline";
+
+  if (data.length === 0) {
+    return (
+      <div className={cn(sparkline ? "h-16" : "h-56", "grid place-items-center text-xs text-muted-foreground", className)}>
+        No data in this range yet.
+      </div>
+    );
+  }
+
   return (
-    <div className={cn(sparkline ? "h-16" : "h-full min-h-[200px]", className)}>
+    <div className={cn(sparkline ? "h-16" : "h-56", className)}>
       <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={{ width: 640, height: 200 }} debounce={50}>
         <AreaChart data={data} margin={sparkline ? { top: 4, right: 0, left: 0, bottom: 0 } : { top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs>

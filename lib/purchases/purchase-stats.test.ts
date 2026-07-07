@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBillNumber, computePreviousPeriod, percentChange, groupIntoBills, aggregatePurchaseStats, type PurchaseStatsRow } from "@/lib/purchases/purchase-stats";
+import { formatBillNumber, computePreviousPeriod, percentChange, groupIntoBills, aggregatePurchaseStats, groupBillsByDate, type PurchaseStatsRow } from "@/lib/purchases/purchase-stats";
 
 describe("formatBillNumber", () => {
   it("formats YYMMDD + zero-padded 3-digit sequence", () => {
@@ -70,6 +70,24 @@ describe("groupIntoBills", () => {
     ];
     const bills = groupIntoBills(rows);
     expect(bills.map((b) => b.billNumber)).toEqual(["INV-250531-002", "INV-250531-001", "INV-250530-001"]);
+  });
+});
+
+describe("groupBillsByDate", () => {
+  it("nests multiple same-day bills under one date group", () => {
+    const rows = [
+      row({ billNumber: "INV-260628-001", purchaseDate: "2026-06-28", modelId: "m1", quantity: 5, unitDealerPrice: 100 }),
+      row({ billNumber: "INV-260628-002", purchaseDate: "2026-06-28", modelId: "m2", quantity: 3, unitDealerPrice: 200 }),
+      row({ billNumber: "INV-260627-001", purchaseDate: "2026-06-27", modelId: "m1", quantity: 2, unitDealerPrice: 100 }),
+    ];
+    const groups = groupBillsByDate(groupIntoBills(rows));
+    expect(groups).toHaveLength(2);
+    expect(groups[0].date).toBe("2026-06-28");
+    expect(groups[0].bills.map((b) => b.billNumber)).toEqual(["INV-260628-002", "INV-260628-001"]);
+    expect(groups[0].totalQty).toBe(8);
+    expect(groups[0].totalAmount).toBe(5 * 100 + 3 * 200);
+    expect(groups[1].date).toBe("2026-06-27");
+    expect(groups[1].bills).toHaveLength(1);
   });
 });
 

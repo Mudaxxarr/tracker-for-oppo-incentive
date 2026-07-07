@@ -170,7 +170,7 @@ const BulkLineSchema = z.object({
 const BulkInvoiceSchema = z.object({
   purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
   source: z.enum([PURCHASE_SOURCE.REGULAR, PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN]),
-  invoiceNumber: z.string().trim().min(1, "Invoice # required").max(120),
+  invoiceNumber: z.string().trim().max(120).optional().default(""),
   notes: z.string().max(500).optional().nullable(),
   lines: z.array(BulkLineSchema).min(1, "Add at least one line"),
 });
@@ -216,7 +216,7 @@ export async function createBulkInvoiceAction(
     await db.transaction(async (tx) => {
       const billNumber = await getNextBillNumber(tenantId, dealerId, purchaseDate, tx);
       for (const line of lines) {
-        const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
+        const ref = [invoiceNumber ? `Inv #${invoiceNumber}` : null, notes || null].filter(Boolean).join(" — ") || null;
         const isPending = threshold != null && line.quantity >= threshold;
         const id = await createPurchase({
           tenantId,
@@ -247,7 +247,7 @@ export async function createBulkInvoiceAction(
     }
     await logAudit({
       action: "purchase.bulk_invoice",
-      summary: `Recorded invoice ${invoiceNumber}: ${inserted} line(s) on ${purchaseDate}`,
+      summary: `Recorded bulk invoice${invoiceNumber ? ` ${invoiceNumber}` : ""}: ${inserted} line(s) on ${purchaseDate}`,
       payload: { invoiceNumber, purchaseDate, source, lineCount: inserted },
     });
     revalidatePath("/purchases");

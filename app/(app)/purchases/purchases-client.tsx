@@ -88,6 +88,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"records" | "overview">("overview");
   const [mobileTab, setMobileTab] = useState<"daily" | "overview">("daily");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
   const [editId, setEditId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -302,16 +303,59 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
           ))}
         </div>
 
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            {formatDate(overviewRange.from)} – {formatDate(overviewRange.to)}
+          </p>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowMobileFilters((v) => !v)}>
+            <Filter className="size-3.5" /> Filter
+          </Button>
+        </div>
+
+        {showMobileFilters ? (
+          <Card className="mb-4">
+            <CardContent className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2">
+              <Select
+                value={filters.modelId ?? "all"}
+                onValueChange={(v) => updateFilter("modelId", typeof v === "string" && v !== "all" ? v : undefined)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All models" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All models</SelectItem>
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={filters.source ?? "all"}
+                onValueChange={(v) => updateFilter("source", typeof v === "string" && v !== "all" ? v : undefined)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All sources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  <SelectItem value={PURCHASE_SOURCE.REGULAR}>Regular</SelectItem>
+                  <SelectItem value={PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN}>Cross-Region</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">From date</span>
+                <Input type="date" value={filters.from ?? ""} onChange={(e) => updateFilter("from", e.target.value || undefined)} aria-label="From date" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">To date</span>
+                <Input type="date" value={filters.to ?? ""} onChange={(e) => updateFilter("to", e.target.value || undefined)} aria-label="To date" />
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {mobileTab === "daily" && overview ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                {formatDate(overviewRange.from)} – {formatDate(overviewRange.to)}
-              </p>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                <Filter className="size-3.5" /> Filter
-              </Button>
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <PurchaseKpiCard icon={ShoppingCartKpi} label="Total Purchases" value={String(overview.current.billCount)} />
               <PurchaseKpiCard icon={Boxes} label="Total Quantity" value={String(overview.current.totalQty)} />
@@ -324,7 +368,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
 
         {mobileTab === "overview" && overview ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2">
               <PurchaseKpiCard icon={ShoppingCartKpi} label="Bills" value={String(overview.current.billCount)} />
               <PurchaseKpiCard icon={Boxes} label="Quantity" value={String(overview.current.totalQty)} />
               <PurchaseKpiCard icon={Wallet} label="Amount" value={formatPKR(overview.current.totalAmount)} />
