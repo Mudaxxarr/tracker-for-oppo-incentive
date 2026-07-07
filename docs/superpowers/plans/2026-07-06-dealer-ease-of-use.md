@@ -733,3 +733,33 @@ For a dealer without `cross_region`/`reports`, confirm the Help page hides those
 - If `npx tsc --noEmit` is slow, it is still the source of truth for type errors here (no component test env exists).
 - `driver.js` styling inherits its default theme; if it clashes with the Apple-shell look, add minimal overrides to `app/globals.css` under a `.driver-popover` scope (optional polish, not required for correctness).
 - Never widen scope into owner/accountant/admin files or any `lib/incentive-engine` / `lib/db` module.
+
+---
+
+## CHECKPOINT — 2026-07-06 19:55 (for continuation on any AI platform)
+
+**Status: Tasks 1-7 done and merged. Task 8 (verification) mostly done, a few sub-checks still open.**
+
+- Branch `feat/dealer-ease-of-use` merged to `master` via commit `2ff55a6` (19:22). `master` clean, matches `origin/master`.
+- All 8 tasks' commits are in `git log`: `e352f9c` `57cc80a` `222930d` `475ed50` `ef98812` `b2289f2` `9753ca1`→`5197b5c` (5 screens) `3611f6b` (tour-guard fix) `2ff55a6` (merge).
+- Re-ran this session: `npx vitest run` → **21/21 pass**.
+- Live browser check (localhost:3000, dev server) this session confirmed:
+  - Guided tour runs and completes on first dashboard visit.
+  - Dashboard: plain labels confirmed ("Your net payout", "Base bonus (4%)", "Fines & deductions", etc.); HelpTip on net-payout opens on click with correct text + "Learn more →".
+  - Reports screen: "Activation bonus" / "Dealer bonus" / "Stock bonus" labels + HelpTip icons confirmed.
+  - Cross-Region screen: heading HelpTip + plain-English copy confirmed, no raw "CR" abbreviation.
+  - Bottom-nav `data-tour="main-nav"` confirmed present in code (`components/dealer/dealer-bottom-nav.tsx:26`); **not** re-verified visually at mobile viewport this session (browser resize tool was unreliable mid-session).
+
+**Task 8 steps 3-5 — closed out 2026-07-07 (live checks against production, oppo-tracker.vercel.app):**
+- [x] Activations screen — Add Activation panel: cross-region HelpTip opens ("At-risk amount: Money at risk from cross-region phones that may be flagged."); backdate copy plain ("Price snapshot will use the dealer price effective on the activation date — currently Rs X").
+- [x] Purchases screen — Add Purchase panel: Source field HelpTip opens with same cross-region copy.
+- [x] Inventory screen — Stock value HelpTip confirmed ("Total worth of the phones you have on hand right now."). Note: `aged-stock` HelpTip actually lives on the Dashboard, not Inventory — confirmed there instead ("Old stock (30+ days): Stock that has stayed unsold for more than 30 days.").
+- [x] Mobile-viewport check — `resize_window` browser tool was non-functional this session (viewport stayed 1920px regardless of requested size; confirmed via `window.innerWidth` after the call). Verified structurally via code instead: `components/dealer/dealer-bottom-nav.tsx:26-27` has `data-tour="main-nav"` + `md:hidden` (mobile-only) + `fixed inset-x-0 bottom-0`; `components/dealer/help-tip.tsx` uses a Radix `Popover` with a plain click-triggered `PopoverTrigger` (not hover-only), so tap-to-open works identically on touch. No actual narrow-viewport screenshot was captured — flag if a true device/emulator check is wanted later.
+- [x] Feature-gating check — live-tested against dealer "Testing Phase ID" (Reports feature OFF, Cross-Region ON): `/dealer/help` shows the Cross-region section and omits Reports; sidebar nav omits Reports link entirely. Forced tour (`?tour=1`) on the same dealer showed only 4 of the full step set and advanced cleanly through missing-target steps with no error, confirming `dealer-tour.tsx:34`'s `document.querySelector` filter works live, not just in theory.
+
+**Deploy note:** master (commit `2ff55a6` + this checkpoint) was pushed to production via `vercel --prod` on 2026-07-06 — live at https://oppo-tracker.vercel.app (GitHub webhook auto-deploy is still broken; manual deploy required for future changes too).
+
+**Environment notes for whoever continues:**
+- Dev server was running via `npm run dev` on `localhost:3000` (background job, this machine only — won't persist to another platform).
+- Test login used: admin-preview-as-dealer impersonation of "Khan Mobiles Ayyub Road" via `/admin/dealers/[id]` → "Admin preview" banner.
+- No financial/calculation code touched anywhere in this sub-project — all changes are labels + new display-only components, per the Global Constraints above.
