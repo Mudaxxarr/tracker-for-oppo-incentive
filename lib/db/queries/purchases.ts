@@ -404,6 +404,41 @@ export async function deletePurchase(id: string, dealerId: string, tenantId: str
   await executor.delete(schema.purchases).where(and(eq(schema.purchases.id, id), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.tenantId, tenantId)));
 }
 
+export async function listPurchaseBills(filters: {
+  tenantId: string; dealerId: string; modelId?: string; source?: PurchaseSource; from?: string; to?: string;
+  page: number; pageSize: number;
+}): Promise<{ bills: BillGroup[]; total: number }> {
+  const rows = await listPurchases(filters);
+  const bills = groupIntoBills(rows);
+  const start = (filters.page - 1) * filters.pageSize;
+  return { bills: bills.slice(start, start + filters.pageSize), total: bills.length };
+}
+
+export interface PurchaseOverviewStats {
+  current: PurchaseAggregateStats;
+  previous: PurchaseAggregateStats;
+  growthPercent: number | null;
+  previousLabel: { from: string; to: string };
+}
+
+export async function getPurchaseOverviewStats(filters: {
+  tenantId: string; dealerId: string; modelId?: string; source?: PurchaseSource; from: string; to: string;
+}): Promise<PurchaseOverviewStats> {
+  const previousRange = computePreviousPeriod(filters.from, filters.to);
+  const [currentRows, previousRows] = await Promise.all([
+    listPurchases(filters),
+    listPurchases({ ...filters, from: previousRange.from, to: previousRange.to }),
+  ]);
+  const current = aggregatePurchaseStats(currentRows);
+  const previous = aggregatePurchaseStats(previousRows);
+  return {
+    current,
+    previous,
+    growthPercent: percentChange(current.totalAmount, previous.totalAmount),
+    previousLabel: previousRange,
+  };
+}
+
 export interface CrShiftedValueResult {
   totalUnits: number;
   totalValue: number;
