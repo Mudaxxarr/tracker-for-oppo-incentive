@@ -5,6 +5,7 @@ import { INTER_ID_STATUS, PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS } from "@/lib/
 import { randomUUID } from "node:crypto";
 import type { PurchaseSource } from "@/lib/constants";
 import { getCrCaughtForStockCalc, getCrCaughtAsOf, getCrCaughtBefore } from "./cr-caught";
+import { formatBillNumber, groupIntoBills, aggregatePurchaseStats, computePreviousPeriod, percentChange, type PurchaseAggregateStats, type BillGroup } from "@/lib/purchases/purchase-stats";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -260,10 +261,20 @@ export async function getCrStockSummary(tenantId: string, dealerId: string): Pro
     .sort((a, b) => a.modelName.localeCompare(b.modelName));
 }
 
+/** Next auto bill number for this dealer+date — restarts at 1 each calendar day. Display-only, never user-typed. */
+export async function getNextBillNumber(tenantId: string, dealerId: string, purchaseDate: string, executor: Executor = db): Promise<string> {
+  const rows = await executor
+    .select({ count: sql<number>`COUNT(DISTINCT ${schema.purchases.billNumber})` })
+    .from(schema.purchases)
+    .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.purchaseDate, purchaseDate)));
+  return formatBillNumber(purchaseDate, Number(rows[0].count) + 1);
+}
+
 export interface PurchaseRow {
   id: string; modelId: string; modelName: string; quantity: number;
   unitDealerPrice: number; unitInvoicePrice: number; purchaseDate: string;
   source: string; referenceNote: string | null; crossRegionTransferId: string | null;
+  billNumber: string;
 }
 
 export async function listPurchases(filters: {
@@ -282,6 +293,7 @@ export async function listPurchases(filters: {
       unitInvoicePrice: schema.purchases.unitInvoicePrice, purchaseDate: schema.purchases.purchaseDate,
       source: schema.purchases.source, referenceNote: schema.purchases.referenceNote,
       crossRegionTransferId: schema.purchases.crossRegionTransferId,
+      billNumber: sql<string>`COALESCE(${schema.purchases.billNumber}, 'INV-LEGACY-' || ${schema.purchases.id})`,
     })
     .from(schema.purchases)
     .innerJoin(schema.models, eq(schema.models.id, schema.purchases.modelId))
@@ -293,11 +305,13 @@ export async function createPurchase(input: {
   tenantId: string; dealerId: string; modelId: string; quantity: number;
   unitDealerPrice: number; unitInvoicePrice: number; purchaseDate: string;
   source: PurchaseSource; referenceNote: string | null; crossRegionTransferId?: string | null;
-  reviewStatus?: string;
+  reviewStatus?: string; billNumber?: string;
 }, executor: Executor = db): Promise<string> {
   const id = randomUUID();
+  const billNumber = input.billNumber ?? await getNextBillNumber(input.tenantId, input.dealerId, input.purchaseDate, executor);
   await executor.insert(schema.purchases).values({
     id, ...input,
+    billNumber,
     crossRegionTransferId: input.crossRegionTransferId ?? null,
     reviewStatus: input.reviewStatus ?? "active",
   });
