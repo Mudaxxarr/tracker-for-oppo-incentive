@@ -7,23 +7,46 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatPKR } from "@/lib/format";
 import { PURCHASE_SOURCE } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 import { groupBillsByDate, type BillGroup } from "@/lib/purchases/purchase-stats";
 
 interface Props {
-  bills: BillGroup[];
+  initialBills: BillGroup[];
   total: number;
-  page: number;
-  pageSize: number;
-  onPageChange: (page: number) => void;
+  /** Fetches the next page of bills (server action). Appended to the list. */
+  loadMore: (page: number) => Promise<BillGroup[]>;
 }
 
-export function PurchaseBillTimeline({ bills, total, page, pageSize, onPageChange }: Props) {
+export function PurchaseBillTimeline({ initialBills, total, loadMore }: Props) {
+  const [bills, setBills] = useState(initialBills);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  // All dates collapsed by default — tap a date to reveal its bills.
+  const [openDate, setOpenDate] = useState<string | null>(null);
+
+  // Reset during render (not an effect) when the server sends a fresh first
+  // page — filters/range changed, or a purchase was added/removed.
+  const [seenInitial, setSeenInitial] = useState(initialBills);
+  if (seenInitial !== initialBills) {
+    setSeenInitial(initialBills);
+    setBills(initialBills);
+    setPage(1);
+    setOpenDate(null);
+  }
+
   const dateGroups = groupBillsByDate(bills);
-  const [openDate, setOpenDate] = useState<string | null>(dateGroups[0]?.date ?? null);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = Math.min(page * pageSize, total);
+  const hasMore = bills.length < total;
+
+  const onLoadMore = async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    try {
+      const next = await loadMore(page + 1);
+      setBills((b) => [...b, ...next]);
+      setPage((p) => p + 1);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (bills.length === 0) {
     return <EmptyState icon={ShoppingCart} title="No purchases in this range." description="Try a wider date range or clear filters." />;
@@ -86,27 +109,15 @@ export function PurchaseBillTimeline({ bills, total, page, pageSize, onPageChang
         );
       })}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-sm text-muted-foreground">
-        <span>Showing {rangeStart} to {rangeEnd} of {total} entries</span>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Prev</Button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-            .map((p, i, arr) => (
-              <span key={p} className="flex items-center">
-                {i > 0 && arr[i - 1] !== p - 1 && <span className="px-1 text-muted-foreground">…</span>}
-                <button
-                  type="button"
-                  onClick={() => onPageChange(p)}
-                  className={cn("min-w-8 rounded-md px-2 py-1 text-xs", p === page ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
-                >
-                  {p}
-                </button>
-              </span>
-            ))}
-          <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>Next</Button>
+      {hasMore ? (
+        <div className="pt-1">
+          <Button variant="outline" size="sm" className="w-full" disabled={loading} onClick={onLoadMore}>
+            {loading ? "Loading…" : "Load older dates"}
+          </Button>
         </div>
-      </div>
+      ) : (
+        <p className="pt-1 text-center text-xs text-muted-foreground">Showing all {total} bill{total === 1 ? "" : "s"} in this range</p>
+      )}
     </div>
   );
 }

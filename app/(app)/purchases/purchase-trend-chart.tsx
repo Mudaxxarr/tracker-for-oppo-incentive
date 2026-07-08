@@ -11,10 +11,12 @@ interface Props {
   variant?: "card" | "sparkline";
   valueFormatter: (v: number) => string;
   color?: string;
+  /** Ring color drawn around each dot so markers stay visible on any surface. */
+  dotStroke?: string;
   className?: string;
 }
 
-export function PurchaseTrendChart({ data, dataKey, variant = "card", valueFormatter, color = "var(--primary)", className }: Props) {
+export function PurchaseTrendChart({ data, dataKey, variant = "card", valueFormatter, color = "var(--primary)", dotStroke = "var(--card)", className }: Props) {
   const sparkline = variant === "sparkline";
 
   if (data.length === 0) {
@@ -55,9 +57,9 @@ export function PurchaseTrendChart({ data, dataKey, variant = "card", valueForma
             stroke={color}
             strokeWidth={sparkline ? 1.75 : 2.25}
             fill={`url(#purchase-trend-${dataKey})`}
-            dot={{ r: sparkline ? 2 : 3.5, fill: color, strokeWidth: 0 }}
-            activeDot={{ r: sparkline ? 3 : 5 }}
-            isAnimationActive={!sparkline}
+            dot={{ r: sparkline ? 2.5 : 4, fill: color, stroke: dotStroke, strokeWidth: sparkline ? 1 : 1.75 }}
+            activeDot={{ r: sparkline ? 3.5 : 6, stroke: dotStroke, strokeWidth: 1.5 }}
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

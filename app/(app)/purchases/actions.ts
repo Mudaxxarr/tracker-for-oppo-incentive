@@ -5,7 +5,8 @@ import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
 import { db } from "@/lib/db/client";
-import { createPurchase, deletePurchase, getPurchaseById, updatePurchase, getStockForModel, getStockForModelAsOf, getNextBillNumber } from "@/lib/db/queries/purchases";
+import { createPurchase, deletePurchase, getPurchaseById, updatePurchase, getStockForModel, getStockForModelAsOf, getNextBillNumber, listPurchaseBills } from "@/lib/db/queries/purchases";
+import type { BillGroup } from "@/lib/purchases/purchase-stats";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
 import { PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
@@ -149,6 +150,35 @@ export async function createPurchaseAction(
     });
     return { error: msg };
   }
+}
+
+export async function loadPurchaseBillsAction(params: {
+  modelId?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+  page: number;
+  pageSize: number;
+}): Promise<BillGroup[]> {
+  if (!(await isAnyAuthenticated())) return [];
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return [];
+  // Source is always Regular on this page (no cross-region in the timeline).
+  const source =
+    params.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN
+      ? PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN
+      : PURCHASE_SOURCE.REGULAR;
+  const { bills } = await listPurchaseBills({
+    tenantId: OWNER_TENANT_ID,
+    dealerId,
+    modelId: params.modelId || undefined,
+    source,
+    from: params.from || undefined,
+    to: params.to || undefined,
+    page: Math.max(1, params.page),
+    pageSize: params.pageSize,
+  });
+  return bills;
 }
 
 export async function getPriceOnDateAction(

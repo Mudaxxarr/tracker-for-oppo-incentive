@@ -58,6 +58,7 @@ import {
   deletePurchaseAction,
   updatePurchaseAction,
   bulkDeletePurchasesAction,
+  loadPurchaseBillsAction,
   type PurchaseFormState,
 } from "./actions";
 import { toast } from "sonner";
@@ -83,7 +84,7 @@ function percentChangeSafe(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-export function PurchasesClient({ models, initialPurchases, initialFilters, hasDealer, bills, billsTotal, billsPage, billsPageSize, overview, overviewRange, lowStockCount }: Props) {
+export function PurchasesClient({ models, initialPurchases, initialFilters, hasDealer, bills, billsTotal, billsPageSize, overview, overviewRange, lowStockCount }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"records" | "overview">("overview");
@@ -107,12 +108,15 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
     router.replace(`/purchases${search.size ? `?${search}` : ""}`);
   };
 
-  const setBillsPage = (page: number) => {
-    const search = new URLSearchParams();
-    Object.entries(filters).forEach(([k, v]) => { if (v) search.set(k, v); });
-    if (page > 1) search.set("page", String(page));
-    router.replace(`/purchases${search.size ? `?${search}` : ""}`);
-  };
+  const loadMoreBills = (page: number) =>
+    loadPurchaseBillsAction({
+      modelId: filters.modelId,
+      source: filters.source,
+      from: overviewRange.from,
+      to: overviewRange.to,
+      page,
+      pageSize: billsPageSize,
+    });
 
   const handleDelete = (id: string, modelName: string) => {
     setPendingDelete({ id, label: modelName });
@@ -315,37 +319,28 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
         {showMobileFilters ? (
           <Card className="mb-4">
             <CardContent className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2">
-              <Select
-                value={filters.modelId ?? "all"}
-                onValueChange={(v) => updateFilter("modelId", typeof v === "string" && v !== "all" ? v : undefined)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All models" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All models</SelectItem>
-                  {models.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <span className="flex w-full items-center justify-between gap-3">
-                        <span>{m.name}</span>
-                        <span className="text-xs text-muted-foreground tabular-nums">{m.dealerPrice != null ? formatPKR(m.dealerPrice) : "no price"}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={filters.source ?? PURCHASE_SOURCE.REGULAR}
-                onValueChange={(v) => typeof v === "string" && updateFilter("source", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={PURCHASE_SOURCE.REGULAR}>Regular</SelectItem>
-                  <SelectItem value={PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN}>Cross-Region</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">Models</span>
+                <Select
+                  value={filters.modelId ?? "all"}
+                  onValueChange={(v) => updateFilter("modelId", typeof v === "string" && v !== "all" ? v : undefined)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All models" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All models</SelectItem>
+                    {models.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="flex w-full items-center justify-between gap-3">
+                          <span>{m.name}</span>
+                          <span className="text-xs text-muted-foreground tabular-nums">{m.dealerPrice != null ? formatPKR(m.dealerPrice) : "no price"}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground">From date</span>
                 <Input type="date" value={filters.from ?? ""} onChange={(e) => updateFilter("from", e.target.value || undefined)} aria-label="From date" />
@@ -366,7 +361,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
               <PurchaseKpiCard icon={Wallet} label="Total Amount" value={formatPKR(overview.current.totalAmount)} />
               <PurchaseKpiCard icon={Tag} label="Avg. Price" value={formatPKR(overview.current.avgPricePerUnit)} />
             </div>
-            <PurchaseBillTimeline bills={bills} total={billsTotal} page={billsPage} pageSize={billsPageSize} onPageChange={setBillsPage} />
+            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
           </div>
         ) : null}
 
@@ -396,6 +391,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
                 dataKey="amount"
                 variant="sparkline"
                 color="var(--primary-foreground)"
+                dotStroke="var(--primary)"
                 valueFormatter={(v) => formatPKR(v)}
                 className="mt-3"
               />
@@ -460,42 +456,31 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
           <CardTitle className="text-base">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-            <Select
-              value={filters.modelId ?? "all"}
-              onValueChange={(v) =>
-                updateFilter("modelId", typeof v === "string" && v !== "all" ? v : undefined)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All models" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All models</SelectItem>
-                {models.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    <span className="flex w-full items-center justify-between gap-3">
-                      <span>{m.name}</span>
-                      <span className="text-xs text-muted-foreground tabular-nums">{m.dealerPrice != null ? formatPKR(m.dealerPrice) : "no price"}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.source ?? PURCHASE_SOURCE.REGULAR}
-              onValueChange={(v) => typeof v === "string" && updateFilter("source", v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={PURCHASE_SOURCE.REGULAR}>Regular</SelectItem>
-                <SelectItem value={PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN}>
-                  Cross-Region
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Models</span>
+              <Select
+                value={filters.modelId ?? "all"}
+                onValueChange={(v) =>
+                  updateFilter("modelId", typeof v === "string" && v !== "all" ? v : undefined)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All models" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All models</SelectItem>
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      <span className="flex w-full items-center justify-between gap-3">
+                        <span>{m.name}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{m.dealerPrice != null ? formatPKR(m.dealerPrice) : "no price"}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">From date</span>
               <Input
@@ -549,7 +534,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
             <PurchaseKpiCard icon={AlertTriangle} label="Low Stock Risk" value={`${lowStockCount} Model${lowStockCount === 1 ? "" : "s"}`} danger={lowStockCount > 0} />
           </div>
 
-          <PurchaseBillTimeline bills={bills} total={billsTotal} page={billsPage} pageSize={billsPageSize} onPageChange={setBillsPage} />
+          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
         </div>
       ) : null}
 
