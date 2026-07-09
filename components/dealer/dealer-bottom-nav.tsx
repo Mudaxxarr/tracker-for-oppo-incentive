@@ -80,11 +80,11 @@ export function DealerBottomNav({ features }: Props) {
               </button>
             }
           />
-          <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetContent side="right" className="flex flex-col">
             <SheetHeader>
-              <SheetTitle>All Menu</SheetTitle>
+              <SheetTitle className="text-sm font-semibold tracking-tight">More</SheetTitle>
             </SheetHeader>
-            <div className="grid grid-cols-3 gap-2 p-4">
+            <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
               {more.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
@@ -94,14 +94,14 @@ export function DealerBottomNav({ features }: Props) {
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "flex flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-colors",
+                      "flex items-center gap-3 rounded-lg border px-3 py-3 text-sm font-medium transition-colors",
                       active
                         ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border bg-card text-foreground hover:bg-secondary",
+                        : "border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground",
                     )}
                   >
-                    <Icon className="size-5" />
-                    <span className="text-center leading-tight">{item.label}</span>
+                    <Icon className="size-5 shrink-0" />
+                    <span>{item.label}</span>
                   </Link>
                 );
               })}
