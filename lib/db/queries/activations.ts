@@ -4,6 +4,13 @@ import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getPriceOnDate } from "./models";
 import { PURCHASE_SOURCE } from "@/lib/constants";
+import {
+  aggregateActivationStats,
+  type ActivationAggregateStats,
+  type ActivationStatsRow,
+} from "@/lib/activations/activation-stats";
+import { computePreviousPeriod, percentChange } from "@/lib/purchases/purchase-stats";
+import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -199,4 +206,92 @@ export async function deleteActivation(id: string, dealerId: string, tenantId: s
   if (rows.length > 0) {
     await recalculateCrTagsForModel(tenantId, dealerId, rows[0].modelId);
   }
+}
+
+export interface ActivationTargetProgress {
+  targetQty: number | null;
+  actualQty: number;
+  /** actual / target as a percentage, one decimal. null when no target is set. */
+  percent: number | null;
+  bonusPercent: number;
+  eligible: boolean;
+}
+
+export interface ActivationOverviewStats {
+  current: ActivationAggregateStats;
+  previous: ActivationAggregateStats;
+  growthPercent: number | null;
+  previousLabel: { from: string; to: string };
+  /** Base 4% incentive earned in the period (engine, centralized). */
+  baseIncentiveEarned: number;
+  /** All incentive components earned in the period (base + bonus + policies + stock-in). */
+  totalIncentiveEarned: number;
+  targetProgress: ActivationTargetProgress;
+  /** All-time: how much received stock has been activated. */
+  sellThrough: { activatedAllTime: number; receivedAllTime: number; percent: number | null };
+}
+
+/** All-time counts for sell-through: activated units vs total stock ever received
+ *  (received = all purchases, incl. accepted cross-region transfers — per stock formula). */
+async function getSellThroughCounts(tenantId: string, dealerId: string): Promise<{ activated: number; received: number }> {
+  const [act] = await db
+    .select({ n: sql<number>`COUNT(*)` })
+    .from(schema.activations)
+    .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId)));
+  const [pur] = await db
+    .select({ n: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+    .from(schema.purchases)
+    .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId)));
+  return { activated: Number(act.n), received: Number(pur.n) };
+}
+
+export async function getActivationOverviewStats(filters: {
+  tenantId: string;
+  dealerId: string;
+  modelId?: string;
+  from: string;
+  to: string;
+}): Promise<ActivationOverviewStats> {
+  const previousRange = computePreviousPeriod(filters.from, filters.to);
+  const toStatsRows = (rows: ActivationRow[]): ActivationStatsRow[] =>
+    rows.map((r) => ({
+      modelId: r.modelId,
+      modelName: r.modelName,
+      activationDate: r.activationDate,
+      dealerPriceSnapshot: r.dealerPriceSnapshot,
+      isCrossRegion: r.isCrossRegion,
+    }));
+
+  const [currentRows, previousRows, report, allTime] = await Promise.all([
+    listActivations({ tenantId: filters.tenantId, dealerId: filters.dealerId, modelId: filters.modelId, from: filters.from, to: filters.to }),
+    listActivations({ tenantId: filters.tenantId, dealerId: filters.dealerId, modelId: filters.modelId, from: previousRange.from, to: previousRange.to }),
+    buildIncentiveReport({ dealerId: filters.dealerId, periodStart: filters.from, periodEnd: filters.to, dataTenantId: filters.tenantId }),
+    getSellThroughCounts(filters.tenantId, filters.dealerId),
+  ]);
+
+  const current = aggregateActivationStats(toStatsRows(currentRows));
+  const previous = aggregateActivationStats(toStatsRows(previousRows));
+
+  const { targetQty, actualQty, bonusPercent, eligible } = report.targetBonus;
+
+  return {
+    current,
+    previous,
+    growthPercent: percentChange(current.totalActivations, previous.totalActivations),
+    previousLabel: previousRange,
+    baseIncentiveEarned: report.totals.basePercentEarned,
+    totalIncentiveEarned: report.totals.grandTotal,
+    targetProgress: {
+      targetQty,
+      actualQty,
+      percent: targetQty && targetQty > 0 ? Math.round((actualQty / targetQty) * 1000) / 10 : null,
+      bonusPercent,
+      eligible,
+    },
+    sellThrough: {
+      activatedAllTime: allTime.activated,
+      receivedAllTime: allTime.received,
+      percent: allTime.received > 0 ? Math.round((allTime.activated / allTime.received) * 1000) / 10 : null,
+    },
+  };
 }
