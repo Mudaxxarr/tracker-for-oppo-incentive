@@ -17,8 +17,6 @@ import { AdminPreviewBanner } from "@/components/dealer/admin-preview-banner";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { OfflineSync } from "@/components/pwa/offline-sync";
 import { DealerTour } from "@/components/dealer/dealer-tour";
-import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 
 export default async function DealerLayout({
   children,
@@ -62,13 +60,8 @@ export default async function DealerLayout({
   const isGrace = headerStore.get("x-grace") === "true";
   const expirySoonDays = Number(headerStore.get("x-expiry-soon") ?? "0") || null;
 
-  // Test sandbox previews the admin (emerald) theme instead of the dealer
-  // monochrome shell — for prototyping a dealer redesign. Real dealers keep the
-  // current dealer theme.
-  const isTestSandbox = session.tenantId === TEST_SANDBOX_TENANT_ID;
-
   return (
-    <div className={cn(!isTestSandbox && "dealer-apple-shell", "flex min-h-screen flex-col")}>
+    <div className="flex min-h-screen flex-col">
       {isAdminPreview && (
         <AdminPreviewBanner
           tenantId={session.tenantId}
