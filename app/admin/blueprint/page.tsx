@@ -92,10 +92,18 @@ export default function BlueprintPage() {
         <SectionHead num="02" title="Right now — kis ke paas kya hai" sub="Aaj ke din har stage pe mojood features (live)." />
         <div className="grid gap-4 lg:grid-cols-3">
           {/* Test */}
-          <StageCard accent="border-t-amber-500" icon="🧪" name="Test ID" count="0" pill={{ label: "Sandbox", cls: "bg-amber-500/10 text-amber-600" }} sub="Naye features ki pehli jagah.">
-            <div className="rounded-lg border border-dashed border-amber-500 bg-amber-500/10 p-3 text-sm leading-relaxed text-muted-foreground">
-              <b className="text-amber-600">Abhi bana nahi.</b> Test ID (alag dealer login) create hote hi naye features pehle yahan aayenge — phir Admin, phir Dealers.
+          <StageCard accent="border-t-amber-500" icon="🧪" name="Test ID" count="Live" pill={{ label: "Sandbox", cls: "bg-amber-500/10 text-amber-600" }} sub="Naye features ki pehli jagah.">
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm leading-relaxed">
+              <div className="flex items-center gap-2 font-medium text-amber-600"><span>✅</span> TEST — Sandbox ban gaya</div>
+              <p className="mt-1.5 text-muted-foreground">Alag dealer login. Naye dealer-features pehle yahan try hote hain — phir Admin, phir Dealers.</p>
             </div>
+            <p className="mb-1 mt-3 font-mono text-[0.66rem] uppercase tracking-wider text-muted-foreground">Kaise kholo</p>
+            <div className="space-y-1.5">
+              <FeatRow name="Owner Dashboard → Viewing as → Dealer View" />
+              <FeatRow name="Ya seedha dealer login (test sandbox)" />
+            </div>
+            <p className="mb-1 mt-3 font-mono text-[0.66rem] uppercase tracking-wider text-muted-foreground">Abhi ke features</p>
+            <FeatRow name="Naye dealer jaisa included set" note="base plan" />
           </StageCard>
 
           {/* Admin (live from NAV_ITEMS) */}
