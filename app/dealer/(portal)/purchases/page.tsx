@@ -76,6 +76,7 @@ export default async function DealerPurchasesPage({
       role={session.role as "admin" | "exec"}
       backdateDays={backdateDays}
       canBulk={isFeatureKeyOn(features, "pur_bulk")}
+      canOverview={isFeatureKeyOn(features, "pur_overview")}
       bills={billsResult.bills}
       billsTotal={billsResult.total}
       billsPageSize={BILLS_PAGE_SIZE}

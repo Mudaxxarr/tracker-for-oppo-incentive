@@ -57,6 +57,7 @@ interface Props {
   role: "admin" | "exec";
   backdateDays: number;
   canBulk: boolean;
+  canOverview: boolean;
   bills: BillGroup[];
   billsTotal: number;
   billsPageSize: number;
@@ -79,6 +80,7 @@ export function DealerPurchasesClient({
   role,
   backdateDays,
   canBulk,
+  canOverview,
   bills,
   billsTotal,
   billsPageSize,
@@ -312,6 +314,34 @@ export function DealerPurchasesClient({
       </SheetContent>
     </Sheet>
   );
+
+  if (!canOverview) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">Purchases</h1>
+            <p className="text-sm text-muted-foreground">Stock arriving at your dealer ID. 4% only triggers on activation.</p>
+          </div>
+          {addButton}
+        </div>
+        {!hasDealer ? (
+          <Card>
+            <CardHeader className="flex-row items-center gap-2">
+              <AlertCircle className="size-5 text-amber-500" />
+              <CardTitle>No active Dealer ID</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">Create a Dealer ID first on the IDs page.</CardContent>
+          </Card>
+        ) : null}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Filters</CardTitle></CardHeader>
+          <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{filterControls}</div></CardContent>
+        </Card>
+        {recordsTable}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

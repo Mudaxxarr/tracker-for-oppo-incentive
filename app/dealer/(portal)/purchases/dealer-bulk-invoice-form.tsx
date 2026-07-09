@@ -52,10 +52,7 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
   useEffect(() => {
     if (state.ok) {
       toast.success(`Invoice recorded: ${state.inserted} line(s)`);
-      setInvoiceNumber("");
-      setNotes("");
-      setLines([newLine()]);
-      onSuccess?.();
+      onSuccess?.(); // closes the sheet → form unmounts, so no manual reset needed
     } else if (state.error) {
       toast.error(state.error);
     }
@@ -95,7 +92,6 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
 
   const submitDisabled =
     pending ||
-    !invoiceNumber.trim() ||
     lines.length === 0 ||
     lines.some(
       (l) =>
@@ -126,12 +122,11 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
     <form action={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Invoice #</label>
+          <label className="text-sm font-medium">Invoice # <span className="text-muted-foreground">(optional)</span></label>
           <Input
             value={invoiceNumber}
             onChange={(e) => setInvoiceNumber(e.target.value)}
             placeholder="e.g., INV-2026-0123"
-            required
           />
         </div>
         <div className="space-y-1.5">

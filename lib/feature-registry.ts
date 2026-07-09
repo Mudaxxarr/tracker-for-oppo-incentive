@@ -27,6 +27,7 @@ export const FEATURE_REGISTRY: FeatureGroup[] = [
     children: [
       { key: "act_bulk", label: "Bulk add by date", hint: "Add many activations for one date at once", defaultOn: true, monthlyPrice: null, trialDays: 7 },
       { key: "act_bulk_delete", label: "Bulk delete", hint: "Select & delete multiple activations", defaultOn: true, monthlyPrice: null, trialDays: 7 },
+      { key: "act_overview", label: "Activation Overview & Analytics", hint: "KPIs, charts, incentive & target insights", defaultOn: false, monthlyPrice: 300, trialDays: 7, badge: "new" },
     ],
   },
   {
@@ -34,6 +35,7 @@ export const FEATURE_REGISTRY: FeatureGroup[] = [
     defaultOn: true, monthlyPrice: null, trialDays: 7,
     children: [
       { key: "pur_bulk", label: "Bulk invoice entry", hint: "Enter a full invoice (many lines) at once", defaultOn: true, monthlyPrice: null, trialDays: 7 },
+      { key: "pur_overview", label: "Purchase Overview & Analytics", hint: "KPIs, charts, and the day-wise bill timeline", defaultOn: false, monthlyPrice: 300, trialDays: 7, badge: "new" },
     ],
   },
   {

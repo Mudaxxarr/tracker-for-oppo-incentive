@@ -67,6 +67,7 @@ export default async function DealerActivationsPage({
       role={session.role as "admin" | "exec"}
       canBulk={isFeatureKeyOn(features, "act_bulk")}
       canBulkDelete={isFeatureKeyOn(features, "act_bulk_delete")}
+      canOverview={isFeatureKeyOn(features, "act_overview")}
       overview={overview}
       overviewRange={{ from: overviewFrom, to: overviewTo }}
       basePercent={constants.basePercent}

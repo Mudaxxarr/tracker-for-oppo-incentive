@@ -59,6 +59,7 @@ interface Props {
   role: "admin" | "exec";
   canBulk: boolean;
   canBulkDelete: boolean;
+  canOverview: boolean;
   overview: ActivationOverviewStats | null;
   overviewRange: { from: string; to: string };
   basePercent: number;
@@ -75,6 +76,7 @@ export function DealerActivationsClient({
   role,
   canBulk,
   canBulkDelete,
+  canOverview,
   overview,
   overviewRange,
   basePercent,
@@ -351,6 +353,25 @@ export function DealerActivationsClient({
       </SheetContent>
     </Sheet>
   ) : null;
+
+  if (!canOverview) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">Activations</h1>
+            <p className="text-sm text-muted-foreground">Each row locks the dealer price effective on activation date.</p>
+          </div>
+          {addButton}
+        </div>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Filters</CardTitle></CardHeader>
+          <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-4">{filterControls}</div></CardContent>
+        </Card>
+        {recordsTable}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
