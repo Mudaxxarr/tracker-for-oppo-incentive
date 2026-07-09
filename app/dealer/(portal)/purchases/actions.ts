@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
-import { createPurchase, deletePurchase, getPurchaseById, getStockForModel, getNextBillNumber } from "@/lib/db/queries/purchases";
+import { createPurchase, deletePurchase, getPurchaseById, getStockForModel, getNextBillNumber, listPurchaseBills } from "@/lib/db/queries/purchases";
+import type { BillGroup } from "@/lib/purchases/purchase-stats";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
@@ -235,4 +236,33 @@ export async function deleteDealerPurchaseAction(id: string): Promise<{ error?: 
   revalidatePath("/dealer/dashboard");
   await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, purchase.modelId, purchase.purchaseDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return {};
+}
+
+export async function loadDealerPurchaseBillsAction(params: {
+  modelId?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+  page: number;
+  pageSize: number;
+}): Promise<BillGroup[]> {
+  const session = await getDealerSession();
+  if (!session) return [];
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  if (!dealerId) return [];
+  const source =
+    params.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN
+      ? PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN
+      : PURCHASE_SOURCE.REGULAR;
+  const { bills } = await listPurchaseBills({
+    tenantId: session.tenantId,
+    dealerId,
+    modelId: params.modelId || undefined,
+    source,
+    from: params.from || undefined,
+    to: params.to || undefined,
+    page: Math.max(1, params.page),
+    pageSize: params.pageSize,
+  });
+  return bills;
 }
