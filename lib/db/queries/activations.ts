@@ -6,7 +6,9 @@ import { getPriceOnDate } from "./models";
 import { PURCHASE_SOURCE } from "@/lib/constants";
 import {
   aggregateActivationStats,
+  groupActivationsByDate,
   type ActivationAggregateStats,
+  type ActivationDateGroup,
   type ActivationStatsRow,
 } from "@/lib/activations/activation-stats";
 import { computePreviousPeriod, percentChange } from "@/lib/purchases/purchase-stats";
@@ -229,6 +231,8 @@ export interface ActivationOverviewStats {
   targetProgress: ActivationTargetProgress;
   /** All-time: how much received stock has been activated. */
   sellThrough: { activatedAllTime: number; receivedAllTime: number; percent: number | null };
+  /** Day-wise groups (newest first) for the activation timeline. */
+  timeline: ActivationDateGroup[];
 }
 
 /** All-time counts for sell-through: activated units vs total stock ever received
@@ -269,7 +273,8 @@ export async function getActivationOverviewStats(filters: {
     getSellThroughCounts(filters.tenantId, filters.dealerId),
   ]);
 
-  const current = aggregateActivationStats(toStatsRows(currentRows));
+  const currentStatsRows = toStatsRows(currentRows);
+  const current = aggregateActivationStats(currentStatsRows);
   const previous = aggregateActivationStats(toStatsRows(previousRows));
 
   const { targetQty, actualQty, bonusPercent, eligible } = report.targetBonus;
@@ -293,5 +298,6 @@ export async function getActivationOverviewStats(filters: {
       receivedAllTime: allTime.received,
       percent: allTime.received > 0 ? Math.round((allTime.activated / allTime.received) * 1000) / 10 : null,
     },
+    timeline: groupActivationsByDate(currentStatsRows),
   };
 }
