@@ -54,3 +54,7 @@ export const OWNER_STAFF_SESSION_COOKIE = "oppo_staff_session";
 export type StaffRole = "so" | "accountant";
 
 export const DEALER_TEAM_LIMIT = 2;
+
+/** Sandbox dealer tenant used by the owner's "Dealer View" preview switcher.
+ *  New dealer-facing features are tried here before real dealers get them. */
+export const TEST_SANDBOX_TENANT_ID = "b861c17d-adea-4843-803f-903fbe87aa22";

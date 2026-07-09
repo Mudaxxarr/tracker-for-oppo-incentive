@@ -7,8 +7,11 @@ import { sumRebatesForPeriod, listRebatesForDealerInPeriod } from "@/lib/db/quer
 import { db, schema } from "@/lib/db/client";
 import { and, eq, sql } from "drizzle-orm";
 import { getConstants } from "@/lib/settings";
+import { isAuthenticated } from "@/lib/auth";
+import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardClient } from "./dashboard-analytics";
+import { ViewSwitcher } from "./view-switcher";
 import { getModelSalesAction } from "./actions";
 import Link from "next/link";
 import { ArrowLeftRight } from "lucide-react";
@@ -89,8 +92,15 @@ export default async function DashboardPage() {
 
   const totalCrRemaining = crStock.reduce((s, r) => s + r.crRemaining, 0);
 
+  const isOwner = await isAuthenticated();
+
   return (
     <div className="space-y-4">
+      {isOwner && (
+        <div className="flex justify-end">
+          <ViewSwitcher testTenantId={TEST_SANDBOX_TENANT_ID} />
+        </div>
+      )}
       {crStock.length > 0 && (
         <Card className="border-blue-200 bg-blue-50/60 dark:border-blue-800 dark:bg-blue-950/30">
           <CardHeader className="pb-2 pt-4">
