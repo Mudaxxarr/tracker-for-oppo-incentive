@@ -21,6 +21,7 @@ export default async function AdminLayout({
     { href: "/admin/revenue", label: "Revenue", badge: null },
     { href: "/admin/previews", label: "Features", badge: null },
     { href: "/admin/rollout", label: "Rollout", badge: null },
+    { href: "/admin/blueprint", label: "Blueprint", badge: null },
     { href: "/admin/alerts", label: "Alerts", badge: unreadAlerts > 0 ? unreadAlerts : null },
     { href: "/admin/staff", label: "Staff", badge: null },
   ];
