@@ -5,7 +5,9 @@ import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { createCrossRegion, submitCrossRegionForApproval, deleteCrossRegion } from "@/lib/db/queries/transfers";
-import { OWNER_TENANT_ID } from "@/lib/dealer";
+import { getMinForwardStock } from "@/lib/db/queries/purchases";
+import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
+import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { logAudit } from "@/lib/audit";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
@@ -205,4 +207,72 @@ export async function deleteDealerCrossRegionAction(id: string): Promise<void> {
   });
   revalidatePath("/dealer/cross-region");
   revalidatePath("/dealer/dashboard");
+}
+
+export type DealerOutwardState = { error?: string; ok?: boolean; pendingApproval?: boolean };
+
+const DealerOutwardSchema = z.object({
+  modelId: z.string().min(1, "Choose a model"),
+  quantity: z.coerce.number().int().positive("Enter the quantity caught"),
+  fineAmount: z.coerce.number().min(0).optional(),
+  caughtDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  note: z.string().max(500).optional().nullable(),
+});
+
+/** Dealer reports stock that left their ID cross-region (outward / caught).
+ *  Always pending owner approval — approval deducts the stock. Dealers cannot
+ *  log cash-only fines (owner-only), so quantity must be > 0. */
+export async function dealerCrOutwardAction(
+  _prev: DealerOutwardState,
+  fd: FormData,
+): Promise<DealerOutwardState> {
+  const session = await getDealerSession();
+  if (!session) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = session.tenantId;
+
+  const parsed = DealerOutwardSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { modelId, quantity, fineAmount, caughtDate, note } = parsed.data;
+
+  const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
+  if (stock < quantity) return { error: `Only ${stock} unit(s) in stock from ${caughtDate} onward` };
+
+  const priceInfo = await getPriceOnDate(tenantId, modelId, caughtDate);
+  const priceSnap = priceInfo?.dealerPrice ?? 0;
+
+  const m = await getModelById(modelId);
+  const id = await createCrCaught({
+    tenantId,
+    dealerId,
+    modelId,
+    quantity,
+    fineAmount: fineAmount ?? 0,
+    caughtDate,
+    dealerPriceSnapshot: priceSnap,
+    note: note ?? null,
+    status: "pending_owner_approval",
+  });
+
+  await createOwnerAlert({
+    tenantId,
+    type: OWNER_ALERT_TYPE.CR_CAUGHT_PENDING_APPROVAL,
+    entityType: "cr_caught",
+    entityId: id,
+    dealerId,
+    message: `⚠ [Dealer] Cross-region OUTWARD: ${quantity} × ${m?.name ?? "?"} leaving ID on ${caughtDate}. Investigate before approving — approval deducts this stock.`,
+  });
+
+  await logAudit({
+    action: "cr_caught.create",
+    entityType: "cr_caught",
+    entityId: id,
+    dealerId,
+    summary: `[Dealer] CR outward reported: ${quantity} × ${m?.name ?? "?"} on ${caughtDate} (pending approval)`,
+  });
+
+  revalidatePath("/dealer/cross-region");
+  revalidatePath("/dealer/dashboard");
+  return { ok: true, pendingApproval: true };
 }

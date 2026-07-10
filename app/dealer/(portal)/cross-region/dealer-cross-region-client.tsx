@@ -25,52 +25,47 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   createCrossRegionAction,
   deleteDealerCrossRegionAction,
   editDealerCrossRegionAction,
   submitCrossRegionForApprovalAction,
+  dealerCrOutwardAction,
   type CrossRegionFormState,
+  type DealerOutwardState,
 } from "./actions";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPKR } from "@/lib/format";
 import { CROSS_REGION_STATUS, type CrossRegionStatus } from "@/lib/constants";
-import { CheckCircle2, XCircle, Trash2, ArrowRightCircle, Pencil } from "lucide-react";
+import { CheckCircle2, Trash2, ArrowRightCircle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { CrossRegionRow } from "@/lib/db/queries/transfers";
+import type { CrCaughtRow } from "@/lib/db/queries/cr-caught";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import { HelpTip } from "@/components/dealer/help-tip";
 
 interface Props {
   models: ModelWithCurrentPrice[];
   initialTransfers: CrossRegionRow[];
+  initialCrCaughtRows: CrCaughtRow[];
   hasDealer: boolean;
 }
 
-const STATUS_LABEL: Record<CrossRegionStatus, string> = {
-  PENDING_REPORT: "Pending",
-  PENDING_OWNER_APPROVAL: "Awaiting Owner Approval",
-  SHIFTED_TO_MY_ID: "Shifted to My ID",
-  REJECTED: "Rejected",
-};
-
-export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }: Props) {
+export function DealerCrossRegionClient({ models, initialTransfers, initialCrCaughtRows, hasDealer }: Props) {
   const router = useRouter();
-  const [createState, createAction, createPending] = useActionState<CrossRegionFormState, FormData>(
-    createCrossRegionAction,
-    {},
-  );
-  const [editState, editAction, editPending] = useActionState<CrossRegionFormState, FormData>(
-    editDealerCrossRegionAction,
-    {},
-  );
+  const [createState, createAction, createPending] = useActionState<CrossRegionFormState, FormData>(createCrossRegionAction, {});
+  const [editState, editAction, editPending] = useActionState<CrossRegionFormState, FormData>(editDealerCrossRegionAction, {});
+  const [outwardState, outwardAction, outwardPending] = useActionState<DealerOutwardState, FormData>(dealerCrOutwardAction, {});
   const [, startTransition] = useTransition();
   const [editRow, setEditRow] = useState<CrossRegionRow | null>(null);
   const [modelId, setModelId] = useState("");
+  const [outwardModelId, setOutwardModelId] = useState("");
 
   useEffect(() => {
     if (createState.ok) {
       toast.success("Cross-region transfer reported");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the field in response to a server-action result
       setModelId("");
       router.refresh();
     } else if (createState.error) {
@@ -81,12 +76,24 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
   useEffect(() => {
     if (editState.ok) {
       toast.success("Transfer updated");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- close the edit sheet in response to a server-action result
       setEditRow(null);
       router.refresh();
     } else if (editState.error) {
       toast.error(editState.error);
     }
-  }, [editState]);
+  }, [editState, router]);
+
+  useEffect(() => {
+    if (outwardState.ok) {
+      toast.success("Cross-region outward reported — waiting for owner approval");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the field in response to a server-action result
+      setOutwardModelId("");
+      router.refresh();
+    } else if (outwardState.error) {
+      toast.error(outwardState.error);
+    }
+  }, [outwardState, router]);
 
   const handleSubmitForApproval = (id: string) => {
     if (!confirm("Submit this transfer for owner approval? Stock will not move until the owner approves.")) return;
@@ -99,8 +106,7 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Delete this cross-region row and any auto-created purchases? This cannot be undone."))
-      return;
+    if (!confirm("Delete this cross-region row and any auto-created purchases? This cannot be undone.")) return;
     startTransition(async () => {
       try {
         await deleteDealerCrossRegionAction(id);
@@ -114,14 +120,16 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
 
   const today = new Date().toISOString().slice(0, 10);
 
+  const activeModels = models.filter((m) => m.isActive);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold inline-flex items-center gap-1.5">
-          Cross-Region transfers <HelpTip term="cr-exposure" />
+          Cross-Region <HelpTip term="cr-exposure" />
         </h1>
         <p className="text-sm text-muted-foreground">
-          Report stock that OPPO has sent (or is about to send) into your dealer ID from another region.
+          Stock coming INTO your ID from another region (inward), and stock caught leaving your ID (outward).
         </p>
       </div>
 
@@ -132,128 +140,186 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Report new transfer</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={createAction} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-              <input type="hidden" name="modelId" value={modelId} />
-              <div className="sm:col-span-2">
-                <Select value={modelId} onValueChange={(v) => typeof v === "string" && setModelId(v)}>
-                  <SelectTrigger className="w-full">
-                    <span className={modelId ? "" : "text-muted-foreground"}>
-                      {models.find((m) => m.id === modelId)?.name ?? "Choose model…"}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.filter((m) => m.isActive).map((m) => (
-                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Input name="quantity" type="number" min={1} placeholder="Quantity" required />
-              <Input name="reportedDate" type="date" defaultValue={today} required />
-              <Input name="sourceRegionNote" placeholder="Source region (note)" />
-              <Button type="submit" className="sm:col-span-5" disabled={createPending || !modelId}>
-                {createPending ? "Reporting…" : "Report transfer"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+        <Tabs defaultValue="inward" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="inward">Received (CR IN)</TabsTrigger>
+            <TabsTrigger value="outward">Outward (CR OUT)</TabsTrigger>
+          </TabsList>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead>Reported</TableHead>
-                  <TableHead>Shifted</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[200px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {initialTransfers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                      No cross-region transfers reported.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  initialTransfers.map((t) => {
-                    const status = t.status as CrossRegionStatus;
-                    return (
-                      <TableRow key={t.id}>
-                        <TableCell className="font-medium">{t.modelName}</TableCell>
-                        <TableCell label="Qty" className="text-right tabular-nums">{t.quantity}</TableCell>
-                        <TableCell label="Reported">{formatDate(t.reportedDate)}</TableCell>
-                        <TableCell label="Shifted">{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
-                        <TableCell label="Source" className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
-                        <TableCell label="Status">
-                          {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
-                            <Badge variant="outline">Pending</Badge>
-                          ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
-                            <Badge variant="secondary">Awaiting Approval</Badge>
-                          ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
-                            <Badge>Shifted</Badge>
-                          ) : (
-                            <Badge variant="destructive">Rejected</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
-                              <>
-                                <Button
-                                  size="icon-sm"
-                                  variant="ghost"
-                                  aria-label="Edit"
-                                  onClick={() => setEditRow(t)}
-                                >
-                                  <Pencil className="size-4" />
-                                </Button>
-                                <Button
-                                  size="icon-sm"
-                                  variant="ghost"
-                                  aria-label="Submit for owner approval"
-                                  onClick={() => handleSubmitForApproval(t.id)}
-                                >
-                                  <ArrowRightCircle className="size-4" />
-                                </Button>
-                              </>
-                            ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
-                              <span className="text-xs text-muted-foreground">Waiting for owner…</span>
-                            ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
-                              <span className="text-xs text-muted-foreground">
-                                <CheckCircle2 className="mr-1 inline size-3.5" /> Done
-                              </span>
-                            ) : null}
-                            <Button
-                              size="icon-sm"
-                              variant="ghost"
-                              aria-label="Delete"
-                              onClick={() => handleDelete(t.id)}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+          {/* ── INWARD (CR IN) ── */}
+          <TabsContent value="inward" className="space-y-4">
+            <Card>
+              <CardHeader><CardTitle className="text-base">Report new transfer</CardTitle></CardHeader>
+              <CardContent>
+                <form action={createAction} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+                  <input type="hidden" name="modelId" value={modelId} />
+                  <div className="sm:col-span-2">
+                    <Select value={modelId} onValueChange={(v) => typeof v === "string" && setModelId(v)}>
+                      <SelectTrigger className="w-full">
+                        <span className={modelId ? "" : "text-muted-foreground"}>
+                          {models.find((m) => m.id === modelId)?.name ?? "Choose model…"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeModels.map((m) => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input name="quantity" type="number" min={1} placeholder="Quantity" required />
+                  <Input name="reportedDate" type="date" defaultValue={today} required />
+                  <Input name="sourceRegionNote" placeholder="Source region (note)" />
+                  <Button type="submit" className="sm:col-span-5" disabled={createPending || !modelId}>
+                    {createPending ? "Reporting…" : "Report transfer"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Model</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead>Reported</TableHead>
+                        <TableHead>Shifted</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-[200px]">Actions</TableHead>
                       </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {initialTransfers.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No cross-region transfers reported.</TableCell>
+                        </TableRow>
+                      ) : initialTransfers.map((t) => {
+                        const status = t.status as CrossRegionStatus;
+                        return (
+                          <TableRow key={t.id}>
+                            <TableCell className="font-medium">{t.modelName}</TableCell>
+                            <TableCell label="Qty" className="text-right tabular-nums">{t.quantity}</TableCell>
+                            <TableCell label="Reported">{formatDate(t.reportedDate)}</TableCell>
+                            <TableCell label="Shifted">{t.shiftedToIdDate ? formatDate(t.shiftedToIdDate) : "—"}</TableCell>
+                            <TableCell label="Source" className="text-muted-foreground">{t.sourceRegionNote ?? "—"}</TableCell>
+                            <TableCell label="Status">
+                              {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
+                                <Badge variant="outline">Pending</Badge>
+                              ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
+                                <Badge variant="secondary">Awaiting Approval</Badge>
+                              ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
+                                <Badge>Shifted</Badge>
+                              ) : (
+                                <Badge variant="destructive">Rejected</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
+                                  <>
+                                    <Button size="icon-sm" variant="ghost" aria-label="Edit" onClick={() => setEditRow(t)}><Pencil className="size-4" /></Button>
+                                    <Button size="icon-sm" variant="ghost" aria-label="Submit for owner approval" onClick={() => handleSubmitForApproval(t.id)}><ArrowRightCircle className="size-4" /></Button>
+                                  </>
+                                ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
+                                  <span className="text-xs text-muted-foreground">Waiting for owner…</span>
+                                ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
+                                  <span className="text-xs text-muted-foreground"><CheckCircle2 className="mr-1 inline size-3.5" /> Done</span>
+                                ) : null}
+                                <Button size="icon-sm" variant="ghost" aria-label="Delete" onClick={() => handleDelete(t.id)}><Trash2 className="size-4" /></Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── OUTWARD (CR OUT) ── */}
+          <TabsContent value="outward" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Report outward (stock caught leaving your ID)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Reports stock that left your ID cross-region. Goes to the owner for approval — approval deducts this stock from your inventory.
+                </p>
+                <form action={outwardAction} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+                  <input type="hidden" name="modelId" value={outwardModelId} />
+                  <div className="sm:col-span-2">
+                    <Select value={outwardModelId} onValueChange={(v) => typeof v === "string" && setOutwardModelId(v)}>
+                      <SelectTrigger className="w-full">
+                        <span className={outwardModelId ? "" : "text-muted-foreground"}>
+                          {models.find((m) => m.id === outwardModelId)?.name ?? "Choose model…"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeModels.map((m) => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input name="quantity" type="number" min={1} placeholder="Qty caught" required />
+                  <Input name="caughtDate" type="date" defaultValue={today} required />
+                  <Input name="fineAmount" type="number" min={0} step="any" placeholder="Fine ₨ (optional)" />
+                  <Input name="note" placeholder="Note (optional)" className="sm:col-span-4" />
+                  <Button type="submit" className="sm:col-span-5" disabled={outwardPending || !outwardModelId}>
+                    {outwardPending ? "Reporting…" : "Report outward"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Model</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Fine ₨</TableHead>
+                        <TableHead>Caught</TableHead>
+                        <TableHead>Note</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {initialCrCaughtRows.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No outward (caught) entries.</TableCell>
+                        </TableRow>
+                      ) : initialCrCaughtRows.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">{c.modelName}</TableCell>
+                          <TableCell label="Qty" className="text-right tabular-nums">{c.quantity}</TableCell>
+                          <TableCell label="Fine ₨" className="text-right tabular-nums">{c.fineAmount ? formatPKR(c.fineAmount) : "—"}</TableCell>
+                          <TableCell label="Caught">{formatDate(c.caughtDate)}</TableCell>
+                          <TableCell label="Note" className="text-muted-foreground">{c.note ?? "—"}</TableCell>
+                          <TableCell label="Status">
+                            {c.status === "pending_owner_approval" ? (
+                              <Badge variant="secondary">Awaiting Approval</Badge>
+                            ) : c.status === "rejected" ? (
+                              <Badge variant="destructive">Rejected</Badge>
+                            ) : (
+                              <Badge>Deducted</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
 
       <Sheet open={!!editRow} onOpenChange={(o) => { if (!o) setEditRow(null); }}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
@@ -266,30 +332,15 @@ export function DealerCrossRegionClient({ models, initialTransfers, hasDealer }:
                 <input type="hidden" name="id" value={editRow.id} />
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Quantity</label>
-                  <Input
-                    name="quantity"
-                    type="number"
-                    min={1}
-                    defaultValue={editRow.quantity}
-                    required
-                  />
+                  <Input name="quantity" type="number" min={1} defaultValue={editRow.quantity} required />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Reported date</label>
-                  <Input
-                    name="reportedDate"
-                    type="date"
-                    defaultValue={editRow.reportedDate}
-                    required
-                  />
+                  <Input name="reportedDate" type="date" defaultValue={editRow.reportedDate} required />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Source region note</label>
-                  <Input
-                    name="sourceRegionNote"
-                    defaultValue={editRow.sourceRegionNote ?? ""}
-                    placeholder="e.g. Lahore"
-                  />
+                  <Input name="sourceRegionNote" defaultValue={editRow.sourceRegionNote ?? ""} placeholder="e.g. Lahore" />
                 </div>
                 <Button type="submit" className="w-full" disabled={editPending}>
                   {editPending ? "Saving…" : "Save Changes"}
