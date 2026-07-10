@@ -11,6 +11,7 @@ import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { logAudit } from "@/lib/audit";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { OWNER_ALERT_TYPE } from "@/lib/constants";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 
 export type CrossRegionFormState = { error?: string; ok?: boolean };
 
@@ -239,7 +240,8 @@ export async function dealerCrOutwardAction(
   const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
   if (stock < quantity) return { error: `Only ${stock} unit(s) in stock from ${caughtDate} onward` };
 
-  const priceInfo = await getPriceOnDate(tenantId, modelId, caughtDate);
+  // Prices are owner-configured (single source of truth) — snapshot from OWNER_TENANT_ID.
+  const priceInfo = await getPriceOnDate(OWNER_TENANT_ID, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;
 
   const m = await getModelById(modelId);

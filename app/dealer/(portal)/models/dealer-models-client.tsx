@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +8,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { DealerManageModelSheet } from "./dealer-manage-sheet";
-import { syncDealerActivationPricesAction } from "./actions";
 import { formatDate, formatPKR } from "@/lib/format";
-import { RefreshCw, Settings2, Smartphone } from "lucide-react";
-import { toast } from "sonner";
+import { Eye, Smartphone } from "lucide-react";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { ModelPriceHistory } from "@/lib/db/schema";
 import type { RebateRow } from "@/lib/db/queries/rebates";
@@ -21,46 +18,19 @@ interface Props {
   models: ModelWithCurrentPrice[];
   history: Record<string, ModelPriceHistory[]>;
   rebates: Record<string, RebateRow[]>;
-  role: "admin" | "exec";
 }
 
-export function DealerModelsClient({ models, history, rebates, role }: Props) {
-  const router = useRouter();
-  const [manageId, setManageId] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [, startTransition] = useTransition();
-
-  const onSyncPrices = () => {
-    setSyncing(true);
-    startTransition(async () => {
-      const r = await syncDealerActivationPricesAction();
-      setSyncing(false);
-      if (r.ok) {
-        toast.success(`Prices synced — ${r.modelsProcessed} model(s) processed`);
-        router.refresh();
-      } else {
-        toast.error(r.error ?? "Sync failed");
-      }
-    });
-  };
-
-  const managed = manageId ? models.find((m) => m.id === manageId) : null;
+export function DealerModelsClient({ models, history, rebates }: Props) {
+  const [viewId, setViewId] = useState<string | null>(null);
+  const viewing = viewId ? models.find((m) => m.id === viewId) : null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Models & Prices</h1>
-          <p className="text-sm text-muted-foreground">
-            Product catalog. Prices you set here apply to your dealer account only.
-          </p>
-        </div>
-        {role === "admin" && (
-          <Button variant="outline" onClick={onSyncPrices} disabled={syncing}>
-            <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing…" : "Sync Prices"}
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold">Models &amp; Prices</h1>
+        <p className="text-sm text-muted-foreground">
+          Product catalog. Prices are set centrally by OPPO and apply to every dealer automatically.
+        </p>
       </div>
 
       {models.length === 0 ? (
@@ -86,7 +56,7 @@ export function DealerModelsClient({ models, history, rebates, role }: Props) {
                     <TableHead className="text-right">Invoice ₨</TableHead>
                     <TableHead className="text-right">Price entries</TableHead>
                     <TableHead />
-                    {role === "admin" && <TableHead className="w-12" />}
+                    <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -114,18 +84,16 @@ export function DealerModelsClient({ models, history, rebates, role }: Props) {
                         <TableCell>
                           {m.isActive ? null : <Badge variant="secondary">Inactive</Badge>}
                         </TableCell>
-                        {role === "admin" && (
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Manage"
-                              onClick={() => setManageId(m.id)}
-                            >
-                              <Settings2 className="size-4" />
-                            </Button>
-                          </TableCell>
-                        )}
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="View price history"
+                            onClick={() => setViewId(m.id)}
+                          >
+                            <Eye className="size-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -136,12 +104,12 @@ export function DealerModelsClient({ models, history, rebates, role }: Props) {
         </Card>
       )}
 
-      {managed ? (
+      {viewing ? (
         <DealerManageModelSheet
-          model={managed}
-          history={history[managed.id] ?? []}
-          rebates={rebates[managed.id] ?? []}
-          onClose={() => setManageId(null)}
+          model={viewing}
+          history={history[viewing.id] ?? []}
+          rebates={rebates[viewing.id] ?? []}
+          onClose={() => setViewId(null)}
         />
       ) : null}
     </div>

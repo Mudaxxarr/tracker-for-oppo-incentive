@@ -28,8 +28,8 @@ export function DealerBottomNav({ features }: Props) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const enabled = DEALER_NAV.filter((item) => !item.feature || isFeatureEnabled(features, item.feature));
-  // Four quick items in the bar; everything else lives behind "More".
-  const primary = enabled.filter((i) => i.primaryMobile).slice(0, 4);
+  // Five quick items in the bar (matches the admin/owner mobile nav); everything else lives behind "More".
+  const primary = enabled.filter((i) => i.primaryMobile).slice(0, 5);
   const primaryHrefs = new Set(primary.map((i) => i.href));
   const more = enabled.filter((i) => !primaryHrefs.has(i.href));
 

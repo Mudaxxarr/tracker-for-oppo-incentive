@@ -51,6 +51,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "periodEnd must be on or after periodStart" }, { status: 400 });
   }
 
+  try {
   const [dealerRow, report] = await Promise.all([
     db
       .select({ name: schema.dealerIds.name })
@@ -162,4 +163,11 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ error: "Unknown format" }, { status: 400 });
+  } catch (err) {
+    console.error("[dealer-report] generation failed", err);
+    return NextResponse.json(
+      { error: "Report generation failed. Try a shorter period, or contact support." },
+      { status: 500 },
+    );
+  }
 }

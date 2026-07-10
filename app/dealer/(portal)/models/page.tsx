@@ -20,9 +20,11 @@ export default async function DealerModelsPage() {
   // Models list with OWNER reference prices (master catalog)
   const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
 
-  // Dealer's own price history + rebates (both scoped to session.tenantId)
+  // Owner (central) price history + this dealer's own rebate ledger.
+  // Prices are owner-configured and drive every dealer's financials, so the
+  // authoritative timeline lives on OWNER_TENANT_ID; rebates stay per-dealer.
   const [historyPairs, rebatePairs] = await Promise.all([
-    Promise.all(models.map(async (m) => [m.id, await listPriceHistory(session.tenantId, m.id)] as const)),
+    Promise.all(models.map(async (m) => [m.id, await listPriceHistory(OWNER_TENANT_ID, m.id)] as const)),
     Promise.all(models.map(async (m) => [m.id, await listRebatesForModel(session.tenantId, m.id)] as const)),
   ]);
 
@@ -34,7 +36,6 @@ export default async function DealerModelsPage() {
       models={models}
       history={history}
       rebates={rebates}
-      role={session.role as "admin" | "exec"}
     />
   );
 }

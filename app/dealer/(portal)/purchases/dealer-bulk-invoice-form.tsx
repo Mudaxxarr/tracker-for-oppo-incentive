@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,6 +43,7 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
     createDealerBulkPurchasesAction,
     {},
   );
+  const [, startTransition] = useTransition();
   const [purchaseDate, setPurchaseDate] = useState(today);
   const [source, setSource] = useState<string>(PURCHASE_SOURCE.REGULAR);
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -101,7 +102,8 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
         Number(l.unitInvoicePrice) < 0,
     );
 
-  const onSubmit = (formData: FormData) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     const payload = {
       purchaseDate,
       source,
@@ -114,12 +116,13 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
         unitInvoicePrice: Number(l.unitInvoicePrice),
       })),
     };
-    formData.set("payload", JSON.stringify(payload));
-    action(formData);
+    const fd = new FormData();
+    fd.set("payload", JSON.stringify(payload));
+    startTransition(() => action(fd));
   };
 
   return (
-    <form action={onSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Invoice # <span className="text-muted-foreground">(optional)</span></label>

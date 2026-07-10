@@ -11,6 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { formatPKR } from "@/lib/format";
+import { toast } from "sonner";
 import { FileBarChart2, FileSpreadsheet, ChevronDown, Lock, Check } from "lucide-react";
 import { DEALER_ADDONS, type DealerAddonKey } from "@/lib/dealer-addons";
 import { HelpTip } from "@/components/dealer/help-tip";
@@ -31,6 +32,40 @@ interface Props {
   policies: PolicyAchievementEntry[];
   hasDealer: boolean;
   addons: AddonState;
+}
+
+/**
+ * Blob-fetch download. Installed PWAs (standalone / Capacitor WebView) can blank
+ * out or "crash" when an <a target="_blank"> points at an attachment URL, so we
+ * fetch the file, hand it to a temporary <a download>, and keep the app intact.
+ * Server errors surface as a toast instead of a broken tab.
+ */
+async function downloadReport(href: string, label: string) {
+  const tid = toast.loading(`Preparing ${label}…`);
+  try {
+    const res = await fetch(href, { credentials: "same-origin" });
+    if (!res.ok) {
+      let msg = "Download failed";
+      try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* non-JSON */ }
+      toast.error(msg, { id: tid });
+      return;
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") ?? "";
+    const match = /filename="?([^"]+)"?/.exec(cd);
+    const filename = match?.[1] ?? `${label.replace(/\s+/g, "_")}`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    toast.success("Download ready", { id: tid });
+  } catch {
+    toast.error("Download failed — check your connection and try again", { id: tid });
+  }
 }
 
 function getMonthRange(offset: number) {
@@ -177,14 +212,14 @@ function ReportSection({
                         <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium">Add-on</span>
                       </a>
                     ) : (
-                      <a key={d.href} href={d.href} target="_blank" rel="noreferrer"
-                        onClick={() => setDropOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted">
+                      <button key={d.href} type="button"
+                        onClick={() => { setDropOpen(false); void downloadReport(d.href, d.label); }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-muted">
                         {d.icon === "pdf"
                           ? <FileBarChart2 className="size-3.5 shrink-0 text-rose-500" />
                           : <FileSpreadsheet className="size-3.5 shrink-0 text-emerald-600" />}
                         {d.label}
-                      </a>
+                      </button>
                     ),
                   )}
                 </div>
@@ -363,6 +398,7 @@ function AddonUpsell({ addons, grandTotal }: { addons: AddonState; grandTotal: n
   useEffect(() => {
     try {
       const raw = localStorage.getItem(ADDON_REQUEST_LS_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydrate from localStorage on mount
       if (raw) setRequested(JSON.parse(raw) as Record<string, boolean>);
     } catch { /* ignore */ }
   }, []);
