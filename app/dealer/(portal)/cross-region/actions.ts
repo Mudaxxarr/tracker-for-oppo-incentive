@@ -10,8 +10,7 @@ import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { logAudit } from "@/lib/audit";
-import { createOwnerAlert } from "@/lib/db/queries/alerts";
-import { OWNER_ALERT_TYPE, CROSS_REGION_STATUS } from "@/lib/constants";
+import { CROSS_REGION_STATUS } from "@/lib/constants";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 
 export type CrossRegionFormState = { error?: string; ok?: boolean };
@@ -184,7 +183,7 @@ export async function deleteDealerCrossRegionAction(id: string): Promise<void> {
   revalidatePath("/dealer/dashboard");
 }
 
-export type DealerOutwardState = { error?: string; ok?: boolean; pendingApproval?: boolean };
+export type DealerOutwardState = { error?: string; ok?: boolean };
 
 const DealerOutwardSchema = z.object({
   modelId: z.string().min(1, "Choose a model"),
@@ -195,8 +194,8 @@ const DealerOutwardSchema = z.object({
 });
 
 /** Dealer reports stock that left their ID cross-region (outward / caught).
- *  Always pending owner approval — approval deducts the stock. Dealers cannot
- *  log cash-only fines (owner-only), so quantity must be > 0. */
+ *  Self-managed — deducts the stock from inventory immediately (no owner approval
+ *  and no owner alert). Quantity must be > 0; guarded against over-deduction. */
 export async function dealerCrOutwardAction(
   _prev: DealerOutwardState,
   fd: FormData,
@@ -228,16 +227,7 @@ export async function dealerCrOutwardAction(
     caughtDate,
     dealerPriceSnapshot: priceSnap,
     note: note ?? null,
-    status: "pending_owner_approval",
-  });
-
-  await createOwnerAlert({
-    tenantId,
-    type: OWNER_ALERT_TYPE.CR_CAUGHT_PENDING_APPROVAL,
-    entityType: "cr_caught",
-    entityId: id,
-    dealerId,
-    message: `⚠ [Dealer] Cross-region OUTWARD: ${quantity} × ${m?.name ?? "?"} leaving ID on ${caughtDate}. Investigate before approving — approval deducts this stock.`,
+    status: "active", // deducts stock immediately — no owner approval
   });
 
   await logAudit({
@@ -245,10 +235,16 @@ export async function dealerCrOutwardAction(
     entityType: "cr_caught",
     entityId: id,
     dealerId,
-    summary: `[Dealer] CR outward reported: ${quantity} × ${m?.name ?? "?"} on ${caughtDate} (pending approval)`,
+    summary: `[Dealer] CR outward: ${quantity} × ${m?.name ?? "?"} on ${caughtDate} — stock deducted`,
   });
 
   revalidatePath("/dealer/cross-region");
   revalidatePath("/dealer/dashboard");
-  return { ok: true, pendingApproval: true };
+  revalidatePath("/dealer/inventory");
+  revalidatePath("/dealer/purchases");
+
+  // Stock dropped — re-evaluate rebate eligibility (fire-and-forget).
+  reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, caughtDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+
+  return { ok: true };
 }

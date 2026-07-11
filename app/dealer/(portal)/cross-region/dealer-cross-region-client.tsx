@@ -86,7 +86,7 @@ export function DealerCrossRegionClient({ models, initialTransfers, initialCrCau
 
   useEffect(() => {
     if (outwardState.ok) {
-      toast.success("Cross-region outward reported — waiting for owner approval");
+      toast.success("Cross-region outward recorded — stock deducted from inventory");
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the field in response to a server-action result
       setOutwardModelId("");
       router.refresh();
@@ -248,7 +248,7 @@ export function DealerCrossRegionClient({ models, initialTransfers, initialCrCau
               </CardHeader>
               <CardContent>
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Reports stock that left your ID cross-region. Goes to the owner for approval — approval deducts this stock from your inventory.
+                  Reports stock that left your ID cross-region. This deducts the stock from your inventory right away.
                 </p>
                 <form action={outwardAction} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
                   <input type="hidden" name="modelId" value={outwardModelId} />
