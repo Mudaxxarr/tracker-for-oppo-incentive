@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition, type FormEvent } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +36,12 @@ const newLine = (): Line => ({
   unitDealerPrice: "",
   unitInvoicePrice: "",
 });
+
+const lineIsInvalid = (l: Line) =>
+  !l.modelId ||
+  !(Number(l.quantity) >= 1) ||
+  l.unitDealerPrice.trim() === "" || !(Number(l.unitDealerPrice) >= 0) ||
+  l.unitInvoicePrice.trim() === "" || !(Number(l.unitInvoicePrice) >= 0);
 
 export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
   const today = new Date().toISOString().slice(0, 10);
@@ -91,19 +97,18 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
   const lineTotal = (l: Line) => Number(l.unitDealerPrice || 0) * Number(l.quantity || 0);
   const grandTotal = lines.reduce((sum, l) => sum + lineTotal(l), 0);
 
-  const submitDisabled =
-    pending ||
-    lines.length === 0 ||
-    lines.some(
-      (l) =>
-        !l.modelId ||
-        Number(l.quantity) < 1 ||
-        Number(l.unitDealerPrice) < 0 ||
-        Number(l.unitInvoicePrice) < 0,
-    );
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // No <form>/native validation — validate in JS and ALWAYS give feedback so a
+  // click can never silently do nothing. Dispatch via startTransition (same as
+  // the single-purchase form).
+  const submit = () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(purchaseDate)) {
+      toast.error("Pehle purchase ki date chunein.");
+      return;
+    }
+    if (lines.length === 0 || lines.some(lineIsInvalid)) {
+      toast.error("Har line mein Model, Qty aur dono prices (Dealer ₨ / Invoice ₨) bharna zaroori hai.");
+      return;
+    }
     const payload = {
       purchaseDate,
       source,
@@ -122,7 +127,7 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Invoice # <span className="text-muted-foreground">(optional)</span></label>
@@ -139,7 +144,6 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
             value={purchaseDate}
             onChange={(e) => setPurchaseDate(e.target.value)}
             max={today}
-            required
           />
         </div>
       </div>
@@ -228,7 +232,6 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
                       step={1}
                       value={l.quantity}
                       onChange={(e) => updateLine(idx, { quantity: e.target.value })}
-                      required
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -239,7 +242,6 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
                       step="any"
                       value={l.unitDealerPrice}
                       onChange={(e) => updateLine(idx, { unitDealerPrice: e.target.value })}
-                      required
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -250,7 +252,6 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
                       step="any"
                       value={l.unitInvoicePrice}
                       onChange={(e) => updateLine(idx, { unitInvoicePrice: e.target.value })}
-                      required
                     />
                   </div>
                 </div>
@@ -282,9 +283,9 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={submitDisabled}>
+      <Button type="button" onClick={submit} className="w-full" disabled={pending}>
         {pending ? "Saving…" : "Record Invoice"}
       </Button>
-    </form>
+    </div>
   );
 }
