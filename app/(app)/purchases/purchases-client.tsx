@@ -42,7 +42,7 @@ import { formatDate, formatPKR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CheckSquare, Pencil, Plus, Trash2, AlertCircle, ShoppingCart, ShoppingCart as ShoppingCartKpi, AlertTriangle, Boxes, Wallet, Tag, Layers, ArrowLeftRight, Filter } from "lucide-react";
 import type { PurchaseOverviewStats } from "@/lib/db/queries/purchases";
-import type { BillGroup } from "@/lib/purchases/purchase-stats";
+import type { BillGroup, BillLine } from "@/lib/purchases/purchase-stats";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -95,6 +95,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ line: BillLine; date: string } | null>(null);
   const [, startTransition] = useTransition();
 
   const updateFilter = (key: keyof typeof filters, value: string | undefined) => {
@@ -121,6 +122,9 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   const handleDelete = (id: string, modelName: string) => {
     setPendingDelete({ id, label: modelName });
   };
+
+  const handleEditLine = (line: BillLine, bill: BillGroup) => setEditTarget({ line, date: bill.purchaseDate });
+  const handleDeleteLine = (line: BillLine) => setPendingDelete({ id: line.id, label: line.modelName });
 
   const confirmDelete = () => {
     if (!pendingDelete) return;
@@ -361,7 +365,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
               <PurchaseKpiCard icon={Wallet} label="Total Amount" value={formatPKR(overview.current.totalAmount)} />
               <PurchaseKpiCard icon={Tag} label="Avg. Price" value={formatPKR(overview.current.avgPricePerUnit)} />
             </div>
-            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
+            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} />
           </div>
         ) : null}
 
@@ -534,7 +538,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
             <PurchaseKpiCard icon={AlertTriangle} label="Low Stock Risk" value={`${lowStockCount} Model${lowStockCount === 1 ? "" : "s"}`} danger={lowStockCount > 0} />
           </div>
 
-          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
+          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} />
         </div>
       ) : null}
 
@@ -660,7 +664,67 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
       </Card>
       ) : null}
       </div>
+
+      {editTarget ? (
+        <OwnerEditPurchaseSheet
+          line={editTarget.line}
+          date={editTarget.date}
+          onClose={() => { setEditTarget(null); router.refresh(); }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function OwnerEditPurchaseSheet({ line, date, onClose }: { line: BillLine; date: string; onClose: () => void }) {
+  const [state, action, pending] = useActionState<PurchaseFormState, FormData>(updatePurchaseAction, {});
+  const [qty, setQty] = useState(String(line.quantity));
+  const [dealer, setDealer] = useState(String(line.unitDealerPrice));
+  const [invoice, setInvoice] = useState(String(line.unitInvoicePrice));
+  const [pDate, setPDate] = useState(date);
+  const [source, setSource] = useState(line.source);
+  useEffect(() => {
+    if (state.ok) { toast.success("Purchase updated"); onClose(); }
+    else if (state.error) toast.error(state.error);
+  }, [state, onClose]);
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>Edit purchase — {line.modelName}</SheetTitle></SheetHeader>
+        <form action={action} className="space-y-4 p-4">
+          <input type="hidden" name="id" value={line.id} />
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Qty</label>
+              <Input name="quantity" type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Dealer ₨</label>
+              <Input name="unitDealerPrice" type="number" min={0} step="any" value={dealer} onChange={(e) => setDealer(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Invoice ₨</label>
+              <Input name="unitInvoicePrice" type="number" min={0} step="any" value={invoice} onChange={(e) => setInvoice(e.target.value)} required />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Date</label>
+              <Input name="purchaseDate" type="date" value={pDate} onChange={(e) => setPDate(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Source</label>
+              <select name="source" className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                value={source} onChange={(e) => setSource(e.target.value)}>
+                <option value={PURCHASE_SOURCE.REGULAR}>Regular</option>
+                <option value={PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN}>Cross-Region</option>
+              </select>
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={pending}>{pending ? "Saving…" : "Save changes"}</Button>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -73,7 +73,7 @@ export default async function DealerLayout({
         businessName={businessName}
         shopName={shopName}
         isAdmin={isAdminPreview}
-        showViewSwitcher={session.tenantId === TEST_SANDBOX_TENANT_ID && !isAdminPreview}
+        showViewSwitcher={session.tenantId === TEST_SANDBOX_TENANT_ID}
       />
       {expirySoonDays && <DealerExpiryWarning daysLeft={expirySoonDays} />}
       {isGrace && <DealerGraceBanner />}

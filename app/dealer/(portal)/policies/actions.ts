@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { getModelById } from "@/lib/db/queries/models";
 import * as Q from "@/lib/db/queries/policies";
 import { logAudit } from "@/lib/audit";
@@ -16,7 +17,11 @@ async function ctx() {
   if (!session) return null;
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
   if (!dealerId) return null;
-  return { dealerId, tenantId: session.tenantId };
+  // Policies are canonical under OWNER_TENANT_ID (keyed by dealerId) — the same
+  // tenant the policies page lists AND the incentive engine reads. Previously this
+  // wrote to session.tenantId, so added policies saved (green toast) but never
+  // showed or affected incentives.
+  return { dealerId, tenantId: OWNER_TENANT_ID };
 }
 
 const Period = {
