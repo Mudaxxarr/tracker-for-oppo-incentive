@@ -7,7 +7,7 @@ import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { createCrossRegion, updateCrossRegionStatus, deleteCrossRegion } from "@/lib/db/queries/transfers";
 import { getMinForwardStock } from "@/lib/db/queries/purchases";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
-import { createCrCaught } from "@/lib/db/queries/cr-caught";
+import { createCrCaught, deleteCrCaught } from "@/lib/db/queries/cr-caught";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { logAudit } from "@/lib/audit";
 import { CROSS_REGION_STATUS } from "@/lib/constants";
@@ -247,4 +247,30 @@ export async function dealerCrOutwardAction(
   reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, caughtDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
 
   return { ok: true };
+}
+
+/** Undo a CR-OUT entry — deletes it and restores the stock. Dealer-scoped. */
+export async function dealerDeleteCrOutwardAction(id: string): Promise<{ error?: string }> {
+  const session = await getDealerSession();
+  if (!session) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = session.tenantId;
+
+  const ref = await deleteCrCaught(id, tenantId, dealerId);
+  if (!ref) return { error: "Entry not found" };
+
+  await logAudit({
+    action: "cr_caught.delete",
+    entityType: "cr_caught",
+    entityId: id,
+    dealerId,
+    summary: `[Dealer] CR outward undone ${id.slice(0, 8)} — stock restored`,
+  });
+  revalidatePath("/dealer/cross-region");
+  revalidatePath("/dealer/dashboard");
+  revalidatePath("/dealer/inventory");
+  revalidatePath("/dealer/purchases");
+  reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, ref.modelId, ref.caughtDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return {};
 }

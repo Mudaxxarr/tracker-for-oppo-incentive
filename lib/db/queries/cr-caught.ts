@@ -188,3 +188,14 @@ export async function rejectCrCaught(id: string): Promise<CrCaughtRef> {
   await db.delete(schema.crCaught).where(eq(schema.crCaught.id, id));
   return ref;
 }
+
+/** Dealer-scoped delete (undo): removes a CR-caught entry only if it belongs to
+ *  this tenant+dealer, restoring stock. Returns the ref for rebate reconciliation. */
+export async function deleteCrCaught(id: string, tenantId: string, dealerId: string): Promise<CrCaughtRef> {
+  const ref = await crCaughtRef(id);
+  if (!ref || ref.tenantId !== tenantId || ref.dealerId !== dealerId) return null;
+  await db.delete(schema.crCaught).where(
+    and(eq(schema.crCaught.id, id), eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)),
+  );
+  return ref;
+}

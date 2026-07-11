@@ -33,6 +33,7 @@ import {
   editDealerCrossRegionAction,
   submitCrossRegionForApprovalAction,
   dealerCrOutwardAction,
+  dealerDeleteCrOutwardAction,
   type CrossRegionFormState,
   type DealerOutwardState,
 } from "./actions";
@@ -101,6 +102,16 @@ export function DealerCrossRegionClient({ models, initialTransfers, initialCrCau
       const result = await submitCrossRegionForApprovalAction(id);
       if (result.ok) toast.success("Stock added to your inventory");
       else toast.error(result.message ?? "Could not add to inventory");
+      router.refresh();
+    });
+  };
+
+  const handleDeleteOutward = (id: string) => {
+    if (!confirm("Undo this cross-region OUT? The stock will be restored to your inventory.")) return;
+    startTransition(async () => {
+      const res = await dealerDeleteCrOutwardAction(id);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success("Undone — stock restored");
       router.refresh();
     });
   };
@@ -287,12 +298,13 @@ export function DealerCrossRegionClient({ models, initialTransfers, initialCrCau
                         <TableHead>Caught</TableHead>
                         <TableHead>Note</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="w-12"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {initialCrCaughtRows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No outward (caught) entries.</TableCell>
+                          <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No outward (caught) entries.</TableCell>
                         </TableRow>
                       ) : initialCrCaughtRows.map((c) => (
                         <TableRow key={c.id}>
@@ -309,6 +321,13 @@ export function DealerCrossRegionClient({ models, initialTransfers, initialCrCau
                             ) : (
                               <Badge>Deducted</Badge>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            {c.status !== "rejected" ? (
+                              <Button size="icon-sm" variant="ghost" aria-label="Undo (restore stock)" title="Undo — restore stock" onClick={() => handleDeleteOutward(c.id)}>
+                                <Trash2 className="size-4" />
+                              </Button>
+                            ) : null}
                           </TableCell>
                         </TableRow>
                       ))}
