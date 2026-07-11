@@ -354,6 +354,21 @@ export function DealerActivationsClient({
     </Sheet>
   ) : null;
 
+  // KPI cards + activation timeline — the aligned "records" experience shown to
+  // every dealer. The deep Overview analytics (charts, top models, growth,
+  // highlights) is the paid `act_overview` add-on and stays behind canOverview.
+  const kpiCards = (compact: boolean) =>
+    overview && cur ? (
+      <div className={cn("grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6")}>
+        <PurchaseKpiCard icon={Smartphone} label="Total Activations" value={kpis.total} />
+        <PurchaseKpiCard icon={Wallet} label="Incentive Earned" value={kpis.incentive} />
+        <PurchaseKpiCard icon={Target} label="Target Progress" value={kpis.target} />
+        <PurchaseKpiCard icon={TrendingUp} label="Sell-through" value={kpis.sellThrough} />
+        {!compact && <PurchaseKpiCard icon={Layers} label="Unique Models" value={kpis.models} />}
+        {!compact && <PurchaseKpiCard icon={ArrowLeftRight} label="Cross-Region" value={kpis.crossRegion} />}
+      </div>
+    ) : null;
+
   if (!canOverview) {
     return (
       <div className="space-y-6">
@@ -364,11 +379,35 @@ export function DealerActivationsClient({
           </div>
           {addButton}
         </div>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Filters</CardTitle></CardHeader>
-          <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-4">{filterControls}</div></CardContent>
-        </Card>
-        {recordsTable}
+
+        {/* ── MOBILE ── */}
+        <div className="md:hidden space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">{formatDate(overviewRange.from)} – {formatDate(overviewRange.to)}</p>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowMobileFilters((v) => !v)}>
+              <Filter className="size-3.5" /> Filter
+            </Button>
+          </div>
+          {showMobileFilters ? (
+            <Card><CardContent className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2">{filterControls}</CardContent></Card>
+          ) : null}
+          {kpiCards(true)}
+          <ActivationTimeline groups={overview?.timeline ?? []} />
+        </div>
+
+        {/* ── DESKTOP ── */}
+        <div className="hidden md:block space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Filters</CardTitle></CardHeader>
+            <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-4">{filterControls}</div></CardContent>
+          </Card>
+          {kpiCards(false)}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="mb-3 text-sm font-medium">Activation Timeline</p>
+            <ActivationTimeline groups={overview?.timeline ?? []} />
+          </div>
+          {recordsTable}
+        </div>
       </div>
     );
   }

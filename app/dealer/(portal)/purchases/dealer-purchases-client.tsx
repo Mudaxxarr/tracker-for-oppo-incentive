@@ -315,6 +315,21 @@ export function DealerPurchasesClient({
     </Sheet>
   );
 
+  // KPI cards + day-wise bill timeline — the aligned "records" experience shown
+  // to every dealer. The deep Overview analytics (charts, top models, growth,
+  // highlights) is the paid `pur_overview` add-on and stays behind canOverview.
+  const kpiCards = (compact: boolean) =>
+    overview && cur ? (
+      <div className={cn("grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6")}>
+        <PurchaseKpiCard icon={ShoppingCartKpi} label="Total Purchases" value={String(cur.billCount)} />
+        <PurchaseKpiCard icon={Boxes} label="Total Quantity" value={String(cur.totalQty)} />
+        <PurchaseKpiCard icon={Wallet} label="Total Amount" value={formatPKR(cur.totalAmount)} />
+        <PurchaseKpiCard icon={Tag} label="Avg. Price / Unit" value={formatPKR(cur.avgPricePerUnit)} />
+        {!compact && <PurchaseKpiCard icon={Layers} label="Models" value={String(cur.uniqueModels)} />}
+        {!compact && <PurchaseKpiCard icon={ArrowLeftRight} label="Cross-Region" value={String(cur.crossRegionQty)} />}
+      </div>
+    ) : null;
+
   if (!canOverview) {
     return (
       <div className="space-y-6">
@@ -325,6 +340,7 @@ export function DealerPurchasesClient({
           </div>
           {addButton}
         </div>
+
         {!hasDealer ? (
           <Card>
             <CardHeader className="flex-row items-center gap-2">
@@ -334,11 +350,32 @@ export function DealerPurchasesClient({
             <CardContent className="text-sm text-muted-foreground">Create a Dealer ID first on the IDs page.</CardContent>
           </Card>
         ) : null}
-        <Card>
-          <CardHeader><CardTitle className="text-base">Filters</CardTitle></CardHeader>
-          <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{filterControls}</div></CardContent>
-        </Card>
-        {recordsTable}
+
+        {/* ── MOBILE ── */}
+        <div className="md:hidden space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">{formatDate(overviewRange.from)} – {formatDate(overviewRange.to)}</p>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowMobileFilters((v) => !v)}>
+              <Filter className="size-3.5" /> Filter
+            </Button>
+          </div>
+          {showMobileFilters ? (
+            <Card><CardContent className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2">{filterControls}</CardContent></Card>
+          ) : null}
+          {kpiCards(true)}
+          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
+        </div>
+
+        {/* ── DESKTOP ── */}
+        <div className="hidden md:block space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Filters</CardTitle></CardHeader>
+            <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{filterControls}</div></CardContent>
+          </Card>
+          {kpiCards(false)}
+          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
+          {recordsTable}
+        </div>
       </div>
     );
   }
