@@ -16,6 +16,7 @@ function statusVariant(
 export default async function DealerBillingPage() {
   const session = await getDealerSession();
   if (!session) redirect("/dealer/login");
+  if (session.role === "exec") redirect("/dealer/dashboard");
 
   const [tenantRows, events] = await Promise.all([
     db

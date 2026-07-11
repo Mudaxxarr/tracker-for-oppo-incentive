@@ -331,6 +331,7 @@ export const crCaught = pgTable(
     dealerPriceSnapshot: real("dealer_price_snapshot").notNull(),
     note: text("note"),
     status: text("status").notNull().default("active"), // 'active' | 'pending_owner_approval'
+    createdByUserId: text("created_by_user_id"), // dealer_users.id of whoever posted it (null = legacy/admin)
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({

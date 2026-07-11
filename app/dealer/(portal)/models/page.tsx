@@ -13,6 +13,7 @@ import type { RebateRow } from "@/lib/db/queries/rebates";
 export default async function DealerModelsPage() {
   const session = await getDealerSession();
   if (!session) redirect("/dealer/login");
+  if (session.role === "exec") redirect("/dealer/dashboard");
 
   const features = await getTenantFeaturesById(session.tenantId);
   if (!isFeatureEnabled(features, "models")) return <FeatureDisabled />;

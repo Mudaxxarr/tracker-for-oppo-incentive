@@ -78,12 +78,12 @@ export default async function DealerLayout({
       {expirySoonDays && <DealerExpiryWarning daysLeft={expirySoonDays} />}
       {isGrace && <DealerGraceBanner />}
       <div className="flex flex-1">
-        <DealerSidebar features={features} />
+        <DealerSidebar features={features} role={session.role} />
         <main className="flex flex-1 flex-col overflow-x-hidden pb-16 md:pb-0">
           <div className="px-3 py-4 md:px-6 md:py-6">{children}</div>
         </main>
       </div>
-      <DealerBottomNav features={features} />
+      <DealerBottomNav features={features} role={session.role} />
       <InstallPrompt />
       <OfflineSync />
       <Suspense fallback={null}>

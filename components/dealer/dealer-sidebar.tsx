@@ -30,19 +30,21 @@ const NAV: {
   icon: React.ElementType;
   feature?: DealerFeatureKey;
   primaryMobile?: boolean;
+  /** Hidden from the accountant (exec) — sensitive / management-only. */
+  adminOnly?: boolean;
 }[] = [
   { href: "/dealer/dashboard", label: "Dashboard", icon: LayoutDashboard, primaryMobile: true },
   { href: "/dealer/purchases", label: "Purchases", icon: ShoppingCart, feature: "purchases", primaryMobile: true },
   { href: "/dealer/activations", label: "Activations", icon: Smartphone, feature: "activations", primaryMobile: true },
-  { href: "/dealer/models", label: "Models", icon: Package, feature: "models" },
+  { href: "/dealer/models", label: "Models", icon: Package, feature: "models", adminOnly: true },
   { href: "/dealer/inventory", label: "Inventory", icon: Warehouse, feature: "inventory" },
   { href: "/dealer/cross-region", label: "Cross-Region", icon: ArrowLeftRight, feature: "cross_region" },
-  { href: "/dealer/policies", label: "Policies", icon: ScrollText, feature: "policies" },
-  { href: "/dealer/reports", label: "Reports", icon: FileBarChart2, feature: "reports", primaryMobile: true },
-  { href: "/dealer/ids", label: "IDs", icon: IdCard, feature: "ids" },
-  { href: "/dealer/settings", label: "Settings", icon: Settings, feature: "settings", primaryMobile: true },
-  { href: "/dealer/billing", label: "Billing", icon: CreditCard },
-  { href: "/dealer/team", label: "Team View", icon: Users, feature: "team" },
+  { href: "/dealer/policies", label: "Policies", icon: ScrollText, feature: "policies", adminOnly: true },
+  { href: "/dealer/reports", label: "Reports", icon: FileBarChart2, feature: "reports", primaryMobile: true, adminOnly: true },
+  { href: "/dealer/ids", label: "IDs", icon: IdCard, feature: "ids", adminOnly: true },
+  { href: "/dealer/settings", label: "Settings", icon: Settings, feature: "settings", primaryMobile: true, adminOnly: true },
+  { href: "/dealer/billing", label: "Billing", icon: CreditCard, adminOnly: true },
+  { href: "/dealer/team", label: "Team View", icon: Users, feature: "team", adminOnly: true },
   { href: "/dealer/help", label: "Help", icon: HelpCircle },
 ];
 
@@ -104,11 +106,16 @@ function SlidingNav({ items, pathname }: SlidingNavProps) {
 
 interface Props {
   features: DealerFeatures;
+  role?: string;
 }
 
-export function DealerSidebar({ features }: Props) {
+export function DealerSidebar({ features, role }: Props) {
   const pathname = usePathname();
-  const visible = NAV.filter((item) => !item.feature || isFeatureEnabled(features, item.feature));
+  const visible = NAV.filter(
+    (item) =>
+      (!item.feature || isFeatureEnabled(features, item.feature)) &&
+      !(role === "exec" && item.adminOnly),
+  );
 
   return (
     <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-border md:bg-card">

@@ -44,6 +44,7 @@ export async function createCrCaught(input: {
   dealerPriceSnapshot: number;
   note: string | null;
   status?: string;
+  createdByUserId?: string | null;
 }): Promise<string> {
   const id = randomUUID();
   await db.insert(schema.crCaught).values({ id, ...input, fineAmount: input.fineAmount ?? 0, status: input.status ?? "active" });

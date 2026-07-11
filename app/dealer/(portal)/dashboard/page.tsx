@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LowStockBanner } from "@/components/dealer/low-stock-banner";
+import { DealerWarnings } from "@/components/dealer/dealer-warnings";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
@@ -220,6 +221,7 @@ export default async function DealerDashboardPage({
     <div className="space-y-4">
       <h1 className="sr-only">Dealer dashboard</h1>
       <LowStockBanner tenantId={stats.tenantId} dealerId={dealerId} />
+      {session?.role === "admin" ? <DealerWarnings tenantId={stats.tenantId} dealerId={dealerId} /> : null}
       <DealerDashboardClient data={dashData} />
     </div>
   );

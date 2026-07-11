@@ -19,15 +19,20 @@ import { logoutAction } from "@/app/dealer/actions";
 
 interface Props {
   features: DealerFeatures;
+  role?: string;
 }
 
-export function DealerBottomNav({ features }: Props) {
+export function DealerBottomNav({ features, role }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
-  const enabled = DEALER_NAV.filter((item) => !item.feature || isFeatureEnabled(features, item.feature));
+  const enabled = DEALER_NAV.filter(
+    (item) =>
+      (!item.feature || isFeatureEnabled(features, item.feature)) &&
+      !(role === "exec" && item.adminOnly),
+  );
   // Five quick items in the bar (matches the admin/owner mobile nav); everything else lives behind "More".
   const primary = enabled.filter((i) => i.primaryMobile).slice(0, 5);
   const primaryHrefs = new Set(primary.map((i) => i.href));

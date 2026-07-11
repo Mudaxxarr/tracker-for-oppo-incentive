@@ -14,6 +14,7 @@ import { OWNER_TENANT_ID } from "@/lib/dealer";
 export default async function DealerIdsPage() {
   const session = await getDealerSession();
   if (!session) redirect("/dealer/login");
+  if (session.role === "exec") redirect("/dealer/dashboard");
 
   const features = await getTenantFeaturesById(session.tenantId);
   if (!isFeatureEnabled(features, "ids")) return <FeatureDisabled />;

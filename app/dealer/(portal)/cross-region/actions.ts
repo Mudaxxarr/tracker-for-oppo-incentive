@@ -228,6 +228,7 @@ export async function dealerCrOutwardAction(
     dealerPriceSnapshot: priceSnap,
     note: note ?? null,
     status: "active", // deducts stock immediately — no owner approval
+    createdByUserId: session.userId,
   });
 
   await logAudit({

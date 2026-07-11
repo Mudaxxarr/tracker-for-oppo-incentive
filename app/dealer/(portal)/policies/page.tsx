@@ -69,6 +69,7 @@ async function computeAchievements(
 export default async function DealerPoliciesPage() {
   const session = await getDealerSession();
   if (!session) redirect("/dealer/login");
+  if (session.role === "exec") redirect("/dealer/dashboard");
 
   const features = await getTenantFeaturesById(session.tenantId);
   if (!isFeatureEnabled(features, "policies")) return <FeatureDisabled />;

@@ -15,6 +15,7 @@ import { DealerSettingsClient } from "./dealer-settings-client";
 export default async function DealerSettingsPage() {
   const session = await getDealerSession();
   if (!session) redirect("/dealer/login");
+  if (session.role === "exec") redirect("/dealer/dashboard");
 
   const features = await getTenantFeaturesById(session.tenantId);
   if (!isFeatureEnabled(features, "settings")) return <FeatureDisabled />;
