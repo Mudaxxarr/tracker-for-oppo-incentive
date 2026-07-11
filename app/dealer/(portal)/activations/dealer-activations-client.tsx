@@ -39,7 +39,7 @@ import { PurchaseTopModelsPanel } from "@/app/(app)/purchases/purchase-top-model
 import { ActivationTimeline } from "@/app/(app)/activations/activation-timeline";
 import { formatDate, formatPKR, maskImei } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, CheckSquare, Smartphone, Wallet, Target, TrendingUp, Layers, ArrowLeftRight, Filter } from "lucide-react";
+import { Plus, Trash2, CheckSquare, Smartphone, Wallet, Target, TrendingUp, Layers, ArrowLeftRight, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { deleteDealerActivationAction, bulkDeleteDealerActivationsAction } from "./actions";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
@@ -392,8 +392,7 @@ export function DealerActivationsClient({
             <Card><CardContent className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2">{filterControls}</CardContent></Card>
           ) : null}
           {kpiCards(true)}
-          <ActivationTimeline groups={overview?.timeline ?? []} />
-          {recordsTable}
+          <DealerActivationDayList rows={recordRows} onDelete={handleDelete} />
         </div>
 
         {/* ── DESKTOP ── */}
@@ -403,11 +402,7 @@ export function DealerActivationsClient({
             <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-4">{filterControls}</div></CardContent>
           </Card>
           {kpiCards(false)}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="mb-3 text-sm font-medium">Activation Timeline</p>
-            <ActivationTimeline groups={overview?.timeline ?? []} />
-          </div>
-          {recordsTable}
+          <DealerActivationDayList rows={recordRows} onDelete={handleDelete} />
         </div>
       </div>
     );
@@ -488,6 +483,81 @@ function HighlightRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-2 py-2 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0 truncate text-right font-medium tabular-nums" title={value}>{value}</dd>
+    </div>
+  );
+}
+
+/** Day-wise list of individual activations (small cards). Tap a date to reveal
+ *  each activated unit with a delete control. Activations aren't editable — a unit
+ *  is deleted and re-added. */
+function DealerActivationDayList({ rows, onDelete }: {
+  rows: ActivationRow[];
+  onDelete: (id: string, modelName: string) => void;
+}) {
+  const [openDate, setOpenDate] = useState<string | null>(null);
+  const groups = useMemo(() => {
+    const byDate = new Map<string, ActivationRow[]>();
+    for (const a of rows) {
+      const arr = byDate.get(a.activationDate);
+      if (arr) arr.push(a);
+      else byDate.set(a.activationDate, [a]);
+    }
+    return [...byDate.entries()]
+      .map(([date, items]) => ({ date, items }))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [rows]);
+
+  if (rows.length === 0) {
+    return <EmptyState icon={Smartphone} title="No activations to show." description="Add an activation or adjust the filters." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => {
+        const open = openDate === g.date;
+        const crCount = g.items.filter((a) => a.isCrossRegion).length;
+        return (
+          <div key={g.date} className="overflow-hidden rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => setOpenDate(open ? null : g.date)}
+              className="flex w-full flex-wrap items-center justify-between gap-2 bg-muted/40 px-4 py-3 text-left"
+            >
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="font-semibold">{formatDate(g.date)}</span>
+                <span className="text-muted-foreground">·</span>
+                <span className="text-muted-foreground">{g.items.length} activation{g.items.length === 1 ? "" : "s"}</span>
+                {crCount > 0 ? (
+                  <>
+                    <span className="text-muted-foreground">·</span>
+                    <StatusBadge status="neutral" label={`${crCount} CR`} />
+                  </>
+                ) : null}
+              </div>
+              {open ? <ChevronUp className="size-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="size-4 shrink-0 text-muted-foreground" />}
+            </button>
+            {open && (
+              <div className="divide-y border-t bg-background">
+                {g.items.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">
+                        {a.modelName}
+                        {a.isCrossRegion ? <StatusBadge status="neutral" label="CR" className="ml-1.5 align-middle" /> : null}
+                      </div>
+                      <div className="font-mono text-xs text-muted-foreground">{maskImei(a.imei)}</div>
+                    </div>
+                    <span className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">{formatPKR(a.dealerPriceSnapshot)}</span>
+                    <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => onDelete(a.id, a.modelName)}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -16,11 +16,8 @@ import {
   FileBarChart2,
   Settings,
   Users,
-  History,
   LogOut,
-  Receipt,
   CreditCard,
-  Sparkles,
   HelpCircle,
 } from "lucide-react";
 import { logoutAction } from "@/app/dealer/actions";
@@ -43,12 +40,9 @@ const NAV: {
   { href: "/dealer/policies", label: "Policies", icon: ScrollText, feature: "policies" },
   { href: "/dealer/reports", label: "Reports", icon: FileBarChart2, feature: "reports", primaryMobile: true },
   { href: "/dealer/ids", label: "IDs", icon: IdCard, feature: "ids" },
-  { href: "/dealer/pos", label: "Sell", icon: Receipt, feature: "pos" },
-  { href: "/dealer/activity", label: "Activity", icon: History, feature: "activity" },
   { href: "/dealer/settings", label: "Settings", icon: Settings, feature: "settings", primaryMobile: true },
   { href: "/dealer/billing", label: "Billing", icon: CreditCard },
   { href: "/dealer/team", label: "Team View", icon: Users, feature: "team" },
-  { href: "/dealer/whats-new", label: "What's New", icon: Sparkles },
   { href: "/dealer/help", label: "Help", icon: HelpCircle },
 ];
 
