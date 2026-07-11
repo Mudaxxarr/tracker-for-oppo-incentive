@@ -364,6 +364,7 @@ export function DealerPurchasesClient({
           ) : null}
           {kpiCards(true)}
           <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
+          {recordsTable}
         </div>
 
         {/* ── DESKTOP ── */}

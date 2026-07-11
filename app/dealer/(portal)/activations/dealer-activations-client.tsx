@@ -393,6 +393,7 @@ export function DealerActivationsClient({
           ) : null}
           {kpiCards(true)}
           <ActivationTimeline groups={overview?.timeline ?? []} />
+          {recordsTable}
         </div>
 
         {/* ── DESKTOP ── */}

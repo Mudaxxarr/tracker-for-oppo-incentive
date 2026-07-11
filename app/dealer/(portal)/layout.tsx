@@ -14,6 +14,7 @@ import { ensureTodayBackup } from "@/lib/admin/backups";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isAuthenticated } from "@/lib/auth";
 import { AdminPreviewBanner } from "@/components/dealer/admin-preview-banner";
+import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { OfflineSync } from "@/components/pwa/offline-sync";
 import { DealerTour } from "@/components/dealer/dealer-tour";
@@ -68,7 +69,12 @@ export default async function DealerLayout({
           businessName={businessName}
         />
       )}
-      <DealerTopBar businessName={businessName} shopName={shopName} isAdmin={isAdminPreview} />
+      <DealerTopBar
+        businessName={businessName}
+        shopName={shopName}
+        isAdmin={isAdminPreview}
+        showViewSwitcher={session.tenantId === TEST_SANDBOX_TENANT_ID && !isAdminPreview}
+      />
       {expirySoonDays && <DealerExpiryWarning daysLeft={expirySoonDays} />}
       {isGrace && <DealerGraceBanner />}
       <div className="flex flex-1">

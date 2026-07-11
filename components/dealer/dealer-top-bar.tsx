@@ -4,15 +4,17 @@ import { logoutAction } from "@/app/dealer/actions";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DealerLogoTrigger } from "./dealer-logo-trigger";
+import { DealerViewSwitcher } from "./dealer-view-switcher";
 import { LogOut, HelpCircle } from "lucide-react";
 
 interface DealerTopBarProps {
   businessName: string;
   shopName?: string | null;
   isAdmin?: boolean;
+  showViewSwitcher?: boolean;
 }
 
-export function DealerTopBar({ businessName, shopName, isAdmin }: DealerTopBarProps) {
+export function DealerTopBar({ businessName, shopName, isAdmin, showViewSwitcher }: DealerTopBarProps) {
   return (
     <header
       className="sticky top-0 z-20 border-b border-border bg-card"
@@ -24,6 +26,7 @@ export function DealerTopBar({ businessName, shopName, isAdmin }: DealerTopBarPr
           <span className="truncate text-sm">{shopName ?? businessName}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {showViewSwitcher && <DealerViewSwitcher />}
           <Link
             href="/dealer/help"
             data-tour="help-button"
