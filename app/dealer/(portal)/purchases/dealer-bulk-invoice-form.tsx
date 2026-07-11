@@ -113,7 +113,7 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
       purchaseDate,
       source,
       invoiceNumber: invoiceNumber.trim(),
-      notes: notes.trim() || null,
+      notes: notes.trim() || undefined,
       lines: lines.map((l) => ({
         modelId: l.modelId,
         quantity: Number(l.quantity),

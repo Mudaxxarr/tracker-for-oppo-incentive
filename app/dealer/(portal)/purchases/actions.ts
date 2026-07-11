@@ -124,8 +124,8 @@ const BulkLineSchema = z.object({
 const BulkInvoiceSchema = z.object({
   purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
   source: z.enum([PURCHASE_SOURCE.REGULAR, PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN]),
-  invoiceNumber: z.string().max(100).optional().default(""),
-  notes: z.string().max(500).optional().default(""),
+  invoiceNumber: z.string().max(100).nullish().transform((v) => v ?? ""),
+  notes: z.string().max(500).nullish().transform((v) => v ?? ""),
   lines: z.array(BulkLineSchema).min(1, "Add at least one line"),
 });
 
