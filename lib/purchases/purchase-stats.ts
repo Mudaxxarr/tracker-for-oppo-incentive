@@ -26,19 +26,23 @@ export function percentChange(current: number, previous: number): number | null 
 
 export interface PurchaseStatsRow {
   billNumber: string;
+  id?: string;
   modelId: string;
   modelName: string;
   quantity: number;
   unitDealerPrice: number;
+  unitInvoicePrice?: number;
   purchaseDate: string;
   source: string;
 }
 
 export interface BillLine {
+  id: string;
   modelId: string;
   modelName: string;
   quantity: number;
   unitDealerPrice: number;
+  unitInvoicePrice: number;
   amount: number;
   source: string;
 }
@@ -61,7 +65,7 @@ export function groupIntoBills(rows: PurchaseStatsRow[]): BillGroup[] {
       bill = { billNumber: r.billNumber, purchaseDate: r.purchaseDate, modelCount: 0, totalQty: 0, totalAmount: 0, lines: [] };
       byBill.set(r.billNumber, bill);
     }
-    bill.lines.push({ modelId: r.modelId, modelName: r.modelName, quantity: r.quantity, unitDealerPrice: r.unitDealerPrice, amount, source: r.source });
+    bill.lines.push({ id: r.id ?? "", modelId: r.modelId, modelName: r.modelName, quantity: r.quantity, unitDealerPrice: r.unitDealerPrice, unitInvoicePrice: r.unitInvoicePrice ?? 0, amount, source: r.source });
     bill.totalQty += r.quantity;
     bill.totalAmount += amount;
   }

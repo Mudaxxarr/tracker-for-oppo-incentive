@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
-import { createPurchase, deletePurchase, getPurchaseById, getStockForModel, getNextBillNumber, listPurchaseBills } from "@/lib/db/queries/purchases";
+import { createPurchase, updatePurchase, deletePurchase, getPurchaseById, getStockForModel, getNextBillNumber, listPurchaseBills } from "@/lib/db/queries/purchases";
 import type { BillGroup } from "@/lib/purchases/purchase-stats";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
-import { OWNER_ALERT_TYPE, PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS } from "@/lib/constants";
+import { OWNER_ALERT_TYPE, PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS, type PurchaseSource } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
 import { getTenantById } from "@/lib/dealer-tenant";
@@ -236,6 +236,60 @@ export async function deleteDealerPurchaseAction(id: string): Promise<{ error?: 
   revalidatePath("/dealer/dashboard");
   await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, purchase.modelId, purchase.purchaseDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return {};
+}
+
+const EditPurchaseSchema = z.object({
+  id: z.string().min(1),
+  quantity: z.coerce.number().int().positive("Quantity must be ≥ 1"),
+  unitDealerPrice: z.coerce.number().nonnegative(),
+  unitInvoicePrice: z.coerce.number().nonnegative(),
+});
+
+/** Edit a single purchase line (qty + prices). Date & source stay as-is. */
+export async function editDealerPurchaseAction(input: {
+  id: string; quantity: number; unitDealerPrice: number; unitInvoicePrice: number;
+}): Promise<{ error?: string; ok?: boolean }> {
+  const session = await getDealerSession();
+  if (!session) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  if (!dealerId) return { error: "No active Dealer ID" };
+
+  const parsed = EditPurchaseSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { id, quantity, unitDealerPrice, unitInvoicePrice } = parsed.data;
+
+  const purchase = await getPurchaseById(id, dealerId, session.tenantId);
+  if (!purchase) return { error: "Purchase not found" };
+
+  // Reducing quantity: make sure enough free stock exists to remove the difference.
+  if (quantity < purchase.quantity) {
+    const stock = await getStockForModel(session.tenantId, dealerId, purchase.modelId);
+    const reduceBy = purchase.quantity - quantity;
+    if (stock < reduceBy) {
+      const m = await getModelById(purchase.modelId);
+      return { error: `Cannot reduce by ${reduceBy} — only ${stock} free unit(s) of ${m?.name ?? "this model"} (rest already activated/transferred).` };
+    }
+  }
+
+  await updatePurchase(id, dealerId, session.tenantId, {
+    quantity,
+    unitDealerPrice,
+    unitInvoicePrice,
+    purchaseDate: purchase.purchaseDate,
+    source: purchase.source as PurchaseSource,
+  });
+
+  await logAudit({
+    action: "purchase.edit",
+    entityType: "purchase",
+    entityId: id,
+    dealerId,
+    summary: `[Dealer] Edited purchase ${id.slice(0, 8)}: qty ${purchase.quantity}→${quantity} @ ${formatPKR(unitDealerPrice)}`,
+  });
+  revalidatePath("/dealer/purchases");
+  revalidatePath("/dealer/dashboard");
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, purchase.modelId, purchase.purchaseDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return { ok: true };
 }
 
 export async function loadDealerPurchaseBillsAction(params: {

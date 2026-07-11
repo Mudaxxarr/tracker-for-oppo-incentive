@@ -18,18 +18,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { DataValue } from "@/components/ui/data-value";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealerPurchaseForm } from "./dealer-purchase-form";
 import { DealerBulkInvoiceForm } from "./dealer-bulk-invoice-form";
@@ -37,15 +27,14 @@ import { PurchaseKpiCard } from "@/app/(app)/purchases/purchase-kpi-card";
 import { PurchaseTrendChart } from "@/app/(app)/purchases/purchase-trend-chart";
 import { PurchaseBillTimeline } from "@/app/(app)/purchases/purchase-bill-timeline";
 import { PurchaseTopModelsPanel } from "@/app/(app)/purchases/purchase-top-models-panel";
-import { PURCHASE_SOURCE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { formatDate, formatPKR } from "@/lib/format";
-import { Plus, Trash2, AlertCircle, ShoppingCart, ShoppingCart as ShoppingCartKpi, Boxes, Wallet, Tag, Layers, ArrowLeftRight, Filter } from "lucide-react";
-import { deleteDealerPurchaseAction, loadDealerPurchaseBillsAction } from "./actions";
+import { Plus, AlertCircle, ShoppingCart, ShoppingCart as ShoppingCartKpi, Boxes, Wallet, Tag, Layers, ArrowLeftRight, Filter } from "lucide-react";
+import { deleteDealerPurchaseAction, editDealerPurchaseAction, loadDealerPurchaseBillsAction } from "./actions";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { PurchaseRow, PurchaseOverviewStats } from "@/lib/db/queries/purchases";
-import type { BillGroup } from "@/lib/purchases/purchase-stats";
+import type { BillGroup, BillLine } from "@/lib/purchases/purchase-stats";
 
 interface Props {
   models: ModelWithCurrentPrice[];
@@ -72,7 +61,6 @@ function percentChangeSafe(current: number, previous: number): number | null {
 
 export function DealerPurchasesClient({
   models,
-  initialPurchases,
   initialFilters,
   hasDealer,
   dealerId,
@@ -93,6 +81,7 @@ export function DealerPurchasesClient({
   const [mobileTab, setMobileTab] = useState<"daily" | "overview">("daily");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
+  const [editLine, setEditLine] = useState<BillLine | null>(null);
   const [, startTransition] = useTransition();
 
   const updateFilter = (key: keyof typeof filters, value: string | undefined) => {
@@ -103,15 +92,17 @@ export function DealerPurchasesClient({
     router.replace(`/dealer/purchases${search.size ? `?${search}` : ""}`);
   };
 
-  const handleDelete = (id: string, modelName: string) => {
-    if (!confirm(`Delete this ${modelName} purchase row? This cannot be undone.`)) return;
+  const handleDeleteLine = (line: BillLine, bill: BillGroup) => {
+    if (!confirm(`Delete this ${line.modelName} purchase (Bill ${bill.billNumber})? This cannot be undone.`)) return;
     startTransition(async () => {
-      const res = await deleteDealerPurchaseAction(id);
+      const res = await deleteDealerPurchaseAction(line.id);
       if (res.error) { toast.error(res.error); return; }
       toast.success("Purchase deleted");
       router.refresh();
     });
   };
+
+  const openEdit = (line: BillLine) => setEditLine(line);
 
   const loadMoreBills = (page: number) =>
     loadDealerPurchaseBillsAction({
@@ -122,6 +113,19 @@ export function DealerPurchasesClient({
       page,
       pageSize: billsPageSize,
     });
+
+  // Single source for the day-wise invoice timeline, with per-line edit + delete
+  // baked in (dealer only). Reused in every view so records are editable from the
+  // invoice list itself — no separate records table.
+  const billTimeline = (
+    <PurchaseBillTimeline
+      initialBills={bills}
+      total={billsTotal}
+      loadMore={loadMoreBills}
+      onEditLine={hasDealer ? openEdit : undefined}
+      onDeleteLine={hasDealer ? handleDeleteLine : undefined}
+    />
+  );
 
   const cur = overview?.current;
 
@@ -225,63 +229,10 @@ export function DealerPurchasesClient({
           </dl>
         </div>
 
-        <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
+        {billTimeline}
       </div>
     );
   };
-
-  const recordsTable = (
-    <Card>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Model</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Unit Dealer ₨</TableHead>
-                <TableHead className="text-right">Total ₨</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {initialPurchases.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7}>
-                    <EmptyState icon={ShoppingCart} title="No purchases yet for this dealer ID." description="Add a purchase to begin tracking stock." />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                initialPurchases.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.modelName}</TableCell>
-                    <TableCell label="Qty" className="text-right"><DataValue value={p.quantity} /></TableCell>
-                    <TableCell label="Unit ₨" className="text-right"><DataValue value={p.unitDealerPrice} format="currency" /></TableCell>
-                    <TableCell label="Total ₨" className="text-right"><DataValue value={p.unitDealerPrice * p.quantity} format="currency" /></TableCell>
-                    <TableCell label="Date">{formatDate(p.purchaseDate)}</TableCell>
-                    <TableCell label="Source">
-                      {p.source === PURCHASE_SOURCE.CROSS_REGION_TRANSFER_IN ? (
-                        <StatusBadge status="neutral" label="Cross-Region" />
-                      ) : (
-                        <StatusBadge status="confirmed" label="Regular" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => handleDelete(p.id, p.modelName)}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   const addButton = (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -363,8 +314,7 @@ export function DealerPurchasesClient({
             <Card><CardContent className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2">{filterControls}</CardContent></Card>
           ) : null}
           {kpiCards(true)}
-          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
-          {recordsTable}
+          {billTimeline}
         </div>
 
         {/* ── DESKTOP ── */}
@@ -374,9 +324,10 @@ export function DealerPurchasesClient({
             <CardContent><div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{filterControls}</div></CardContent>
           </Card>
           {kpiCards(false)}
-          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
-          {recordsTable}
+          {billTimeline}
         </div>
+
+        {editLine ? <DealerEditPurchaseSheet line={editLine} onClose={() => setEditLine(null)} /> : null}
       </div>
     );
   }
@@ -449,7 +400,7 @@ export function DealerPurchasesClient({
               <PurchaseKpiCard icon={Wallet} label="Total Amount" value={formatPKR(cur.totalAmount)} />
               <PurchaseKpiCard icon={Tag} label="Avg. Price" value={formatPKR(cur.avgPricePerUnit)} />
             </div>
-            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} />
+            {billTimeline}
           </div>
         ) : null}
 
@@ -465,8 +416,63 @@ export function DealerPurchasesClient({
           </CardContent>
         </Card>
 
-        {view === "overview" ? renderOverview(false) : recordsTable}
+        {view === "overview" ? renderOverview(false) : billTimeline}
       </div>
+
+      {editLine ? <DealerEditPurchaseSheet line={editLine} onClose={() => setEditLine(null)} /> : null}
     </div>
+  );
+}
+
+function DealerEditPurchaseSheet({ line, onClose }: { line: BillLine; onClose: () => void }) {
+  const router = useRouter();
+  const [qty, setQty] = useState(String(line.quantity));
+  const [dealer, setDealer] = useState(String(line.unitDealerPrice));
+  const [invoice, setInvoice] = useState(String(line.unitInvoicePrice));
+  const [pending, start] = useTransition();
+
+  const invalid = !(Number(qty) >= 1) || !(Number(dealer) >= 0) || !(Number(invoice) >= 0);
+
+  const save = () => {
+    start(async () => {
+      const res = await editDealerPurchaseAction({
+        id: line.id,
+        quantity: Number(qty),
+        unitDealerPrice: Number(dealer),
+        unitInvoicePrice: Number(invoice),
+      });
+      if (res.error) { toast.error(res.error); return; }
+      toast.success("Purchase updated");
+      onClose();
+      router.refresh();
+    });
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>Edit purchase — {line.modelName}</SheetTitle></SheetHeader>
+        <div className="space-y-4 p-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Qty</label>
+              <Input type="number" min={1} step={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Dealer ₨</label>
+              <Input type="number" min={0} step="any" value={dealer} onChange={(e) => setDealer(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Invoice ₨</label>
+              <Input type="number" min={0} step="any" value={invoice} onChange={(e) => setInvoice(e.target.value)} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Date &amp; source stay the same. To change those, delete and re-add.</p>
+          <Button className="w-full" disabled={pending || invalid} onClick={save}>
+            {pending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

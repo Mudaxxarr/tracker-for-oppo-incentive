@@ -1,22 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ShoppingCart } from "lucide-react";
+import { ChevronDown, ChevronUp, ShoppingCart, Pencil, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatPKR } from "@/lib/format";
 import { PURCHASE_SOURCE } from "@/lib/constants";
-import { groupBillsByDate, type BillGroup } from "@/lib/purchases/purchase-stats";
+import { groupBillsByDate, type BillGroup, type BillLine } from "@/lib/purchases/purchase-stats";
 
 interface Props {
   initialBills: BillGroup[];
   total: number;
   /** Fetches the next page of bills (server action). Appended to the list. */
   loadMore: (page: number) => Promise<BillGroup[]>;
+  /** When provided, each line shows an edit control (dealer portal only). */
+  onEditLine?: (line: BillLine, bill: BillGroup) => void;
+  /** When provided, each line shows a delete control (dealer portal only). */
+  onDeleteLine?: (line: BillLine, bill: BillGroup) => void;
 }
 
-export function PurchaseBillTimeline({ initialBills, total, loadMore }: Props) {
+export function PurchaseBillTimeline({ initialBills, total, loadMore, onEditLine, onDeleteLine }: Props) {
   const [bills, setBills] = useState(initialBills);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -94,6 +98,22 @@ export function PurchaseBillTimeline({ initialBills, total, loadMore }: Props) {
                           </span>
                           <span className="shrink-0 tabular-nums text-muted-foreground">{line.quantity} × {formatPKR(line.unitDealerPrice)}</span>
                           <span className="w-20 shrink-0 text-right font-medium tabular-nums">{formatPKR(line.amount)}</span>
+                          {(onEditLine || onDeleteLine) && line.id ? (
+                            <span className="flex shrink-0 items-center gap-0.5">
+                              {onEditLine ? (
+                                <button type="button" aria-label="Edit purchase" onClick={() => onEditLine(line, bill)}
+                                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                                  <Pencil className="size-3.5" />
+                                </button>
+                              ) : null}
+                              {onDeleteLine ? (
+                                <button type="button" aria-label="Delete purchase" onClick={() => onDeleteLine(line, bill)}
+                                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              ) : null}
+                            </span>
+                          ) : null}
                         </div>
                       ))}
                     </div>
