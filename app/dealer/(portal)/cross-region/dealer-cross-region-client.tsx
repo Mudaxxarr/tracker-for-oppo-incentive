@@ -95,12 +95,12 @@ export function DealerCrossRegionClient({ models, initialTransfers, initialCrCau
     }
   }, [outwardState, router]);
 
-  const handleSubmitForApproval = (id: string) => {
-    if (!confirm("Submit this transfer for owner approval? Stock will not move until the owner approves.")) return;
+  const handleShiftToId = (id: string) => {
+    if (!confirm("Add this cross-region stock into your inventory now?")) return;
     startTransition(async () => {
       const result = await submitCrossRegionForApprovalAction(id);
-      if (result.ok) toast.success("Transfer submitted — waiting for owner approval");
-      else toast.error(result.message ?? "Submit failed");
+      if (result.ok) toast.success("Stock added to your inventory");
+      else toast.error(result.message ?? "Could not add to inventory");
       router.refresh();
     });
   };
@@ -217,15 +217,15 @@ export function DealerCrossRegionClient({ models, initialTransfers, initialCrCau
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
+                                {status === CROSS_REGION_STATUS.PENDING_REPORT || status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
                                   <>
-                                    <Button size="icon-sm" variant="ghost" aria-label="Edit" onClick={() => setEditRow(t)}><Pencil className="size-4" /></Button>
-                                    <Button size="icon-sm" variant="ghost" aria-label="Submit for owner approval" onClick={() => handleSubmitForApproval(t.id)}><ArrowRightCircle className="size-4" /></Button>
+                                    {status === CROSS_REGION_STATUS.PENDING_REPORT ? (
+                                      <Button size="icon-sm" variant="ghost" aria-label="Edit" onClick={() => setEditRow(t)}><Pencil className="size-4" /></Button>
+                                    ) : null}
+                                    <Button size="icon-sm" variant="ghost" aria-label="Add to my inventory" title="Add to my inventory" onClick={() => handleShiftToId(t.id)}><ArrowRightCircle className="size-4" /></Button>
                                   </>
-                                ) : status === CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL ? (
-                                  <span className="text-xs text-muted-foreground">Waiting for owner…</span>
                                 ) : status === CROSS_REGION_STATUS.SHIFTED_TO_MY_ID ? (
-                                  <span className="text-xs text-muted-foreground"><CheckCircle2 className="mr-1 inline size-3.5" /> Done</span>
+                                  <span className="text-xs text-muted-foreground"><CheckCircle2 className="mr-1 inline size-3.5" /> In inventory</span>
                                 ) : null}
                                 <Button size="icon-sm" variant="ghost" aria-label="Delete" onClick={() => handleDelete(t.id)}><Trash2 className="size-4" /></Button>
                               </div>

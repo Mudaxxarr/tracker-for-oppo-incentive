@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
-import { createCrossRegion, submitCrossRegionForApproval, deleteCrossRegion } from "@/lib/db/queries/transfers";
+import { createCrossRegion, updateCrossRegionStatus, deleteCrossRegion } from "@/lib/db/queries/transfers";
 import { getMinForwardStock } from "@/lib/db/queries/purchases";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { logAudit } from "@/lib/audit";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
-import { OWNER_ALERT_TYPE } from "@/lib/constants";
+import { OWNER_ALERT_TYPE, CROSS_REGION_STATUS } from "@/lib/constants";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 
 export type CrossRegionFormState = { error?: string; ok?: boolean };
@@ -125,6 +126,10 @@ export async function editDealerCrossRegionAction(
   return { ok: true };
 }
 
+/** Dealer shifts a reported cross-region IN transfer into their own inventory.
+ *  This creates the inbound purchase (stock) immediately on the reported date at
+ *  the owner-configured price — no owner approval and no owner alert. Works for
+ *  every dealer role. */
 export async function submitCrossRegionForApprovalAction(
   id: string,
 ): Promise<{ ok: boolean; message?: string }> {
@@ -133,66 +138,35 @@ export async function submitCrossRegionForApprovalAction(
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
   if (!dealerId) return { ok: false, message: "No active Dealer ID" };
 
-  // Dealer ADMIN is the main account owner of the ID — can self-approve without waiting for owner
-  if (session.role === "admin") {
-    const { db, schema } = await import("@/lib/db/client");
-    const { and, eq } = await import("drizzle-orm");
-    const { CROSS_REGION_STATUS: CRS } = await import("@/lib/constants");
-    const today = new Date().toISOString().slice(0, 10);
+  const result = await updateCrossRegionStatus({
+    id,
+    tenantId: session.tenantId,
+    dealerId,
+    status: CROSS_REGION_STATUS.SHIFTED_TO_MY_ID,
+    priceTenantId: OWNER_TENANT_ID,
+  });
+  if (!result.ok) return { ok: false, message: result.message };
 
-    const rows = await db
-      .select({ status: schema.crossRegionTransfers.status })
-      .from(schema.crossRegionTransfers)
-      .where(and(
-        eq(schema.crossRegionTransfers.id, id),
-        eq(schema.crossRegionTransfers.tenantId, session.tenantId),
-        eq(schema.crossRegionTransfers.dealerId, dealerId),
-      ))
-      .limit(1);
+  await logAudit({
+    action: "cross_region.shifted_to_id",
+    dealerId,
+    entityType: "cross_region_transfer",
+    entityId: id,
+    summary: `[Dealer] CR ${id.slice(0, 8)} shifted to ID — stock added to inventory`,
+  });
+  revalidatePath("/dealer/cross-region");
+  revalidatePath("/dealer/dashboard");
+  revalidatePath("/dealer/inventory");
+  revalidatePath("/dealer/purchases");
 
-    if (rows.length === 0) return { ok: false, message: "Transfer not found" };
-    if (rows[0].status === CRS.REJECTED) return { ok: false, message: "Rejected transfers cannot be approved" };
-    if (rows[0].status === CRS.SHIFTED_TO_MY_ID) return { ok: false, message: "Already approved" };
-
-    await db
-      .update(schema.crossRegionTransfers)
-      .set({ status: CRS.SHIFTED_TO_MY_ID, shiftedToIdDate: today })
-      .where(eq(schema.crossRegionTransfers.id, id));
-
-    await logAudit({
-      action: "cross_region.self_approved",
-      dealerId,
-      entityType: "cross_region_transfer",
-      entityId: id,
-      summary: `[Dealer Admin] Self-approved CR transfer ${id.slice(0, 8)} — stock shifted to ID`,
-    });
-    revalidatePath("/dealer/cross-region");
-    revalidatePath("/dealer/dashboard");
-    return { ok: true };
+  // New inbound stock can change rebate eligibleQty — re-evaluate (fire-and-forget).
+  if ("modelId" in result && "effectiveDate" in result && result.modelId && result.effectiveDate) {
+    reEvaluateRebatesForDealer(
+      OWNER_TENANT_ID, dealerId, result.modelId, result.effectiveDate, session.tenantId,
+    ).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
 
-  // Exec role: must submit for owner approval
-  const result = await submitCrossRegionForApproval({ id, tenantId: session.tenantId, dealerId });
-  if (result.ok) {
-    await createOwnerAlert({
-      tenantId: session.tenantId,
-      type: OWNER_ALERT_TYPE.CR_PENDING_APPROVAL,
-      entityType: "cross_region_transfer",
-      entityId: id,
-      dealerId,
-      message: `[HIGH ALERT] Cross-region transfer submitted for approval — dealer is waiting for stock to be approved`,
-    });
-    await logAudit({
-      action: "cross_region.submit_for_approval",
-      dealerId,
-      entityType: "cross_region_transfer",
-      entityId: id,
-      summary: `[Dealer Exec] CR ${id.slice(0, 8)} submitted for owner approval`,
-    });
-    revalidatePath("/dealer/cross-region");
-    revalidatePath("/dealer/dashboard");
-  }
-  return result;
+  return { ok: true };
 }
 
 export async function deleteDealerCrossRegionAction(id: string): Promise<void> {
