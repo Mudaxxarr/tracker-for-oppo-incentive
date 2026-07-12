@@ -55,6 +55,9 @@ export default function NewDealerPage() {
               label="Dealer Login ID"
               placeholder="e.g. dealer001 or LAHORE-DLR-1"
             />
+            <p className="-mt-2 text-xs text-muted-foreground">
+              This is exactly what the dealer types in the <strong>Login ID</strong> box on the login screen — a simple ID (dealer001) or an email. It is not their &quot;owner email&quot; above.
+            </p>
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="planMonths">
                 Plan Duration (months)
