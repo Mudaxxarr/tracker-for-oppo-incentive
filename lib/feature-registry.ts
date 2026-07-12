@@ -104,6 +104,13 @@ export function getRegistryNode(key: string): FeatureNode | undefined {
   return ALL_REGISTRY_NODES.find((n) => n.key === key);
 }
 
+/** Every tab + sub-feature turned ON. Default for newly created dealers so a
+ *  fresh ID mirrors the fully-enabled test sandbox. Admin can turn things off
+ *  per-dealer afterwards via /admin/dealers/[id]/features. */
+export const ALL_FEATURES_ON: Record<string, boolean> = Object.fromEntries(
+  ALL_REGISTRY_NODES.map((n) => [n.key, true]),
+);
+
 // Resolve whether a node is ON, honoring its default semantics.
 // Works on trial-merged features (an active trial sets key=true → upsell turns on).
 export function isNodeOn(features: DealerFeatures, node: FeatureNode): boolean {

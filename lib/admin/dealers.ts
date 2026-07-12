@@ -7,8 +7,8 @@ import { logAudit } from "@/lib/audit";
 import {
   type DealerFeatures,
   parseDealerFeatures,
-  BASE_PLAN_FEATURES,
 } from "@/lib/dealer-features";
+import { ALL_FEATURES_ON } from "@/lib/feature-registry";
 import {
   type FeatureTrials,
   parseFeatureTrials,
@@ -287,7 +287,7 @@ export async function createTenant(
     startedAt,
     expiresAt,
     status: "active",
-    features: JSON.stringify(BASE_PLAN_FEATURES),
+    features: JSON.stringify(ALL_FEATURES_ON),
     createdAt: now,
   });
 

@@ -25,16 +25,16 @@ export function LoginForm() {
         <CardContent className="space-y-4">
           <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="dealerId">
-              Dealer ID
+              Email
             </label>
             <Input
               id="dealerId"
               name="dealerId"
-              type="text"
+              type="email"
               autoComplete="username"
               autoFocus
               disabled={pending}
-              placeholder="Enter your Dealer ID"
+              placeholder="you@email.com"
             />
           </div>
           <div className="space-y-1">
@@ -53,6 +53,9 @@ export function LoginForm() {
           {state.error ? (
             <p className="text-sm text-destructive">{state.error}</p>
           ) : null}
+          <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Main dealer <strong>and</strong> accountant sign in here with their own email. The accountant login is created by the main dealer under <strong>Team</strong>.
+          </p>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={pending}>
