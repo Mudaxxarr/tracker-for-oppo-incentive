@@ -1,17 +1,21 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { loginAction, type LoginState } from "./actions";
-import { LogIn } from "lucide-react";
+import { LogIn, Eye, EyeOff } from "lucide-react";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
     loginAction,
     {},
   );
+  // Controlled so a wrong-password submit doesn't wipe the Login ID (React resets
+  // uncontrolled fields after a form action).
+  const [loginId, setLoginId] = useState("");
+  const [showPass, setShowPass] = useState(false);
 
   return (
     <form action={formAction}>
@@ -34,6 +38,8 @@ export function LoginForm() {
               autoComplete="username"
               autoFocus
               disabled={pending}
+              value={loginId}
+              onChange={(e) => setLoginId(e.target.value)}
               placeholder="the login ID or email your admin gave you"
             />
           </div>
@@ -41,14 +47,26 @@ export function LoginForm() {
             <label className="text-sm font-medium" htmlFor="password">
               Password
             </label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              disabled={pending}
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPass ? "text" : "password"}
+                autoComplete="current-password"
+                disabled={pending}
+                placeholder="••••••••"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass((v) => !v)}
+                aria-label={showPass ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                tabIndex={-1}
+              >
+                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
           </div>
           {state.error ? (
             <p className="text-sm text-destructive">{state.error}</p>

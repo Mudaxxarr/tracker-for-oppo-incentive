@@ -9,6 +9,20 @@ import {
   parseDealerFeatures,
 } from "@/lib/dealer-features";
 import { ALL_FEATURES_ON } from "@/lib/feature-registry";
+import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
+
+/** Features for a brand-new dealer = a live copy of the test sandbox tenant's
+ *  features, so every new ID mirrors test@incento.app exactly. Falls back to all-on. */
+async function newDealerFeatures(): Promise<Record<string, boolean>> {
+  const rows = await db
+    .select({ features: schema.dealerTenants.features })
+    .from(schema.dealerTenants)
+    .where(eq(schema.dealerTenants.id, TEST_SANDBOX_TENANT_ID))
+    .limit(1);
+  if (rows.length === 0) return ALL_FEATURES_ON;
+  const parsed = parseDealerFeatures(rows[0].features ?? "{}") as Record<string, boolean>;
+  return Object.keys(parsed).length > 0 ? parsed : ALL_FEATURES_ON;
+}
 import {
   type FeatureTrials,
   parseFeatureTrials,
@@ -287,7 +301,7 @@ export async function createTenant(
     startedAt,
     expiresAt,
     status: "active",
-    features: JSON.stringify(ALL_FEATURES_ON),
+    features: JSON.stringify(await newDealerFeatures()),
     createdAt: now,
   });
 
