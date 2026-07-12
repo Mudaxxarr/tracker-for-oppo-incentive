@@ -24,6 +24,9 @@ export function AdminLoginForm() {
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? "Signing in…" : "Sign in"}
         </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          Dealer / Accountant? <a href="/dealer/login" className="font-medium text-primary underline underline-offset-2">Sign in here →</a>
+        </p>
       </div>
     </form>
   );

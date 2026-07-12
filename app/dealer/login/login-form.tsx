@@ -56,6 +56,9 @@ export function LoginForm() {
           <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             Main dealer <strong>and</strong> accountant sign in here with their own email. The accountant login is created by the main dealer under <strong>Team</strong>.
           </p>
+          <p className="text-center text-xs text-muted-foreground">
+            Owner / Admin? <a href="/login" className="font-medium text-primary underline underline-offset-2">Sign in here →</a>
+          </p>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={pending}>
