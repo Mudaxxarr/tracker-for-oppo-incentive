@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
@@ -8,6 +9,7 @@ import { db } from "@/lib/db/client";
 import { createPurchase, deletePurchase, getPurchaseById, updatePurchase, getStockForModel, getStockForModelAsOf, getNextBillNumber, listPurchaseBills } from "@/lib/db/queries/purchases";
 import type { BillGroup } from "@/lib/purchases/purchase-stats";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
+import { drainRebateJobs } from "@/lib/db/queries/rebate-jobs";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
 import { PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
 import { getTenantById } from "@/lib/dealer-tenant";
@@ -112,6 +114,7 @@ export async function createPurchaseAction(
           invoicePrice: data.unitInvoicePrice,
           effectiveFrom: today,
         });
+        after(() => drainRebateJobs().catch((e) => console.error("[reprice-drain]", e)));
         await logAudit({
           action: "model.price_update",
           entityType: "model",

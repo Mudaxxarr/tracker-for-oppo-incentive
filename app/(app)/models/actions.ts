@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
 import {
@@ -13,6 +14,7 @@ import {
   updateModel,
   updatePriceEntry,
 } from "@/lib/db/queries/models";
+import { drainRebateJobs } from "@/lib/db/queries/rebate-jobs";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
@@ -114,6 +116,7 @@ export async function addPriceEntryAction(
   const m = await getModelById(parsed.data.modelId);
   if (!m) return { error: "Model not found" };
   const id = await addPriceEntry(OWNER_TENANT_ID, parsed.data);
+  after(() => drainRebateJobs().catch((e) => console.error("[reprice-drain]", e)));
   await logAudit({
     action: "model.price_entry.add",
     entityType: "model",
@@ -144,6 +147,7 @@ export async function updatePriceEntryAction(input: {
   const m = await getModelById(input.modelId);
   if (!m) return { ok: false, error: "Model not found" };
   await updatePriceEntry(OWNER_TENANT_ID, input);
+  after(() => drainRebateJobs().catch((e) => console.error("[reprice-drain]", e)));
   await logAudit({
     action: "model.price_entry.update",
     entityType: "model",
@@ -164,6 +168,7 @@ export async function deletePriceEntryAction(input: {
   if (!(await requireAuth())) return { ok: false, error: "Not authenticated" };
   const result = await deletePriceEntry(OWNER_TENANT_ID, input);
   if (!result.ok) return { ok: false, error: result.reason };
+  after(() => drainRebateJobs().catch((e) => console.error("[reprice-drain]", e)));
   await logAudit({
     action: "model.price_entry.delete",
     entityType: "model",
