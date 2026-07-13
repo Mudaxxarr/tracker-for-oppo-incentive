@@ -308,7 +308,9 @@ export async function deletePriceEntry(
   }
   await db
     .delete(schema.rebates)
-    .where(and(eq(schema.rebates.tenantId, tenantId), eq(schema.rebates.priceHistoryId, input.priceId)));
+    // One owner price-history row anchors rebate rows in every dealer tenant.
+    // Remove all of those rows before deleting the shared price event.
+    .where(eq(schema.rebates.priceHistoryId, input.priceId));
   await db
     .delete(schema.modelPriceHistory)
     .where(and(eq(schema.modelPriceHistory.id, input.priceId), eq(schema.modelPriceHistory.tenantId, tenantId)));

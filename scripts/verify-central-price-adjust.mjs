@@ -10,12 +10,12 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 // Dynamic imports: the db client reads POSTGRES_URL at import time, so it must
 // load AFTER dotenv.config() has run (static imports are hoisted above it).
 const { db, schema } = await import("../lib/db/client.ts");
-const { updateModelPrice } = await import("../lib/db/queries/models.ts");
+const { deletePriceEntry, updateModelPrice } = await import("../lib/db/queries/models.ts");
 const { drainRebateJobs } = await import("../lib/db/queries/rebate-jobs.ts");
 const { listRebatesForDealer } = await import("../lib/db/queries/rebates.ts");
 
@@ -86,6 +86,36 @@ try {
     failed = true;
   } else {
     console.log("✅ PASS: non-owner dealer rebate =", hit.totalRebateAmount, "(5 × 20)");
+  }
+
+  // Deleting the owner price-drop entry must also remove every dealer-tenant
+  // rebate anchored to that price-history row.
+  const [dropEntry] = await db
+    .select({ id: schema.modelPriceHistory.id })
+    .from(schema.modelPriceHistory)
+    .where(and(
+      eq(schema.modelPriceHistory.tenantId, OWNER),
+      eq(schema.modelPriceHistory.modelId, modelId),
+      eq(schema.modelPriceHistory.effectiveFrom, today),
+    ));
+  if (!dropEntry) {
+    console.error("FAIL: price-drop history row not found");
+    failed = true;
+  } else {
+    const deleted = await deletePriceEntry(OWNER, { modelId, priceId: dropEntry.id });
+    if (!deleted.ok) {
+      console.error("FAIL: price-drop history row could not be deleted", deleted.reason);
+      failed = true;
+    } else {
+      await drainRebateJobs();
+      const rebatesAfterDelete = await listRebatesForDealer(otherTenant, otherDealer);
+      if (rebatesAfterDelete.some((r) => r.modelId === modelId)) {
+        console.error("FAIL: dealer rebate survived deletion of its price-history row");
+        failed = true;
+      } else {
+        console.log("PASS: deleting price entry removed dealer-tenant rebate");
+      }
+    }
   }
 } catch (e) {
   console.error("❌ ERROR", e);
