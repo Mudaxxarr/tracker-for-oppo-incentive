@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatPKR } from "@/lib/format";
+import { downloadFile } from "@/lib/download-file";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -388,7 +389,7 @@ function ReportSection({
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-[11px] font-medium tracking-tight text-muted-foreground/70">PDF</DropdownMenuLabel>
                 {downloads.filter((d) => d.icon === "pdf").map((d) => (
-                  <DropdownMenuItem key={d.href} onClick={() => window.open(d.href, "_blank")} className={d.featured ? "font-semibold" : ""}>
+                  <DropdownMenuItem key={d.href} onClick={() => downloadFile(d.href)} className={d.featured ? "font-semibold" : ""}>
                     {d.featured
                       ? <BookOpen className="size-3.5 shrink-0 text-blue-600" />
                       : <FileBarChart2 className="size-3.5 shrink-0 text-rose-500" />
@@ -402,7 +403,7 @@ function ReportSection({
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-[11px] font-medium tracking-tight text-muted-foreground/70">Excel</DropdownMenuLabel>
                 {downloads.filter((d) => d.icon === "xlsx").map((d) => (
-                  <DropdownMenuItem key={d.href} onClick={() => window.open(d.href, "_blank")}>
+                  <DropdownMenuItem key={d.href} onClick={() => downloadFile(d.href)}>
                     <FileSpreadsheet className="size-3.5 shrink-0 text-emerald-600" />
                     {d.label}
                   </DropdownMenuItem>

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { formatPKR } from "@/lib/format";
+import { downloadFile } from "@/lib/download-file";
 import {
   FileBarChart2, FileSpreadsheet, ChevronDown, TrendingUp,
   Smartphone, Wallet, RefreshCw, ShieldAlert, Truck, Award,
@@ -239,7 +240,7 @@ export function ReportSectionPremium({
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-[#787774]">PDF</DropdownMenuLabel>
               {downloads.filter((d) => d.icon === "pdf").map((d) => (
-                <DropdownMenuItem key={d.href} onClick={() => window.open(d.href, "_blank")} className={d.featured ? "font-semibold" : ""}>
+                <DropdownMenuItem key={d.href} onClick={() => downloadFile(d.href)} className={d.featured ? "font-semibold" : ""}>
                   {d.featured
                     ? <BookOpen className="size-3.5 text-[#1F6C9F]" strokeWidth={1.5} />
                     : <FileBarChart2 className="size-3.5 text-[#9F2F2D]" strokeWidth={1.5} />}
@@ -252,7 +253,7 @@ export function ReportSectionPremium({
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-[#787774]">Excel</DropdownMenuLabel>
               {downloads.filter((d) => d.icon === "xlsx").map((d) => (
-                <DropdownMenuItem key={d.href} onClick={() => window.open(d.href, "_blank")}>
+                <DropdownMenuItem key={d.href} onClick={() => downloadFile(d.href)}>
                   <FileSpreadsheet className="size-3.5 text-[#346538]" strokeWidth={1.5} />
                   {d.label}
                 </DropdownMenuItem>
