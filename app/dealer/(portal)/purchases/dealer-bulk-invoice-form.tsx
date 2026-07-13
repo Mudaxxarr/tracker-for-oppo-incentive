@@ -75,8 +75,8 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
           ? l
           : {
               ...l,
-              unitDealerPrice: l.unitDealerPrice || String(p.dealerPrice),
-              unitInvoicePrice: l.unitInvoicePrice || String(p.invoicePrice),
+              unitDealerPrice: String(p.dealerPrice),
+              unitInvoicePrice: String(p.invoicePrice),
             },
       ),
     );
@@ -238,20 +238,20 @@ export function DealerBulkInvoiceForm({ models, onSuccess }: Props) {
                     <label className="text-xs text-muted-foreground">Dealer ₨</label>
                     <Input
                       type="number"
-                      min={0}
-                      step="any"
                       value={l.unitDealerPrice}
-                      onChange={(e) => updateLine(idx, { unitDealerPrice: e.target.value })}
+                      readOnly
+                      tabIndex={-1}
+                      className="bg-muted/50 text-muted-foreground"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs text-muted-foreground">Invoice ₨</label>
                     <Input
                       type="number"
-                      min={0}
-                      step="any"
                       value={l.unitInvoicePrice}
-                      onChange={(e) => updateLine(idx, { unitInvoicePrice: e.target.value })}
+                      readOnly
+                      tabIndex={-1}
+                      className="bg-muted/50 text-muted-foreground"
                     />
                   </div>
                 </div>

@@ -38,7 +38,6 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
   const [purchaseDate, setPurchaseDate] = useState<string>(today);
   const [dealerPrice, setDealerPrice] = useState<string>("");
   const [invoicePrice, setInvoicePrice] = useState<string>("");
-  const [priceTouched, setPriceTouched] = useState(false);
   const [pricedAt, setPricedAt] = useState<{ dealer: number; invoice: number } | null>(null);
   const [source, setSource] = useState<string>(PURCHASE_SOURCE.REGULAR);
 
@@ -50,12 +49,9 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
   useEffect(() => {
     if (!modelId || !/^\d{4}-\d{2}-\d{2}$/.test(purchaseDate)) {
       setPricedAt(null);
-      setPriceTouched(false);
       return;
     }
     let cancelled = false;
-    // Reset priceTouched here so we don't need a separate effect that causes a second render
-    setPriceTouched(false);
     getPriceOnDateForDealer(modelId, purchaseDate).then((p) => {
       if (cancelled) return;
       setPricedAt(p ? { dealer: p.dealerPrice, invoice: p.invoicePrice } : null);
@@ -63,8 +59,6 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
       setInvoicePrice(p ? String(p.invoicePrice) : "");
     });
     return () => { cancelled = true; };
-  // priceTouched intentionally excluded — manual edits don't re-fetch
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelId, purchaseDate]);
 
   useEffect(() => {
@@ -73,7 +67,6 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
       setPurchaseDate(today);
       setDealerPrice("");
       setInvoicePrice("");
-      setPriceTouched(false);
       setPricedAt(null);
       onSuccess?.();
     }
@@ -107,7 +100,6 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
       setPurchaseDate(today);
       setDealerPrice("");
       setInvoicePrice("");
-      setPriceTouched(false);
       setPricedAt(null);
       onSuccess?.();
       return;
@@ -170,11 +162,10 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
           <Input
             name="unitDealerPrice"
             type="number"
-            min={0}
-            step="any"
             value={dealerPrice}
-            onChange={(e) => { setDealerPrice(e.target.value); setPriceTouched(true); }}
-            required
+            readOnly
+            tabIndex={-1}
+            className="bg-muted/50 text-muted-foreground"
           />
         </div>
         <div className="space-y-1.5">
@@ -182,23 +173,22 @@ export function DealerPurchaseForm({ models, dealerId, tenantId, role, backdateD
           <Input
             name="unitInvoicePrice"
             type="number"
-            min={0}
-            step="any"
             value={invoicePrice}
-            onChange={(e) => { setInvoicePrice(e.target.value); setPriceTouched(true); }}
-            required
+            readOnly
+            tabIndex={-1}
+            className="bg-muted/50 text-muted-foreground"
           />
         </div>
       </div>
 
       {selected && pricedAt ? (
         <p className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-          Dealer price effective on {purchaseDate}:{" "}
+          Price is set by the owner — effective on {purchaseDate}:{" "}
           <strong className="text-foreground">{formatPKR(pricedAt.dealer)}</strong>
         </p>
       ) : selected && !pricedAt ? (
         <p className="rounded-md border bg-amber-500/10 p-3 text-xs text-amber-700">
-          No master price found for this model on {purchaseDate}. Enter the prices manually.
+          No owner price set for this model on {purchaseDate}. Contact the owner before recording this purchase.
         </p>
       ) : null}
 

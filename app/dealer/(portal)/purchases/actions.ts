@@ -55,6 +55,12 @@ export async function createDealerPurchaseAction(
   const dateErr = guardPurchaseDate(data.purchaseDate, tenant?.backdateDays ?? 3);
   if (dateErr) return { error: dateErr };
 
+  // Purchase price is the owner's central price — the submitted price is ignored.
+  const central = await getPriceOnDate(OWNER_TENANT_ID, data.modelId, data.purchaseDate);
+  if (!central) return { error: "No price set for this model on that date — contact owner" };
+  const unitDealerPrice = central.dealerPrice;
+  const unitInvoicePrice = central.invoicePrice;
+
   // CR-2: flag large purchases for owner review
   const reviewStatus =
     tenant?.purchaseApprovalThreshold != null && data.quantity >= tenant.purchaseApprovalThreshold
@@ -67,8 +73,8 @@ export async function createDealerPurchaseAction(
       dealerId,
       modelId: data.modelId,
       quantity: data.quantity,
-      unitDealerPrice: data.unitDealerPrice,
-      unitInvoicePrice: data.unitInvoicePrice,
+      unitDealerPrice,
+      unitInvoicePrice,
       purchaseDate: data.purchaseDate,
       source: data.source,
       referenceNote: data.referenceNote ?? null,
@@ -91,7 +97,7 @@ export async function createDealerPurchaseAction(
       entityType: "purchase",
       entityId: id,
       dealerId,
-      summary: `[Dealer] Purchased ${data.quantity} units @ ${formatPKR(data.unitDealerPrice)} (${data.source})`,
+      summary: `[Dealer] Purchased ${data.quantity} units @ ${formatPKR(unitDealerPrice)} (${data.source})`,
       payload: { modelId: data.modelId, quantity: data.quantity, source: data.source, purchaseDate: data.purchaseDate },
     });
 
@@ -159,6 +165,9 @@ export async function createDealerBulkPurchasesAction(
   try {
     for (const line of lines) {
       const ref = notes ? `Inv #${invoiceNumber} — ${notes}` : `Inv #${invoiceNumber}`;
+      // Purchase price is the owner's central price — submitted per-line price is ignored.
+      const central = await getPriceOnDate(OWNER_TENANT_ID, line.modelId, purchaseDate);
+      if (!central) throw new Error(`No price set for a model on ${purchaseDate} — contact owner`);
       // CR-2: flag lines exceeding approval threshold
       const reviewStatus =
         tenant?.purchaseApprovalThreshold != null && line.quantity >= tenant.purchaseApprovalThreshold
@@ -169,8 +178,8 @@ export async function createDealerBulkPurchasesAction(
         dealerId,
         modelId: line.modelId,
         quantity: line.quantity,
-        unitDealerPrice: line.unitDealerPrice,
-        unitInvoicePrice: line.unitInvoicePrice,
+        unitDealerPrice: central.dealerPrice,
+        unitInvoicePrice: central.invoicePrice,
         purchaseDate,
         source,
         referenceNote: ref,
@@ -256,10 +265,16 @@ export async function editDealerPurchaseAction(input: {
 
   const parsed = EditPurchaseSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { id, quantity, unitDealerPrice, unitInvoicePrice } = parsed.data;
+  const { id, quantity } = parsed.data;
 
   const purchase = await getPurchaseById(id, dealerId, session.tenantId);
   if (!purchase) return { error: "Purchase not found" };
+
+  // Purchase price is the owner's central price — submitted price is ignored.
+  const central = await getPriceOnDate(OWNER_TENANT_ID, purchase.modelId, purchase.purchaseDate);
+  if (!central) return { error: "No price set for this model on that date — contact owner" };
+  const unitDealerPrice = central.dealerPrice;
+  const unitInvoicePrice = central.invoicePrice;
 
   // Reducing quantity: make sure enough free stock exists to remove the difference.
   if (quantity < purchase.quantity) {
