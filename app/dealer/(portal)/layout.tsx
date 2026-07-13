@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Suspense } from "react";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
@@ -18,6 +18,7 @@ import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { OfflineSync } from "@/components/pwa/offline-sync";
 import { DealerTour } from "@/components/dealer/dealer-tour";
+import { ADMIN_PREVIEW_RETURN_COOKIE } from "@/lib/constants";
 
 export default async function DealerLayout({
   children,
@@ -58,6 +59,8 @@ export default async function DealerLayout({
   }
 
   const headerStore = await headers();
+  const cookieStore = await cookies();
+  const adminPreviewReturnTo = cookieStore.get(ADMIN_PREVIEW_RETURN_COOKIE)?.value;
   const isGrace = headerStore.get("x-grace") === "true";
   const expirySoonDays = Number(headerStore.get("x-expiry-soon") ?? "0") || null;
 
@@ -67,6 +70,7 @@ export default async function DealerLayout({
         <AdminPreviewBanner
           tenantId={session.tenantId}
           businessName={businessName}
+          returnTo={adminPreviewReturnTo}
         />
       )}
       <DealerTopBar

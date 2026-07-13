@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { makeDealerToken } from "@/lib/dealer-session";
-import { DEALER_SESSION_COOKIE } from "@/lib/constants";
+import { ADMIN_PREVIEW_RETURN_COOKIE, DEALER_SESSION_COOKIE } from "@/lib/constants";
+import { resolveManagerReturnPath } from "@/lib/admin/manager";
 
 export async function GET(
   req: NextRequest,
@@ -27,7 +28,12 @@ export async function GET(
     db
       .select({ id: schema.dealerUsers.id, role: schema.dealerUsers.role })
       .from(schema.dealerUsers)
-      .where(eq(schema.dealerUsers.tenantId, tenantId))
+      .where(and(
+        eq(schema.dealerUsers.tenantId, tenantId),
+        eq(schema.dealerUsers.role, "admin"),
+        eq(schema.dealerUsers.isActive, true),
+      ))
+      .orderBy(asc(schema.dealerUsers.createdAt))
       .limit(1),
   ]);
 
@@ -54,5 +60,21 @@ export async function GET(
     maxAge: 30 * 24 * 3600,
     secure: process.env.NODE_ENV === "production",
   });
+  const requestedReturnTo = req.nextUrl.searchParams.get("returnTo");
+  if (requestedReturnTo) {
+    response.cookies.set(
+      ADMIN_PREVIEW_RETURN_COOKIE,
+      resolveManagerReturnPath(requestedReturnTo, tenantId),
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 24 * 3600,
+        secure: process.env.NODE_ENV === "production",
+      },
+    );
+  } else {
+    response.cookies.delete(ADMIN_PREVIEW_RETURN_COOKIE);
+  }
   return response;
 }

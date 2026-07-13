@@ -7,6 +7,7 @@ import {
   hasAdminCredentials,
   startSession,
 } from "@/lib/auth";
+import { resolveLoginRedirect } from "@/lib/admin/manager";
 import { logAudit } from "@/lib/audit";
 
 export type LoginState = { error?: string; fieldErrors?: Record<string, string> };
@@ -25,7 +26,7 @@ export async function adminLoginAction(_prev: LoginState, formData: FormData): P
 
   await startSession();
   await logAudit({ action: "auth.login", summary: `Admin logged in as ${email}` });
-  redirect("/dashboard");
+  redirect(resolveLoginRedirect(formData.get("next")));
 }
 
 export async function adminSetupAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -43,5 +44,5 @@ export async function adminSetupAction(_prev: LoginState, formData: FormData): P
 
   await setAdminCredentials(email, password);
   await startSession();
-  redirect("/dashboard");
+  redirect(resolveLoginRedirect(formData.get("next")));
 }

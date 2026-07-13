@@ -1,9 +1,16 @@
 import { redirect } from "next/navigation";
 import { isAuthenticated, hasAdminCredentials } from "@/lib/auth";
+import { resolveLoginRedirect } from "@/lib/admin/manager";
 import { AdminLoginForm, AdminSetupForm } from "./login-form";
 
-export default async function LoginPage() {
-  if (await isAuthenticated()) redirect("/dashboard");
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const nextPath = resolveLoginRedirect(next);
+  if (await isAuthenticated()) redirect(nextPath);
   const setup = !(await hasAdminCredentials());
 
   return (
@@ -18,7 +25,9 @@ export default async function LoginPage() {
             {setup ? "Set up your credentials to access the console." : "Sign in to access your portal."}
           </p>
         </div>
-        {setup ? <AdminSetupForm /> : <AdminLoginForm />}
+        {setup
+          ? <AdminSetupForm nextPath={nextPath} />
+          : <AdminLoginForm nextPath={nextPath} />}
         <p className="text-center text-xs text-muted-foreground">
           Dealer and staff portals have separate login links.
         </p>

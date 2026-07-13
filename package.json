@@ -18,7 +18,11 @@
     "stress:huge": "STRESS_ACTIVATIONS=20000 STRESS_PURCHASES=5000 tsx scripts/stress-test.ts",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android",
-    "cap:build": "npx cap build android --prod"
+    "cap:build": "npx cap build android --prod",
+    "manager:cap:add": "npm --prefix manager-app run cap:add",
+    "manager:cap:sync": "npm --prefix manager-app run cap:sync",
+    "manager:test-downloads": "node --test manager-app/test/download-handler.test.mjs",
+    "manager:apk": "node scripts/build-manager-apk.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

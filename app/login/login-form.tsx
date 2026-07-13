@@ -23,11 +23,12 @@ function PasswordInput({ id = "password", name = "password", placeholder = "â€¢â
   );
 }
 
-export function AdminLoginForm() {
+export function AdminLoginForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
   const [state, formAction, pending] = useActionState(adminLoginAction, INITIAL);
   const [email, setEmail] = useState("");
   return (
     <form action={formAction}>
+      <input type="hidden" name="next" value={nextPath} />
       <div className="rounded-xl border bg-card space-y-5 p-6">
         <div className="space-y-1.5">
           <label className="text-sm font-medium" htmlFor="email">Email</label>
@@ -50,10 +51,11 @@ export function AdminLoginForm() {
   );
 }
 
-export function AdminSetupForm() {
+export function AdminSetupForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
   const [state, formAction, pending] = useActionState(adminSetupAction, INITIAL);
   return (
     <form action={formAction}>
+      <input type="hidden" name="next" value={nextPath} />
       <div className="rounded-xl border bg-card space-y-5 p-6">
         <div className="space-y-1.5">
           <label className="text-sm font-medium" htmlFor="email">Email</label>

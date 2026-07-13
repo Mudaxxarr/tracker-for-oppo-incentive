@@ -50,6 +50,7 @@ export const TEAM_SESSION_COOKIE = "oppo_team_session";
 export const DEALER_SESSION_COOKIE = "dealer_session";
 export const DEALER_ACTIVE_ID_COOKIE = "dealer_active_id";
 export const OWNER_STAFF_SESSION_COOKIE = "oppo_staff_session";
+export const ADMIN_PREVIEW_RETURN_COOKIE = "oppo_admin_preview_return";
 
 export type StaffRole = "so" | "accountant";
 
