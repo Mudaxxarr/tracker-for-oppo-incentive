@@ -71,10 +71,15 @@ try {
   await updateModelPrice(OWNER, { modelId, dealerPrice: 80, invoicePrice: 80, effectiveFrom: today });
   await drainRebateJobs();
 
-  const rebates = await listRebatesForDealer(OWNER, otherDealer);
+  // Dealer pages filter rebate rows by their own tenant. Pricing comes from
+  // OWNER, but the adjustment itself must belong to the dealer tenant.
+  const rebates = await listRebatesForDealer(otherTenant, otherDealer);
   const hit = rebates.find((r) => r.modelId === modelId);
   if (!hit) {
     console.error("❌ FAIL: non-owner dealer got NO rebate after owner price drop");
+    failed = true;
+  } else if (hit.tenantId !== otherTenant) {
+    console.error("FAIL: rebate stored under wrong tenant", hit.tenantId);
     failed = true;
   } else if (hit.rebatePerUnit !== 20 || hit.eligibleQty !== 5 || hit.totalRebateAmount !== 100) {
     console.error("❌ FAIL: wrong rebate", hit);

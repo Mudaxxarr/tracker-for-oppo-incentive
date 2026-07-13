@@ -175,13 +175,13 @@ export async function createRebatesForPriceDrop(input: {
  * that changing a unit's activation date does not leave stale rebate records.
  */
 export async function reEvaluateRebatesForDealer(
-  tenantId: string,
+  priceTenantId: string,
   dealerId: string,
   modelId: string,
   fromDate: string,
   stockTenantId?: string
 ): Promise<void> {
-  const _stockTenantId = stockTenantId ?? tenantId;
+  const dataTenantId = stockTenantId ?? priceTenantId;
   const allEntries = await db
     .select({
       id: schema.modelPriceHistory.id,
@@ -191,18 +191,32 @@ export async function reEvaluateRebatesForDealer(
     .from(schema.modelPriceHistory)
     .where(
       and(
-        eq(schema.modelPriceHistory.tenantId, tenantId),
+        eq(schema.modelPriceHistory.tenantId, priceTenantId),
         eq(schema.modelPriceHistory.modelId, modelId)
       )
     )
     .orderBy(asc(schema.modelPriceHistory.effectiveFrom));
+
+  // Central pricing can come from the owner while the dealer's stock and
+  // adjustment ledger belong to another tenant. Older queue runs incorrectly
+  // stored those cross-tenant rows under the price tenant; remove them before
+  // rebuilding the dealer-owned rows below.
+  if (dataTenantId !== priceTenantId) {
+    await db.delete(schema.rebates).where(
+      and(
+        eq(schema.rebates.tenantId, priceTenantId),
+        eq(schema.rebates.dealerId, dealerId),
+        eq(schema.rebates.modelId, modelId)
+      )
+    );
+  }
 
   // Purge any orphan rebates with no price-history anchor (NULL priceHistoryId)
   // eq() generates col = value which never matches NULL, so these would survive
   // the loop's delete passes and permanently over-report rebate income.
   await db.delete(schema.rebates).where(
     and(
-      eq(schema.rebates.tenantId, tenantId),
+      eq(schema.rebates.tenantId, dataTenantId),
       eq(schema.rebates.dealerId, dealerId),
       eq(schema.rebates.modelId, modelId),
       isNull(schema.rebates.priceHistoryId)
@@ -218,11 +232,11 @@ export async function reEvaluateRebatesForDealer(
 
     if (prev !== null && prev.dealerPrice > curr.dealerPrice) {
       const rebatePerUnit = prev.dealerPrice - curr.dealerPrice;
-      const eligibleQty = await getClosingStockBeforeDate(_stockTenantId, dealerId, modelId, curr.effectiveFrom);
+      const eligibleQty = await getClosingStockBeforeDate(dataTenantId, dealerId, modelId, curr.effectiveFrom);
 
       await db.delete(schema.rebates).where(
         and(
-          eq(schema.rebates.tenantId, tenantId),
+          eq(schema.rebates.tenantId, dataTenantId),
           eq(schema.rebates.priceHistoryId, curr.id),
           eq(schema.rebates.dealerId, dealerId)
         )
@@ -231,7 +245,7 @@ export async function reEvaluateRebatesForDealer(
       if (eligibleQty > 0) {
         await db.insert(schema.rebates).values({
           id: randomUUID(),
-          tenantId,
+          tenantId: dataTenantId,
           dealerId,
           modelId,
           oldDealerPrice: prev.dealerPrice,
@@ -246,7 +260,7 @@ export async function reEvaluateRebatesForDealer(
     } else {
       await db.delete(schema.rebates).where(
         and(
-          eq(schema.rebates.tenantId, tenantId),
+          eq(schema.rebates.tenantId, dataTenantId),
           eq(schema.rebates.priceHistoryId, curr.id),
           eq(schema.rebates.dealerId, dealerId)
         )
