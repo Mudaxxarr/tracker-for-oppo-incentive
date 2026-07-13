@@ -1,10 +1,23 @@
-import "dotenv/config";
+/**
+ * Integration verify: owner central price drop → a SEPARATE-tenant dealer holding
+ * stock receives the rebate (via the background queue drain). Seeds isolated
+ * `zz_test_cpa_*` rows and deletes them in `finally`.
+ *
+ * Run:  npx tsx --conditions=react-server scripts/verify-central-price-adjust.mjs
+ * (the `react-server` condition makes the `server-only` guard a no-op under tsx)
+ */
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+dotenv.config();
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { db, schema } from "../lib/db/client.ts";
-import { updateModelPrice } from "../lib/db/queries/models.ts";
-import { drainRebateJobs } from "../lib/db/queries/rebate-jobs.ts";
-import { listRebatesForDealer } from "../lib/db/queries/rebates.ts";
+
+// Dynamic imports: the db client reads POSTGRES_URL at import time, so it must
+// load AFTER dotenv.config() has run (static imports are hoisted above it).
+const { db, schema } = await import("../lib/db/client.ts");
+const { updateModelPrice } = await import("../lib/db/queries/models.ts");
+const { drainRebateJobs } = await import("../lib/db/queries/rebate-jobs.ts");
+const { listRebatesForDealer } = await import("../lib/db/queries/rebates.ts");
 
 const OWNER = "owner";
 const PFX = "zz_test_cpa_";

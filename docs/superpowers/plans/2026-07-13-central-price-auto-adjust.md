@@ -375,7 +375,8 @@ process.exit(failed ? 1 : 0);
 
 - [ ] **Step 2: Run it — expect FAIL**
 
-Run: `npx tsx scripts/verify-central-price-adjust.mjs`
+Run: `npx tsx --conditions=react-server scripts/verify-central-price-adjust.mjs`
+(the `react-server` condition makes the `server-only` import guard a no-op under tsx; the script loads `.env.local`.)
 Expected: `❌ FAIL: non-owner dealer got NO rebate...` and exit 1 (price-drop path is owner-only; no job enqueued; drain does nothing).
 
 - [ ] **Step 3: Commit**
@@ -558,7 +559,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 - [ ] **Step 9: Run the verification script — expect PASS**
 
-Run: `npx tsx scripts/verify-central-price-adjust.mjs`
+Run: `npx tsx --conditions=react-server scripts/verify-central-price-adjust.mjs`
 Expected: `✅ PASS: non-owner dealer rebate = 100 (5 × 20)` and exit 0.
 
 - [ ] **Step 10: Typecheck + lint**
