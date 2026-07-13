@@ -12,6 +12,7 @@ import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { logAudit } from "@/lib/audit";
 import { CROSS_REGION_STATUS } from "@/lib/constants";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
+import { formatPKR } from "@/lib/format";
 
 export type CrossRegionFormState = { error?: string; ok?: boolean };
 
@@ -247,6 +248,57 @@ export async function dealerCrOutwardAction(
   // Stock dropped — re-evaluate rebate eligibility (fire-and-forget).
   reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, caughtDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
 
+  return { ok: true };
+}
+
+const DealerCashFineSchema = z.object({
+  modelId: z.string().min(1, "Choose a model"),
+  fineAmount: z.coerce.number().positive("Fine amount must be > 0"),
+  caughtDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  note: z.string().max(500).optional().nullable(),
+});
+
+/** Dealer logs a pure cash fine (no stock movement) — mirrors the owner's
+ *  inventory "Log fine" option. Recorded as a zero-quantity CR-caught so it only
+ *  reduces this dealer's own net payout; directly active, dealer-scoped. */
+export async function dealerCashFineAction(
+  _prev: DealerOutwardState,
+  fd: FormData,
+): Promise<DealerOutwardState> {
+  const session = await getDealerSession();
+  if (!session) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  if (!dealerId) return { error: "No active Dealer ID" };
+  const tenantId = session.tenantId;
+
+  const parsed = DealerCashFineSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { modelId, fineAmount, caughtDate, note } = parsed.data;
+
+  const m = await getModelById(modelId);
+  const id = await createCrCaught({
+    tenantId,
+    dealerId,
+    modelId,
+    quantity: 0,
+    fineAmount,
+    caughtDate,
+    dealerPriceSnapshot: 0,
+    note: note ?? null,
+    status: "active",
+    createdByUserId: session.userId,
+  });
+
+  await logAudit({
+    action: "cr.cash_fine",
+    entityType: "cr_caught",
+    entityId: id,
+    dealerId,
+    summary: `[Dealer] Cash fine recorded: ${formatPKR(fineAmount)} for ${m?.name ?? "?"} on ${caughtDate}`,
+  });
+
+  revalidatePath("/dealer/cross-region");
+  revalidatePath("/dealer/dashboard");
   return { ok: true };
 }
 
