@@ -3,11 +3,11 @@
 ## Current state
 
 - Branch: `feat/central-price-auto-adjust`
-- Central-price implementation tip before this checkpoint commit: `5993934 fix(cron): use Hobby-compatible daily safety net`
+- Latest implementation commit: `ef182a9 fix(rebates): store dealer adjustments in dealer tenant`
 - Stable production URL: `https://oppo-tracker.vercel.app`
-- Production deployment: `dpl_5DYE7e8DcQXPsaiz8V1DPNACVqDU`
-- Deployment URL: `https://oppo-tracker-6jsvjun6k-mudaxxar-3948s-projects.vercel.app`
-- Verified preview: `https://oppo-tracker-136a1nnww-mudaxxar-3948s-projects.vercel.app`
+- Production deployment: `dpl_AGyLBQp3isvr65Aj5QjC5F99Frdt`
+- Deployment URL: `https://oppo-tracker-56wv0fjnz-mudaxxar-3948s-projects.vercel.app`
+- Verified preview: `https://oppo-tracker-11qnv6jvi-mudaxxar-3948s-projects.vercel.app`
 - No git push was performed in this session.
 
 ## Central price auto-adjust feature
@@ -17,6 +17,17 @@
 - `/api/cron/reprice` drains missed jobs as a safety net.
 - Dealer purchase prices now come from the owner-controlled central price and are read-only in the dealer purchase form.
 - Eligible historical stock shows its calculated price-drop rebate/net payout.
+
+## Cross-tenant rebate visibility fix
+
+- Production diagnosis found that the queue correctly calculated non-owner dealer rebates but stored those rows under tenant `owner`.
+- Dealer dashboards filter rebates by the dealer's own tenant, so the calculated rows existed but were invisible in dealer payout totals.
+- `reEvaluateRebatesForDealer` now keeps owner price history separate from the dealer data tenant and stores/deletes rebate rows under the dealer tenant.
+- The isolated integration check now queries the rebate through the non-owner dealer tenant; it failed before the fix and passed afterward.
+- One-time production repair moved 2 existing rows, totaling Rs 50,000, into the correct dealer tenants:
+  - 24 eligible units: Rs 48,000
+  - 1 eligible unit: Rs 2,000
+- The repair was atomic, saved an audit entry with action `rebate.tenant_repair`, and left 0 tenant-mismatched rebate rows.
 
 ## Cron registration
 
@@ -39,6 +50,7 @@
 - `npx tsc --noEmit`: passed.
 - Targeted lint for the central-price/rebate/cron changes: passed.
 - Production Vercel deployment: Ready; cron metadata confirmed with `vercel inspect`.
+- Rebate tenant fix preview and production deployments: Ready.
 - Isolated database integration probe:
   - Created temporary `zz_test_cpa_*` records.
   - Confirmed non-owner rebate `100 = 5 x 20`.
@@ -52,6 +64,12 @@
 - Evidence screenshots:
   - `output/playwright/central-price-spotcheck/.playwright-cli/page-2026-07-13T12-33-14-856Z.png`
   - `output/playwright/central-price-spotcheck/.playwright-cli/page-2026-07-13T12-34-08-554Z.png`
+- Real affected-dealer production verification:
+  - Khan Mobiles Ayyub Road displayed `Oppo A6c 4/64` at Rs 39,000 per unit with 24 units.
+  - Dashboard displayed `Price-drop refund Rs 48,000` and `Your net payout Rs 54,800` for July 2026.
+  - Browser console had 0 errors and 0 warnings.
+  - Temporary authentication state and helper/repair scripts were deleted.
+  - Evidence: `output/playwright/real-rebate-fix/.playwright-cli/page-2026-07-13T13-34-03-266Z.png`
 
 ## Known baseline issue
 
