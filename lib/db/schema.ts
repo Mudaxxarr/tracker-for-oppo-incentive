@@ -454,6 +454,23 @@ export const billingEvents = pgTable("billing_events", {
   createdAt: isoDateTime("created_at").notNull(),
 });
 
+// ---------- Rebate recompute jobs (background fan-out on owner price change) ----------
+export const rebateJobs = pgTable(
+  "rebate_jobs",
+  {
+    id: text("id").primaryKey(),
+    modelId: text("model_id")
+      .notNull()
+      .references(() => models.id, { onDelete: "cascade" }),
+    fromDate: isoDate("from_date").notNull(),
+    status: text("status").notNull().default("pending"), // 'pending' | 'done'
+    createdAt: isoDateTime("created_at").notNull(),
+  },
+  (t) => ({
+    pending: index("rebate_jobs_pending").on(t.status, t.createdAt),
+  })
+);
+
 // ----- Type exports -----
 export type DealerTenant = typeof dealerTenants.$inferSelect;
 export type NewDealerTenant = typeof dealerTenants.$inferInsert;
