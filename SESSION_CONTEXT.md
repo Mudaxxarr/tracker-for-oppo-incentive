@@ -2,12 +2,12 @@
 
 ## Current state
 
-- Branch: `feat/central-price-auto-adjust`
-- Latest implementation commit: `ef182a9 fix(rebates): store dealer adjustments in dealer tenant`
+- Branch: `master`
+- Latest implementation commit: `f47b160 fix(rebates): remove adjustments with deleted price entries`
 - Stable production URL: `https://oppo-tracker.vercel.app`
-- Production deployment: `dpl_AGyLBQp3isvr65Aj5QjC5F99Frdt`
-- Deployment URL: `https://oppo-tracker-56wv0fjnz-mudaxxar-3948s-projects.vercel.app`
-- Verified preview: `https://oppo-tracker-11qnv6jvi-mudaxxar-3948s-projects.vercel.app`
+- Production deployment: `dpl_htir1jsc89QUzvWGXYq6wMhHaa86`
+- Deployment URL: `https://oppo-tracker-i5henzc8i-mudaxxar-3948s-projects.vercel.app`
+- Verified preview: `https://oppo-tracker-dw95hb8q7-mudaxxar-3948s-projects.vercel.app`
 - No git push was performed in this session.
 
 ## Central price auto-adjust feature
@@ -28,6 +28,15 @@
   - 24 eligible units: Rs 48,000
   - 1 eligible unit: Rs 2,000
 - The repair was atomic, saved an audit entry with action `rebate.tenant_repair`, and left 0 tenant-mismatched rebate rows.
+
+## Deleted price-entry orphan rebate fix
+
+- Atta's July mobile dashboard was not serving a stale value: the database still contained Rs 12,000 of rebate rows for owner price-history entries that had already been deleted.
+- `deletePriceEntry` previously deleted rebates only where `rebates.tenantId` matched the owner tenant. Cross-tenant dealer rebates are stored under each dealer tenant, so those rows survived when an owner removed or reverted a test price entry.
+- Price-entry deletion now removes every rebate anchored to that shared `priceHistoryId`, across all dealer tenants, before deleting the price-history row.
+- The isolated integration check now creates a non-owner dealer rebate, deletes its owner price entry, drains the queue, and asserts that the dealer rebate is also removed. This assertion failed before the fix and passed afterward.
+- A one-time atomic production repair removed 8 definitively orphaned rows totaling Rs 308,200, recorded audit action `rebate.orphan_cleanup`, and verified that 0 orphan rows remain.
+- Atta's three orphan rows were Rs 2,000, Rs 10,000, and Rs 4,900. After cleanup, Atta's July rebate total is Rs 0.
 
 ## Cron registration
 
@@ -54,6 +63,7 @@
 - Isolated database integration probe:
   - Created temporary `zz_test_cpa_*` records.
   - Confirmed non-owner rebate `100 = 5 x 20`.
+  - Confirmed deleting the owner price-history entry also removes the dealer-tenant rebate.
   - Cleaned all temporary records in `finally`.
 - Authenticated Playwright spot-check with an isolated dealer fixture:
   - Dashboard displayed `Your net payout Rs 3,000` and `Price-drop refund Rs 3,000`.
@@ -70,6 +80,12 @@
   - Browser console had 0 errors and 0 warnings.
   - Temporary authentication state and helper/repair scripts were deleted.
   - Evidence: `output/playwright/real-rebate-fix/.playwright-cli/page-2026-07-13T13-34-03-266Z.png`
+- Real Atta production mobile verification after orphan cleanup:
+  - July 2026 displayed `Price-drop refund Rs 0` and `Your net payout Rs 2,540`.
+  - The current `Oppo A6c 4/64` stock price displayed Rs 41,000 per unit.
+  - Browser console had 0 errors and 0 warnings.
+  - Temporary authentication state and helper/repair scripts were deleted.
+  - Evidence: `output/playwright/atta-orphan-fix/.playwright-cli/page-2026-07-13T17-04-19-664Z.png`
 
 ## Known baseline issue
 
@@ -101,4 +117,4 @@ scripts/build-manager-apk.mjs
 
 ## Recommended next action
 
-Review and commit the Manager APK/admin-preview changes separately, then push/merge `feat/central-price-auto-adjust`. The central-price feature, production deployment, cron registration, and dealer UI spot-check are complete.
+Review and commit the Manager APK/admin-preview changes separately. Push `f47b160` from `master` when repository synchronization is desired; the rebate fix and production deployment are already complete.
