@@ -686,3 +686,15 @@ Use the `superpowers:finishing-a-development-branch` skill to choose merge/PR. I
 **Type consistency:** `reAdjustAllDealersForPriceChange(modelId, fromDate)`, `enqueueRebateJob(modelId, fromDate)`, `drainRebateJobs()`, `syncActivationSnapshotsAllTenants(modelId)`, `syncPurchaseSnapshotsAllTenants(modelId)` are used with identical signatures across Tasks 2/3/5. `reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate, stockTenantId?)` matches the existing signature in `lib/db/queries/rebates.ts`.
 
 **Note on tests:** This repo has no DB unit-test harness (Vitest runs pure tests only). DB-level correctness is proven by the `tsx` integration script (Task 4) — the codebase's established pattern (`scripts/stress-test.ts`) — plus the running-app `verify` pass (Task 7).
+
+## Addendum (2026-07-14): Vercel auto-deploy was silently stuck
+
+Several pushes to `master` after this plan (dealer-app branding/routing, back-button,
+signed release build) never reached production — `oppo-tracker.vercel.app` served a
+build from ~20h earlier despite `git push` succeeding each time. Diagnosis:
+`gh api repos/.../commits/<sha>/check-runs` showed `total_count: 0` for recent
+commits — Vercel's GitHub integration wasn't posting deployment checks at all, so
+the connection had gone stale (not just a slow queue). Fixed by running
+`vercel git connect` from the project root to re-link the GitHub repo. This commit
+is the verification: if it appears in `vercel ls oppo-tracker` as an automatic
+deployment without a manual `vercel --prod`, the pipeline is repaired.
