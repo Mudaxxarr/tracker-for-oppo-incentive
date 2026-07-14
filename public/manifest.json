@@ -1,6 +1,6 @@
 {
-  "name": "Alhamd Sales Console",
-  "short_name": "Sales Console",
+  "name": "Incento",
+  "short_name": "Incento",
   "description": "OPPO dealer management — activations, stock, incentives.",
   "start_url": "/dealer/dashboard",
   "scope": "/",

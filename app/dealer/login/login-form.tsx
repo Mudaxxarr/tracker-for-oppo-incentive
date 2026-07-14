@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { loginAction, type LoginState } from "./actions";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 
-export function LoginForm() {
+export function LoginForm({ hideAdminLink = false }: { hideAdminLink?: boolean }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
     loginAction,
     {},
@@ -74,9 +74,11 @@ export function LoginForm() {
           <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <strong>Main dealer:</strong> use the Login ID your admin gave you. <strong>Accountant:</strong> use the email &amp; password your main dealer created for you (Team page).
           </p>
-          <p className="text-center text-xs text-muted-foreground">
-            Owner / Admin? <a href="/login" className="font-medium text-primary underline underline-offset-2">Sign in here →</a>
-          </p>
+          {!hideAdminLink && (
+            <p className="text-center text-xs text-muted-foreground">
+              Owner / Admin? <a href="/login" className="font-medium text-primary underline underline-offset-2">Sign in here →</a>
+            </p>
+          )}
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={pending}>

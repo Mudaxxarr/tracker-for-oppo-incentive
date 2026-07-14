@@ -14,6 +14,9 @@ const config: CapacitorConfig = {
   android: {
     backgroundColor: "#ffffff",
     allowMixedContent: false,
+    // Lets the server (middleware) tell this installed app apart from a normal
+    // mobile browser — used to force dealer-only login and hide any admin path.
+    appendUserAgent: "IncentoDealerApp",
   },
   plugins: {
     StatusBar: {

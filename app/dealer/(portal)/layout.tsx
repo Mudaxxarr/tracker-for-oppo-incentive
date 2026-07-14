@@ -18,6 +18,7 @@ import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { OfflineSync } from "@/components/pwa/offline-sync";
 import { DealerTour } from "@/components/dealer/dealer-tour";
+import { DealerBackHandler } from "@/components/dealer/dealer-back-handler";
 import { ADMIN_PREVIEW_RETURN_COOKIE } from "@/lib/constants";
 
 export default async function DealerLayout({
@@ -90,6 +91,7 @@ export default async function DealerLayout({
       <DealerBottomNav features={features} role={session.role} />
       <InstallPrompt />
       <OfflineSync />
+      <DealerBackHandler />
       <Suspense fallback={null}>
         <DealerTour />
       </Suspense>
