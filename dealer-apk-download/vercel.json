@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "/Incento-v1.0-debug.apk",
+      "source": "/Incento-v1.0.apk",
       "headers": [
         {
           "key": "Content-Type",
@@ -9,7 +9,7 @@
         },
         {
           "key": "Content-Disposition",
-          "value": "attachment; filename=\"Incento-v1.0-debug.apk\""
+          "value": "attachment; filename=\"Incento-v1.0.apk\""
         },
         {
           "key": "Cache-Control",
