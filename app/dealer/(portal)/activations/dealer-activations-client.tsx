@@ -33,6 +33,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealerActivationForm } from "./dealer-activation-form";
 import { DealerBulkActivationForm } from "./dealer-bulk-activation-form";
+import { SyncIndicator } from "@/components/dealer/sync-indicator";
 import { PurchaseKpiCard } from "@/app/(app)/purchases/purchase-kpi-card";
 import { PurchaseTrendChart } from "@/app/(app)/purchases/purchase-trend-chart";
 import { PurchaseTopModelsPanel } from "@/app/(app)/purchases/purchase-top-models-panel";
@@ -89,7 +90,7 @@ export function DealerActivationsClient({
   const [filters, setFilters] = useState(initialFilters);
   const [crFilter, setCrFilter] = useState<CrFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [, startTransition] = useTransition();
+  const [isSyncing, startTransition] = useTransition();
 
   const updateFilter = (key: keyof typeof filters, value: string | undefined) => {
     const next = { ...filters, [key]: value || undefined };
@@ -341,11 +342,11 @@ export function DealerActivationsClient({
               {canBulk && <TabsTrigger value="bulk">Bulk by Date</TabsTrigger>}
             </TabsList>
             <TabsContent value="single" className="pt-3">
-              <DealerActivationForm stock={stock} dealerId={dealerId ?? ""} tenantId={tenantId} role={role} onSuccess={() => { setOpen(false); router.refresh(); }} />
+              <DealerActivationForm stock={stock} dealerId={dealerId ?? ""} tenantId={tenantId} role={role} onSuccess={() => { setOpen(false); startTransition(() => router.refresh()); }} />
             </TabsContent>
             {canBulk && (
               <TabsContent value="bulk" className="pt-3">
-                <DealerBulkActivationForm stock={stock} onSuccess={() => { setOpen(false); router.refresh(); }} />
+                <DealerBulkActivationForm stock={stock} onSuccess={() => { setOpen(false); startTransition(() => router.refresh()); }} />
               </TabsContent>
             )}
           </Tabs>
@@ -377,7 +378,10 @@ export function DealerActivationsClient({
             <h1 className="text-lg font-semibold tracking-tight">Activations</h1>
             <p className="text-sm text-muted-foreground">Each row locks the dealer price effective on activation date.</p>
           </div>
-          {addButton}
+          <div className="flex items-center gap-2">
+            {isSyncing ? <SyncIndicator /> : null}
+            {addButton}
+          </div>
         </div>
 
         {/* ── MOBILE ── */}
@@ -416,6 +420,7 @@ export function DealerActivationsClient({
           <p className="text-sm text-muted-foreground">Each row locks the dealer price effective on activation date.</p>
         </div>
         <div className="flex items-center gap-2">
+          {isSyncing ? <SyncIndicator /> : null}
           <div className="hidden md:flex rounded-lg border overflow-hidden text-xs">
             {(["overview", "records"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)} className={`px-3 py-1.5 transition-colors ${view === v ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>

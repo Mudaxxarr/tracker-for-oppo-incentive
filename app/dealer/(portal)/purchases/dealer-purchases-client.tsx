@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DealerPurchaseForm } from "./dealer-purchase-form";
 import { DealerBulkInvoiceForm } from "./dealer-bulk-invoice-form";
+import { SyncIndicator } from "@/components/dealer/sync-indicator";
 import { PurchaseKpiCard } from "@/app/(app)/purchases/purchase-kpi-card";
 import { PurchaseTrendChart } from "@/app/(app)/purchases/purchase-trend-chart";
 import { PurchaseBillTimeline } from "@/app/(app)/purchases/purchase-bill-timeline";
@@ -82,7 +83,7 @@ export function DealerPurchasesClient({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
   const [editLine, setEditLine] = useState<BillLine | null>(null);
-  const [, startTransition] = useTransition();
+  const [isSyncing, startTransition] = useTransition();
 
   const updateFilter = (key: keyof typeof filters, value: string | undefined) => {
     const next = { ...filters, [key]: value || undefined };
@@ -253,11 +254,11 @@ export function DealerPurchasesClient({
               {canBulk && <TabsTrigger value="bulk">Bulk invoice</TabsTrigger>}
             </TabsList>
             <TabsContent value="single" className="pt-3">
-              <DealerPurchaseForm models={models} dealerId={dealerId ?? ""} tenantId={tenantId} role={role} backdateDays={backdateDays} onSuccess={() => { setOpen(false); toast.success("Purchase added"); router.refresh(); }} />
+              <DealerPurchaseForm models={models} dealerId={dealerId ?? ""} tenantId={tenantId} role={role} backdateDays={backdateDays} onSuccess={() => { setOpen(false); toast.success("Purchase added"); startTransition(() => router.refresh()); }} />
             </TabsContent>
             {canBulk && (
               <TabsContent value="bulk" className="pt-3">
-                <DealerBulkInvoiceForm models={models} onSuccess={() => { setOpen(false); router.refresh(); }} />
+                <DealerBulkInvoiceForm models={models} onSuccess={() => { setOpen(false); startTransition(() => router.refresh()); }} />
               </TabsContent>
             )}
           </Tabs>
@@ -289,7 +290,10 @@ export function DealerPurchasesClient({
             <h1 className="text-lg font-semibold tracking-tight">Purchases</h1>
             <p className="text-sm text-muted-foreground">Stock arriving at your dealer ID. 4% only triggers on activation.</p>
           </div>
-          {addButton}
+          <div className="flex items-center gap-2">
+            {isSyncing ? <SyncIndicator /> : null}
+            {addButton}
+          </div>
         </div>
 
         {!hasDealer ? (
@@ -340,6 +344,7 @@ export function DealerPurchasesClient({
           <p className="text-sm text-muted-foreground">Stock arriving at your dealer ID. 4% only triggers on activation.</p>
         </div>
         <div className="flex items-center gap-2">
+          {isSyncing ? <SyncIndicator /> : null}
           <div className="hidden md:flex rounded-lg border overflow-hidden text-xs">
             {(["overview", "records"] as const).map((v) => (
               <button
