@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  Area,
-  AreaChart,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from "recharts";
-import { Package, Smartphone, PieChart, Tag, Medal, Target } from "lucide-react";
+import { Package, Smartphone, Tag, Trophy, Target, TrendingUp } from "lucide-react";
 import { formatPKR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,9 @@ const compactPKR = (n: number) => {
   return `${sign}Rs ${v}`;
 };
 
-/** Mobile-only retail-overview hero — sits above the full dashboard on small screens. */
+/** Mobile-only summary card — sits above the full dashboard on small screens.
+ *  Deliberately restrained: flat surface, no ambient color, no decoration —
+ *  matches the same card/typography conventions as the rest of the dashboard. */
 export function DealerHeroCard({
   periodLabel,
   totalReceivable,
@@ -50,109 +52,44 @@ export function DealerHeroCard({
   const growthUp = (totalReceivableGrowthPercent ?? 0) >= 0;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm lg:hidden">
-      {/* Headline panel — soft mint tint + decorative ribbon */}
-      <div
-        className="relative overflow-hidden px-5 pb-28 pt-6"
-        style={{
-          background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--primary) 6%, var(--card)) 0%, color-mix(in oklab, var(--primary) 10%, var(--card)) 100%)",
-        }}
-      >
-        <div className="relative z-10">
-          <p className="font-mono text-base font-bold tracking-tight text-primary">oppo</p>
-
-          <div className="mt-5 flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-primary" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Retail overview
-            </span>
-          </div>
-
-          <p className="mt-3 text-sm text-muted-foreground">Total Receivable</p>
-          <p className="mt-0.5 font-mono text-[2.5rem] font-bold leading-none tabular-nums text-foreground">
+    <div className="dashboard-card-live overflow-hidden rounded-xl border border-border bg-card shadow-none lg:hidden">
+      {/* Headline */}
+      <div className="flex items-start justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Total Receivable</p>
+          <p className="mt-1 font-mono text-[1.65rem] font-normal leading-tight tabular-nums text-foreground">
             {compactPKR(totalReceivable)}
           </p>
-
-          {totalReceivableGrowthPercent != null && (
-            <div
-              className={cn(
-                "mt-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
-                growthUp ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive",
-              )}
-            >
-              <span>{growthUp ? "▲" : "▼"}</span>
-              <span>{Math.abs(totalReceivableGrowthPercent)}% vs last period</span>
-            </div>
-          )}
-
-          <div className="mt-4 border-t border-primary/10 pt-3">
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {hasTarget && targetPct >= 100
-                ? "Your store performance is above target this period."
-                : periodLabel}
-            </p>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="text-xs text-muted-foreground">{periodLabel}</p>
+            {totalReceivableGrowthPercent != null && (
+              <span className={cn("text-xs font-medium", growthUp ? "text-primary" : "text-destructive")}>
+                {growthUp ? "▲" : "▼"} {Math.abs(totalReceivableGrowthPercent)}%
+              </span>
+            )}
           </div>
         </div>
-
-        {/* Decorative abstract ribbon — original layered gradient shapes, not a copied asset.
-            Confined to the bottom strip so it never crosses the text above it. */}
-        <svg
-          className="pointer-events-none absolute -bottom-2 -left-6 z-0 h-28 w-56 opacity-80"
-          viewBox="0 0 220 110"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M-10 105C50 100 65 75 45 55C25 35 55 5 100 18C145 31 128 68 165 80C202 92 215 65 230 68"
-            stroke="var(--primary)"
-            strokeOpacity="0.3"
-            strokeWidth="20"
-            strokeLinecap="round"
-          />
-          <path
-            d="M-10 90C45 85 60 62 42 46C24 30 55 8 95 20C135 32 118 62 150 75"
-            stroke="var(--primary)"
-            strokeOpacity="0.55"
-            strokeWidth="10"
-            strokeLinecap="round"
-          />
-          <path
-            d="M-10 72C35 68 48 48 32 34"
-            stroke="var(--primary)"
-            strokeOpacity="0.85"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-        </svg>
+        <TrendingUp className="mt-0.5 size-5 shrink-0 text-primary" />
       </div>
 
       {/* Stat tile grid */}
-      <div className="grid grid-cols-2 gap-px bg-border">
+      <div className="grid grid-cols-2 gap-px border-t border-border bg-border">
         <HeroTile icon={Package} label="Purchase Qty" value={String(periodPurchaseUnits)} sub="Units" />
         <HeroTile icon={Smartphone} label="Activations" value={String(periodActivations)} sub="Units" />
         <HeroTile icon={Tag} label="Net Sales" value={compactPKR(periodNetSalesValue)} sub="This period" />
-        <HeroTile icon={PieChart} label="Price-Drop Refund" value={compactPKR(rebateEarned)} sub="Dealer price change" />
-
-        <div className="flex min-h-[104px] items-center gap-3 bg-card px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 grid size-9 place-items-center rounded-full bg-primary/10">
-              <Medal className="size-4 text-primary" />
-            </div>
-            <p className="text-xs text-muted-foreground">Top-Selling Model</p>
-            <p className="truncate text-sm font-semibold text-foreground">
-              {topSelling ? `${topSelling.modelName} (${topSelling.qty})` : "—"}
-            </p>
+        <HeroTile icon={Tag} label="Price-Drop Refund" value={compactPKR(rebateEarned)} sub="Dealer price change" />
+        <HeroTile
+          icon={Trophy}
+          label="Top-Selling Model"
+          value={topSelling ? topSelling.modelName : "—"}
+          sub={topSelling ? `${topSelling.qty} sold` : undefined}
+        />
+        <div className="flex min-h-[92px] flex-col justify-center gap-1.5 bg-card px-4 py-3">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Target className="size-3.5" />
+            <span className="text-xs">Target Progress</span>
           </div>
-          <PhoneGlyph className="h-16 w-9 shrink-0" />
-        </div>
-
-        <div className="flex min-h-[104px] flex-col justify-center gap-1.5 bg-card px-4 py-3">
-          <div className="mb-1 grid size-9 place-items-center rounded-full bg-primary/10">
-            <Target className="size-4 text-primary" />
-          </div>
-          <p className="text-xs text-muted-foreground">Target Progress</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-foreground">
+          <p className="font-mono text-sm font-normal tabular-nums text-foreground">
             {hasTarget ? `${Math.round(targetPct)}%` : "No target"}
           </p>
           <div
@@ -171,18 +108,12 @@ export function DealerHeroCard({
         </div>
       </div>
 
-      {/* 7-day net sales trend */}
+      {/* 7-day net sales trend — green here means "the dealer's own confirmed sales" */}
       <div className="border-t border-border px-5 py-4">
-        <p className="text-xs font-semibold text-muted-foreground">Sales Trend (Last 7 Days)</p>
-        <div className="mt-2 h-32">
+        <p className="text-xs font-medium text-muted-foreground">Sales trend (last 7 days)</p>
+        <div className="mt-2 h-28">
           <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} debounce={50}>
-            <AreaChart data={last7DaysTrend} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-              <defs>
-                <linearGradient id="heroNetSalesFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
+            <LineChart data={last7DaysTrend} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
               <XAxis
                 dataKey="label"
                 axisLine={false}
@@ -202,16 +133,15 @@ export function DealerHeroCard({
                   fontSize: 12,
                 }}
               />
-              <Area
+              <Line
                 type="monotone"
                 dataKey="netSales"
                 stroke="var(--primary)"
                 strokeWidth={2}
-                fill="url(#heroNetSalesFill)"
-                dot={{ r: 3, fill: "var(--primary)", strokeWidth: 0 }}
+                dot={{ r: 3 }}
                 activeDot={{ r: 4 }}
               />
-            </AreaChart>
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -231,28 +161,15 @@ function HeroTile({
   sub?: string;
 }) {
   return (
-    <div className="flex min-h-[104px] flex-col justify-center gap-1 bg-card px-4 py-3">
-      <div className="mb-1 grid size-9 place-items-center rounded-full bg-primary/10">
-        <Icon className="size-4 text-primary" />
+    <div className="flex min-h-[92px] flex-col justify-center gap-1 bg-card px-4 py-3">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <Icon className="size-3.5" />
+        <span className="text-xs">{label}</span>
       </div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-mono text-lg font-bold tabular-nums text-foreground">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-    </div>
-  );
-}
-
-/** Simple original phone silhouette (no third-party product photo). */
-function PhoneGlyph({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn("rounded-[10px] border-2 border-primary/25 bg-primary/5 p-1", className)}
-      aria-hidden="true"
-    >
-      <div className="flex h-full flex-col items-center justify-between rounded-[6px] bg-primary/10 p-1">
-        <span className="mt-0.5 size-1 rounded-full bg-primary/40" />
-        <span className="mb-1 h-1 w-3 rounded-full bg-primary/30" />
-      </div>
+      <p className="truncate font-mono text-sm font-normal tabular-nums text-foreground" title={value}>
+        {value}
+      </p>
+      {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
 }
