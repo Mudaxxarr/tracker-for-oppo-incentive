@@ -1,4 +1,5 @@
 import "server-only";
+import { revalidateTag } from "next/cache";
 import { db, schema } from "../client";
 import { and, asc, desc, eq, gte, lte, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -17,6 +18,7 @@ export async function createTargetBonusPolicy(input: {
 }) {
   const id = randomUUID();
   await db.insert(schema.targetBonusPolicies).values({ id, ...input });
+  revalidateTag("dealer-policies", {});
   return id;
 }
 
@@ -25,11 +27,13 @@ export async function updateTargetBonusPolicy(id: string, tenantId: string, deal
 }) {
   await db.update(schema.targetBonusPolicies).set(input)
     .where(and(eq(schema.targetBonusPolicies.id, id), eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }
 
 export async function deleteTargetBonusPolicy(id: string, tenantId: string, dealerId: string) {
   await db.delete(schema.targetBonusPolicies)
     .where(and(eq(schema.targetBonusPolicies.id, id), eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }
 
 // ===== Stock-In =====
@@ -80,6 +84,7 @@ export async function createStockInPolicy(input: {
 }) {
   const id = randomUUID();
   await db.insert(schema.stockInPolicies).values({ id, ...input });
+  revalidateTag("dealer-policies", {});
   return id;
 }
 
@@ -88,11 +93,13 @@ export async function updateStockInPolicy(id: string, tenantId: string, dealerId
 }) {
   await db.update(schema.stockInPolicies).set(input)
     .where(and(eq(schema.stockInPolicies.id, id), eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }
 
 export async function deleteStockInPolicy(id: string, tenantId: string, dealerId: string) {
   await db.delete(schema.stockInPolicies)
     .where(and(eq(schema.stockInPolicies.id, id), eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }
 
 // ===== Activation Incentive =====
@@ -121,6 +128,7 @@ export async function createActivationIncentivePolicy(input: {
 }) {
   const id = randomUUID();
   await db.insert(schema.activationIncentivePolicies).values({ id, ...input });
+  revalidateTag("dealer-policies", {});
   return id;
 }
 
@@ -129,11 +137,13 @@ export async function updateActivationIncentivePolicy(id: string, tenantId: stri
 }) {
   await db.update(schema.activationIncentivePolicies).set(input)
     .where(and(eq(schema.activationIncentivePolicies.id, id), eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }
 
 export async function deleteActivationIncentivePolicy(id: string, tenantId: string, dealerId: string) {
   await db.delete(schema.activationIncentivePolicies)
     .where(and(eq(schema.activationIncentivePolicies.id, id), eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }
 
 // ===== Dealer Incentive =====
@@ -162,6 +172,7 @@ export async function createDealerIncentivePolicy(input: {
 }) {
   const id = randomUUID();
   await db.insert(schema.dealerIncentivePolicies).values({ id, ...input, modelId: input.modelId ?? null });
+  revalidateTag("dealer-policies", {});
   return id;
 }
 
@@ -170,9 +181,11 @@ export async function updateDealerIncentivePolicy(id: string, tenantId: string, 
 }) {
   await db.update(schema.dealerIncentivePolicies).set(input)
     .where(and(eq(schema.dealerIncentivePolicies.id, id), eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }
 
 export async function deleteDealerIncentivePolicy(id: string, tenantId: string, dealerId: string) {
   await db.delete(schema.dealerIncentivePolicies)
     .where(and(eq(schema.dealerIncentivePolicies.id, id), eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
 }

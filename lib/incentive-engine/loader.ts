@@ -1,10 +1,54 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { db, schema } from "@/lib/db/client";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { and, eq, gte, lte, ne, or, type SQL } from "drizzle-orm";
 import { calculateIncentives, type EngineInput, type IncentiveReport } from "./index";
 import { getConstants } from "@/lib/settings";
 import { PURCHASE_REVIEW_STATUS } from "@/lib/constants";
+
+/**
+ * Models + this dealer's 4 policy tables - re-fetched identically on every
+ * buildIncentiveReport/buildMonthlyEarnings call (a single dashboard load
+ * calls these 2-8 times). None of this is transactional financial data
+ * (models catalog and owner-configured policy windows only change via rare
+ * admin edits), so it's cached and invalidated precisely on write via
+ * revalidateTag("models") / revalidateTag("dealer-policies") in
+ * lib/db/queries/models.ts and lib/db/queries/policies.ts.
+ */
+const getCachedDealerPolicyContext = unstable_cache(
+  async (dealerId: string) => {
+    const tenantId = OWNER_TENANT_ID;
+    const [
+      models,
+      targetBonusPolicies,
+      stockInPolicies,
+      activationIncentivePolicies,
+      dealerIncentivePolicies,
+    ] = await Promise.all([
+      db.select().from(schema.models),
+      db
+        .select()
+        .from(schema.targetBonusPolicies)
+        .where(and(eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId))),
+      db
+        .select()
+        .from(schema.stockInPolicies)
+        .where(and(eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId))),
+      db
+        .select()
+        .from(schema.activationIncentivePolicies)
+        .where(and(eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId))),
+      db
+        .select()
+        .from(schema.dealerIncentivePolicies)
+        .where(and(eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId))),
+    ]);
+    return { models, targetBonusPolicies, stockInPolicies, activationIncentivePolicies, dealerIncentivePolicies };
+  },
+  ["dealer-policy-context"],
+  { revalidate: 300, tags: ["models", "dealer-policies"] },
+);
 
 /**
  * Loads everything the engine needs for a (dealerId, period) and produces a report.
@@ -28,34 +72,15 @@ export async function buildIncentiveReport(input: {
   const constants = await getConstants();
   const basePct = input.baseIncentivePercent ?? constants.basePercent;
 
-  const tenantId = OWNER_TENANT_ID;
   const dataTenantId = input.dataTenantId ?? OWNER_TENANT_ID;
 
-  const [
+  const {
     models,
     targetBonusPolicies,
     stockInPolicies,
     activationIncentivePolicies,
     dealerIncentivePolicies,
-  ] = await Promise.all([
-    db.select().from(schema.models),
-    db
-      .select()
-      .from(schema.targetBonusPolicies)
-      .where(and(eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId))),
-    db
-      .select()
-      .from(schema.stockInPolicies)
-      .where(and(eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId))),
-    db
-      .select()
-      .from(schema.activationIncentivePolicies)
-      .where(and(eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId))),
-    db
-      .select()
-      .from(schema.dealerIncentivePolicies)
-      .where(and(eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId))),
-  ]);
+  } = await getCachedDealerPolicyContext(dealerId);
 
   // Compute the full window (union) of report + all policy windows.
   let minStart = periodStart;
@@ -196,28 +221,21 @@ export async function buildMonthlyEarnings(
   months: Array<{ label: string; startStr: string; endStr: string }>,
   dataTenantId?: string,
 ): Promise<Array<{ label: string; total: number; activations: number }>> {
-  const tenantId = OWNER_TENANT_ID;
   const effectiveDataTenantId = dataTenantId ?? OWNER_TENANT_ID;
 
   const rangeStart = months[0].startStr;
   const rangeEnd = months[months.length - 1].endStr;
 
-  // Fetch constants + all policies + models in one parallel batch
   const [
     constants,
-    models,
-    targetBonusPolicies,
-    stockInPolicies,
-    activationIncentivePolicies,
-    dealerIncentivePolicies,
-  ] = await Promise.all([
-    getConstants(),
-    db.select().from(schema.models),
-    db.select().from(schema.targetBonusPolicies).where(and(eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId))),
-    db.select().from(schema.stockInPolicies).where(and(eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId))),
-    db.select().from(schema.activationIncentivePolicies).where(and(eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId))),
-    db.select().from(schema.dealerIncentivePolicies).where(and(eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId))),
-  ]);
+    {
+      models,
+      targetBonusPolicies,
+      stockInPolicies,
+      activationIncentivePolicies,
+      dealerIncentivePolicies,
+    },
+  ] = await Promise.all([getConstants(), getCachedDealerPolicyContext(dealerId)]);
 
   // Extend window to cover all policy gates (so target/dealer-incentive counts are correct)
   let minStart = rangeStart;

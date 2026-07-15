@@ -1,4 +1,5 @@
 import "server-only";
+import { revalidateTag } from "next/cache";
 import { db, schema } from "../client";
 import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -106,6 +107,7 @@ export async function createModel(
     effectiveFrom: today,
     effectiveTo: null,
   });
+  revalidateTag("models", {});
   return modelId;
 }
 
@@ -333,6 +335,7 @@ export async function updateModel(input: {
   id: string; name: string; sku: string | null; isActive: boolean;
 }): Promise<void> {
   await db.update(schema.models).set({ name: input.name, sku: input.sku, isActive: input.isActive }).where(eq(schema.models.id, input.id));
+  revalidateTag("models", {});
 }
 
 /**
@@ -402,5 +405,6 @@ export async function deleteModel(modelId: string): Promise<{ ok: true } | { ok:
     .where(eq(schema.activations.modelId, modelId));
   if (Number(activationCount) > 0) return { ok: false, reason: `${Number(activationCount)} activation(s) still reference this model` };
   await db.delete(schema.models).where(eq(schema.models.id, modelId));
+  revalidateTag("models", {});
   return { ok: true };
 }

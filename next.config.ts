@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
     // of bundling the whole package — recharts especially matters for the
     // Capacitor mobile WebView's initial JS payload.
     optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
+    // Client Router Cache: revisiting a page within this window (back/forward,
+    // re-clicking a nav tab, or the Capacitor app resuming from background)
+    // shows the last-rendered page instantly, then Next quietly refetches and
+    // patches in fresh data - no full-page reload/blank-loading state for a
+    // page the user already has. Any Server Action's revalidatePath/Tag call
+    // bypasses this immediately regardless of the window, so a save/delete is
+    // always reflected right away - this only smooths incidental navigation.
+    // Kept short given how often stock/activation figures change here.
+    staleTimes: { dynamic: 30, static: 180 },
   },
 };
 
