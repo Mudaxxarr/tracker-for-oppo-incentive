@@ -70,7 +70,7 @@ export async function submitCrossRegionForApproval(input: {
   if (rows[0].status !== CROSS_REGION_STATUS.PENDING_REPORT) return { ok: false, message: "Only pending transfers can be submitted for approval" };
   await db.update(schema.crossRegionTransfers)
     .set({ status: CROSS_REGION_STATUS.PENDING_OWNER_APPROVAL })
-    .where(eq(schema.crossRegionTransfers.id, input.id));
+    .where(and(eq(schema.crossRegionTransfers.id, input.id), eq(schema.crossRegionTransfers.tenantId, input.tenantId)));
   return { ok: true };
 }
 
@@ -115,12 +115,12 @@ export async function updateCrossRegionStatus(input: {
         billNumber,
         crossRegionTransferId: transfer.id,
       });
-      await tx.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: effectiveDate }).where(eq(schema.crossRegionTransfers.id, transfer.id));
+      await tx.update(schema.crossRegionTransfers).set({ status: input.status, shiftedToIdDate: effectiveDate }).where(and(eq(schema.crossRegionTransfers.id, transfer.id), eq(schema.crossRegionTransfers.tenantId, input.tenantId)));
     });
     return { ok: true, created: transfer.quantity, modelId: transfer.modelId, dealerId: transfer.dealerId, effectiveDate };
   }
 
-  await db.update(schema.crossRegionTransfers).set({ status: input.status }).where(eq(schema.crossRegionTransfers.id, transfer.id));
+  await db.update(schema.crossRegionTransfers).set({ status: input.status }).where(and(eq(schema.crossRegionTransfers.id, transfer.id), eq(schema.crossRegionTransfers.tenantId, input.tenantId)));
   return { ok: true };
 }
 
@@ -183,14 +183,17 @@ export async function createInterIdTransfer(input: {
   return id;
 }
 
-export async function acceptInterIdTransfer(tenantId: string, id: string, toDealerId: string): Promise<{ ok: boolean; message?: string }> {
+export async function acceptInterIdTransfer(tenantId: string, id: string, toDealerId: string, priceTenantId?: string): Promise<{ ok: boolean; message?: string }> {
   const rows = await db.select().from(schema.interIdTransfers)
     .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.toDealerId, toDealerId)))
     .limit(1);
   if (rows.length === 0) return { ok: false, message: "Transfer not found" };
   const transfer = rows[0];
   if (transfer.status !== INTER_ID_STATUS.PENDING) return { ok: false, message: "Transfer is not pending" };
-  const price = await getPriceOnDate(tenantId, transfer.modelId, transfer.transferDate);
+  // Prices are owner-configured (single source of truth) — same rule as activations,
+  // purchases, and cross-region transfers. Falls back to `tenantId` for the owner
+  // portal, where the row's own tenant already IS the owner tenant.
+  const price = await getPriceOnDate(priceTenantId ?? tenantId, transfer.modelId, transfer.transferDate);
   if (!price) return { ok: false, message: "No dealer price defined for this model on the transfer date" };
   const billNumber = await getNextBillNumber(tenantId, toDealerId, transfer.transferDate);
   await db.insert(schema.purchases).values({
@@ -200,7 +203,7 @@ export async function acceptInterIdTransfer(tenantId: string, id: string, toDeal
     referenceNote: `Inter-ID transfer in (${id.slice(0, 8)})`,
     billNumber,
   });
-  await db.update(schema.interIdTransfers).set({ status: INTER_ID_STATUS.ACCEPTED }).where(eq(schema.interIdTransfers.id, id));
+  await db.update(schema.interIdTransfers).set({ status: INTER_ID_STATUS.ACCEPTED }).where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId)));
   return { ok: true };
 }
 
@@ -210,6 +213,6 @@ export async function rejectInterIdTransfer(tenantId: string, id: string, toDeal
     .limit(1);
   if (rows.length === 0) return { ok: false, message: "Transfer not found" };
   if (rows[0].status !== INTER_ID_STATUS.PENDING) return { ok: false, message: "Transfer is not pending" };
-  await db.update(schema.interIdTransfers).set({ status: INTER_ID_STATUS.REJECTED }).where(eq(schema.interIdTransfers.id, id));
+  await db.update(schema.interIdTransfers).set({ status: INTER_ID_STATUS.REJECTED }).where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId)));
   return { ok: true };
 }

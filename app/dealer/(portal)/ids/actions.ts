@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { getDealerSession } from "@/lib/dealer-auth";
+import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { listDealerIdsForTenant, setActiveDealerIdForTenant, getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { db, schema } from "@/lib/db/client";
 import { logAudit } from "@/lib/audit";
@@ -139,7 +140,7 @@ export async function acceptDealerTransferAction(transferId: string): Promise<vo
   const { tenantId } = session;
   const dealerId = await getActiveDealerIdForTenant(tenantId);
   if (!dealerId) throw new Error("No active dealer ID.");
-  const result = await acceptInterIdTransfer(tenantId, transferId, dealerId);
+  const result = await acceptInterIdTransfer(tenantId, transferId, dealerId, OWNER_TENANT_ID);
   if (!result.ok) throw new Error(result.message ?? "Failed to accept transfer.");
   await logAudit({ action: "inter_id_transfer.accept", summary: `Accepted transfer ${transferId.slice(0, 8)}`, dealerId });
   revalidatePath("/dealer/ids");
@@ -159,7 +160,13 @@ export async function rejectDealerTransferAction(transferId: string): Promise<vo
   revalidatePath("/dealer/inventory");
 }
 
-export async function getDealerIdStatsAction(tenantId: string, dealerIds: string[]) {
+export async function getDealerIdStatsAction(dealerIds: string[]) {
+  // SECURITY: tenantId must come from the verified session, never a caller-
+  // supplied argument — this is a "use server" action and therefore directly
+  // network-callable with arbitrary arguments, bypassing whatever page/session
+  // check the current UI happens to perform before invoking it.
+  const session = await requireSession();
+  const tenantId = session.tenantId;
   if (dealerIds.length === 0) return {};
   const startOfMonth = new Date();
   startOfMonth.setDate(1);

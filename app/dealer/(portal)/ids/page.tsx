@@ -25,7 +25,7 @@ export default async function DealerIdsPage() {
   const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
 
   const [stats, stockData, allTransfersNested] = await Promise.all([
-    getDealerIdStatsAction(tenantId, dealers.map((d) => d.id)),
+    getDealerIdStatsAction(dealers.map((d) => d.id)),
     Promise.all(dealers.map((d) => listStockForDealer(tenantId, d.id, OWNER_TENANT_ID))),
     Promise.all(dealers.map((d) => listInterIdTransfers(tenantId, d.id))),
   ]);

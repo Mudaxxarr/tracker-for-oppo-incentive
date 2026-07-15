@@ -172,7 +172,7 @@ export async function dealerAcceptTransferAction(
   const id = fd.get("transferId") as string;
   if (!id) return { error: "Missing transfer ID" };
 
-  const result = await acceptInterIdTransfer(session.tenantId, id, dealerId);
+  const result = await acceptInterIdTransfer(session.tenantId, id, dealerId, OWNER_TENANT_ID);
   if (!result.ok) return { error: result.message ?? "Failed to accept" };
 
   await logAudit({

@@ -50,13 +50,13 @@ async function recalculateCrTagsForModel(tenantId: string, dealerId: string, mod
     await executor
       .update(schema.activations)
       .set({ isCrossRegion: false })
-      .where(sql`${schema.activations.id} IN (${sql.join(regularIds.map((id) => sql`${id}`), sql`, `)})`);
+      .where(and(eq(schema.activations.tenantId, tenantId), sql`${schema.activations.id} IN (${sql.join(regularIds.map((id) => sql`${id}`), sql`, `)})`));
   }
   if (crIds.length > 0) {
     await executor
       .update(schema.activations)
       .set({ isCrossRegion: true })
-      .where(sql`${schema.activations.id} IN (${sql.join(crIds.map((id) => sql`${id}`), sql`, `)})`);
+      .where(and(eq(schema.activations.tenantId, tenantId), sql`${schema.activations.id} IN (${sql.join(crIds.map((id) => sql`${id}`), sql`, `)})`));
   }
 }
 
@@ -149,7 +149,7 @@ export async function createActivation(
     await recalculateCrTagsForModel(input.tenantId, input.dealerId, input.modelId, executor);
   }
   // Re-read the final isCrossRegion value after recalculation
-  const saved = await executor.select({ isCrossRegion: schema.activations.isCrossRegion }).from(schema.activations).where(eq(schema.activations.id, id)).limit(1);
+  const saved = await executor.select({ isCrossRegion: schema.activations.isCrossRegion }).from(schema.activations).where(and(eq(schema.activations.id, id), eq(schema.activations.tenantId, input.tenantId))).limit(1);
   const finalCr = saved[0]?.isCrossRegion ?? isCrossRegion;
   return { id, pricedAt: snapshot, isCrossRegion: finalCr };
 }
