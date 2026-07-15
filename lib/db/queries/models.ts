@@ -258,9 +258,19 @@ export async function reAdjustAllDealersForPriceChange(modelId: string, fromDate
       .select({ id: schema.dealerIds.id })
       .from(schema.dealerIds)
       .where(eq(schema.dealerIds.tenantId, OWNER_TENANT_ID));
-    for (const d of ownerDealers) {
-      await reEvaluateRebatesForDealer(OWNER_TENANT_ID, d.id, modelId, fromDate).catch((e) =>
-        console.error("[reAdjust-owner]", d.id, e)
+
+    // Each dealer's rebate recompute is independent - run concurrently in
+    // small chunks (not one unbounded Promise.all) so this doesn't try to
+    // claim more connections than the pool has (max 20, lib/db/client.ts).
+    const CONCURRENCY = 8;
+    for (let i = 0; i < ownerDealers.length; i += CONCURRENCY) {
+      const chunk = ownerDealers.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        chunk.map((d) =>
+          reEvaluateRebatesForDealer(OWNER_TENANT_ID, d.id, modelId, fromDate).catch((e) =>
+            console.error("[reAdjust-owner]", d.id, e)
+          )
+        )
       );
     }
 
