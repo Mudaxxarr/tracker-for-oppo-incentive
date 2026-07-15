@@ -8,7 +8,7 @@ import { LowStockBanner } from "@/components/dealer/low-stock-banner";
 import { DealerWarnings } from "@/components/dealer/dealer-warnings";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
+import { buildIncentiveReport, buildMonthlyEarnings } from "@/lib/incentive-engine/loader";
 import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
 import { sumRebatesForPeriod } from "@/lib/db/queries/rebates";
 import { getConstants } from "@/lib/settings";
@@ -106,13 +106,9 @@ export default async function DealerDashboardPage({
     getCrCaughtLoss(stats.tenantId, dealerId, startStr, endStr, constants.basePercent),
     dealerGetModelSalesAction(startStr, endStr),
     sumRebatesForPeriod(stats.tenantId, dealerId, startStr, endStr),
-    Promise.all(
-      sixMonths.map((m) =>
-        buildIncentiveReport({ dealerId, periodStart: m.startStr, periodEnd: m.endStr, dataTenantId: stats.tenantId })
-          .then((r) => r.totals.grandTotal)
-          .catch(() => 0),
-      ),
-    ),
+    buildMonthlyEarnings(dealerId, sixMonths, stats.tenantId)
+      .then((rows) => rows.map((r) => r.total))
+      .catch(() => sixMonths.map(() => 0)),
     db
       .select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)

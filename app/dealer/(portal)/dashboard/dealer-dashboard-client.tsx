@@ -2,13 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HelpTip } from "@/components/dealer/help-tip";
 import { DaysRemainingAlert } from "./days-remaining-alert";
-import { DealerTrendChart } from "./dealer-trend-chart";
-import { DealerHeroCard } from "./dealer-hero-card";
 import { formatPKR } from "@/lib/format";
+
+// recharts is a large dependency shipped into the Capacitor mobile WebView on
+// every dashboard load — deferring these two chart components to their own
+// chunk keeps them out of the initial bundle/hydration for the rest of the page.
+const DealerTrendChart = dynamic(
+  () => import("./dealer-trend-chart").then((m) => m.DealerTrendChart),
+  { ssr: false, loading: () => <div className="h-80 rounded-xl border border-border bg-card" /> },
+);
+const DealerHeroCard = dynamic(
+  () => import("./dealer-hero-card").then((m) => m.DealerHeroCard),
+  { ssr: false, loading: () => <div className="h-64 rounded-xl border border-border bg-card lg:hidden" /> },
+);
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import {

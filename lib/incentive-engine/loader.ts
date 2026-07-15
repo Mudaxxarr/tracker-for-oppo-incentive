@@ -163,9 +163,6 @@ export async function buildLastSixMonths(
   dealerId: string,
   dataTenantId?: string,
 ): Promise<Array<{ label: string; total: number; activations: number }>> {
-  const tenantId = OWNER_TENANT_ID;
-  const effectiveDataTenantId = dataTenantId ?? OWNER_TENANT_ID;
-
   const PKT = 5 * 3600 * 1000;
   const todayPKT = new Date(Date.now() + PKT);
   const [yr, mo] = todayPKT.toISOString().slice(0, 7).split("-").map(Number);
@@ -182,6 +179,25 @@ export async function buildLastSixMonths(
       endStr: `${adjYr}-${pad(adjMo)}-${pad(endDay)}`,
     };
   });
+
+  return buildMonthlyEarnings(dealerId, months, dataTenantId);
+}
+
+/**
+ * Batched version of calling buildIncentiveReport once per month: one query
+ * round-trip for policies/activations/purchases/transfers across the whole
+ * month range, then calculateIncentives (pure, in-memory) per month — instead
+ * of N independent full re-queries. Callers supply their own month
+ * boundaries so existing month-labeling behavior (e.g. server-local-time vs
+ * PKT) is unaffected by this shared helper.
+ */
+export async function buildMonthlyEarnings(
+  dealerId: string,
+  months: Array<{ label: string; startStr: string; endStr: string }>,
+  dataTenantId?: string,
+): Promise<Array<{ label: string; total: number; activations: number }>> {
+  const tenantId = OWNER_TENANT_ID;
+  const effectiveDataTenantId = dataTenantId ?? OWNER_TENANT_ID;
 
   const rangeStart = months[0].startStr;
   const rangeEnd = months[months.length - 1].endStr;
