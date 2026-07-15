@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { HelpTip } from "@/components/dealer/help-tip";
 import { DaysRemainingAlert } from "./days-remaining-alert";
 import { DealerTrendChart } from "./dealer-trend-chart";
+import { DealerHeroCard } from "./dealer-hero-card";
 import { formatPKR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -75,6 +76,10 @@ export interface DashboardData {
   crLoss: { lostIncentive: number; totalUnits: number } | null;
   initialSales: Array<{ modelId: string; modelName: string; qty: number }>;
   modelsWithIncentiveIds: string[];
+  totalReceivable: number;
+  totalReceivableGrowthPercent: number | null;
+  periodNetSalesValue: number;
+  last7DaysTrend: Array<{ date: string; label: string; netSales: number; activations: number }>;
 }
 
 const cardSurface = "dashboard-card-live rounded-xl border border-border bg-card text-card-foreground shadow-none";
@@ -127,6 +132,20 @@ export function DealerDashboardClient({ data }: { data: DashboardData }) {
 
   return (
     <div className="dashboard-ambient mx-auto w-full max-w-none space-y-4 px-0 lg:max-w-[1180px] xl:max-w-[1440px] 2xl:max-w-[1520px] xl:space-y-3">
+      <DealerHeroCard
+        periodLabel={data.label}
+        totalReceivable={data.totalReceivable}
+        totalReceivableGrowthPercent={data.totalReceivableGrowthPercent}
+        periodPurchaseUnits={data.periodPurchaseUnits}
+        periodActivations={periodActs}
+        periodNetSalesValue={data.periodNetSalesValue}
+        rebateEarned={data.rebateEarned}
+        topSelling={topSelling ? { modelName: topSelling.modelName, qty: topSelling.qty } : undefined}
+        targetPct={targetPct}
+        hasTarget={hasTarget}
+        last7DaysTrend={data.last7DaysTrend}
+      />
+
       <div className="grid gap-3 lg:grid-cols-12 lg:items-stretch">
         <PeriodPicker
           startStr={data.startStr}

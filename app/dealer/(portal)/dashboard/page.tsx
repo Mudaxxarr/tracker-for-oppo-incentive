@@ -16,6 +16,9 @@ import { db, schema } from "@/lib/db/client";
 import { PURCHASE_REVIEW_STATUS } from "@/lib/constants";
 import { and, eq, gte, lte, ne, sql } from "drizzle-orm";
 import Link from "next/link";
+import { listActivations } from "@/lib/db/queries/activations";
+import { groupActivationsByDate } from "@/lib/activations/activation-stats";
+import { computePreviousPeriod, percentChange } from "@/lib/purchases/purchase-stats";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -90,8 +93,15 @@ export default async function DealerDashboardPage({
   }
 
   const sixMonths = lastSixMonths();
+  const prevPeriod = computePreviousPeriod(startStr, endStr);
 
-  const [report, crLoss, initialSales, rebateEarned, sixMonthEarnings, periodPurchaseQtyRows, stockOldestRaw] = await Promise.all([
+  const today = new Date();
+  const last7Start = new Date(today);
+  last7Start.setDate(last7Start.getDate() - 6);
+  const last7StartStr = last7Start.toISOString().slice(0, 10);
+  const last7EndStr = today.toISOString().slice(0, 10);
+
+  const [report, crLoss, initialSales, rebateEarned, sixMonthEarnings, periodPurchaseQtyRows, stockOldestRaw, prevReport, prevRebateEarned, last7Activations] = await Promise.all([
     buildIncentiveReport({ dealerId, periodStart: startStr, periodEnd: endStr, dataTenantId: stats.tenantId }),
     getCrCaughtLoss(stats.tenantId, dealerId, startStr, endStr, constants.basePercent),
     dealerGetModelSalesAction(startStr, endStr),
@@ -129,7 +139,41 @@ export default async function DealerDashboardPage({
         ),
       )
       .groupBy(schema.purchases.modelId),
+    buildIncentiveReport({ dealerId, periodStart: prevPeriod.from, periodEnd: prevPeriod.to, dataTenantId: stats.tenantId }).catch(() => null),
+    sumRebatesForPeriod(stats.tenantId, dealerId, prevPeriod.from, prevPeriod.to),
+    listActivations({ tenantId: stats.tenantId, dealerId, from: last7StartStr, to: last7EndStr }),
   ]);
+
+  // Total Receivable = bonus/incentive earned + price-drop refunds, before fines —
+  // matches the existing "Total before fines" figure shown in the net-payout card.
+  const totalReceivable = report.totals.grandTotal + rebateEarned;
+  const prevTotalReceivable = (prevReport?.totals.grandTotal ?? 0) + prevRebateEarned;
+  const totalReceivableGrowthPercent = percentChange(totalReceivable, prevTotalReceivable);
+
+  // Last 7 calendar days of net sales value (qty x price) and activation count,
+  // zero-filled so every day shows even with no activity that day.
+  const last7Groups = groupActivationsByDate(
+    last7Activations.map((a) => ({
+      modelId: a.modelId,
+      modelName: a.modelName,
+      activationDate: a.activationDate,
+      dealerPriceSnapshot: a.dealerPriceSnapshot,
+      isCrossRegion: a.isCrossRegion,
+    })),
+  );
+  const last7GroupsByDate = new Map(last7Groups.map((g) => [g.date, g]));
+  const last7DaysTrend = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(last7Start);
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const group = last7GroupsByDate.get(dateStr);
+    return {
+      date: dateStr,
+      label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      netSales: group?.totalDealerValue ?? 0,
+      activations: group?.count ?? 0,
+    };
+  });
 
   // Merge per-month earnings into the activation trend (both are last-6-months, same order).
   const sixMonthTrend = stats.sixMonthTrend.map((m, i) => ({
@@ -162,6 +206,14 @@ export default async function DealerDashboardPage({
 
   const modelsWithIncentive = new Set(
     report.rows.filter((r) => r.total > 0 || r.stockInEarned > 0).map((r) => r.modelId)
+  );
+
+  // Period net sales value = qty x dealer price across every model/price window —
+  // the actual Rs value of units activated this period (distinct from the
+  // incentive/receivable figures, which are bonus payouts, not sales value).
+  const periodNetSalesValue = report.rows.reduce(
+    (sum, r) => sum + r.priceSubperiods.reduce((s, p) => s + p.qty * p.dealerPrice, 0),
+    0,
   );
 
   const dashData: DashboardData = {
@@ -215,6 +267,10 @@ export default async function DealerDashboardPage({
     crLoss,
     initialSales,
     modelsWithIncentiveIds: [...modelsWithIncentive],
+    totalReceivable,
+    totalReceivableGrowthPercent,
+    periodNetSalesValue,
+    last7DaysTrend,
   };
 
   return (
