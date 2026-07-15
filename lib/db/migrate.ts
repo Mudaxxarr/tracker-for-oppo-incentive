@@ -1,8 +1,11 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import path from "node:path";
+
+dotenv.config({ path: ".env.local" });
+dotenv.config();
 
 async function main() {
   const url = process.env.POSTGRES_URL;

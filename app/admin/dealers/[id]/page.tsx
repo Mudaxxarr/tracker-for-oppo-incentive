@@ -128,6 +128,62 @@ export default async function AdminDealerDetailPage({ params }: Props) {
           ))}
         </div>
       </div>
+
+      {tenant.onboardingProfile && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold">Onboarding details</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            <InfoCard label="Owner name" value={tenant.onboardingProfile.ownerName} />
+            <InfoCard label="Email" value={tenant.onboardingProfile.email} />
+            <InfoCard label="Mobile number" value={tenant.onboardingProfile.mobileNumber} />
+            <InfoCard label="WhatsApp number" value={tenant.onboardingProfile.whatsappNumber} />
+            <InfoCard label="City/region" value={tenant.onboardingProfile.cityRegion} />
+            <InfoCard label="OPPO dealer ID" value={tenant.onboardingProfile.oppoDealerId} />
+            <InfoCard label="Staff count" value={String(tenant.onboardingProfile.staffCount)} />
+            <InfoCard label="Shop address" value={tenant.onboardingProfile.shopAddress} />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <DocumentCard label="CNIC front" doc={tenant.onboardingProfile.cnicFront} />
+            <DocumentCard label="CNIC back" doc={tenant.onboardingProfile.cnicBack} />
+            <DocumentCard label="Tax certificate" doc={tenant.onboardingProfile.taxCertificate} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-card px-4 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium">{value}</p>
+    </div>
+  );
+}
+
+function DocumentCard({
+  label,
+  doc,
+}: {
+  label: string;
+  doc: { name: string; type: string; size: number; dataUrl: string };
+}) {
+  return (
+    <div className="rounded-lg border bg-card px-4 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-medium">{doc.name}</p>
+      <p className="text-xs text-muted-foreground">
+        {doc.type} - {Math.max(1, Math.round(doc.size / 1024))} KB
+      </p>
+      <a
+        href={doc.dataUrl}
+        download={doc.name}
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}
+      >
+        Download
+      </a>
     </div>
   );
 }

@@ -24,6 +24,7 @@ export const dealerTenants = pgTable("dealer_tenants", {
   status: text("status").notNull().default("active"), // 'active'|'grace'|'expired'|'suspended'
   features: text("features").notNull().default("{}"),
   featureTrials: text("feature_trials").notNull().default("{}"),
+  onboardingProfile: text("onboarding_profile").notNull().default("{}"),
   backdateDays: integer("backdate_days").notNull().default(3),
   purchaseApprovalThreshold: integer("purchase_approval_threshold"), // null = disabled
   monthlyFee: real("monthly_fee"), // null = unset

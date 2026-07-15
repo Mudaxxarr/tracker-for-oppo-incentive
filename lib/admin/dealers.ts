@@ -10,6 +10,11 @@ import {
 } from "@/lib/dealer-features";
 import { ALL_FEATURES_ON } from "@/lib/feature-registry";
 import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
+import {
+  parseDealerOnboardingProfile,
+  serializeDealerOnboardingProfile,
+  type DealerOnboardingProfile,
+} from "@/lib/admin/onboarding";
 
 /** Features for a brand-new dealer = a live copy of the test sandbox tenant's
  *  features, so every new ID mirrors test@incento.app exactly. Falls back to all-on. */
@@ -53,6 +58,7 @@ export interface TenantDetail {
   monthlyFee: number | null;
   createdAt: string;
   features: DealerFeatures;
+  onboardingProfile: DealerOnboardingProfile | null;
   users: {
     id: string;
     email: string;
@@ -67,6 +73,7 @@ export interface CreateTenantInput {
   ownerEmail: string;
   planMonths: number;
   adminEmail: string;
+  onboardingProfile: DealerOnboardingProfile;
 }
 
 export interface CreateTenantResult {
@@ -213,6 +220,7 @@ export async function getTenantById(id: string): Promise<TenantDetail | null> {
   return {
     ...tenant,
     features: parseDealerFeatures(tenant.features),
+    onboardingProfile: parseDealerOnboardingProfile(tenant.onboardingProfile ?? "{}"),
     users: userRows,
   };
 }
@@ -302,6 +310,7 @@ export async function createTenant(
     expiresAt,
     status: "active",
     features: JSON.stringify(await newDealerFeatures()),
+    onboardingProfile: serializeDealerOnboardingProfile(input.onboardingProfile),
     createdAt: now,
   });
 
