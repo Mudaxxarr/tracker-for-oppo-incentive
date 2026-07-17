@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { differenceInDays, parseISO } from "date-fns";
-import { Building2, ChevronRight, LogOut, Search, ShieldCheck } from "lucide-react";
+import { Building2, ChevronRight, LayoutDashboard, LogOut, Search, ShieldCheck } from "lucide-react";
 
 import { lockAction } from "@/app/(app)/actions";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +59,20 @@ export default async function ManagerPage({
       </header>
 
       <div className="mx-auto max-w-2xl space-y-5 px-4 py-5">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5 shadow-sm transition-colors hover:bg-primary/10"
+        >
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <LayoutDashboard className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">My Own Dealer Data</p>
+            <p className="text-xs text-muted-foreground">Add purchases &amp; activations, view your own dashboard</p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </Link>
+
         <section className="rounded-2xl border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
