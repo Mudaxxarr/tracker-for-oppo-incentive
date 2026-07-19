@@ -22,11 +22,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   createDealerInterIdTransferAction,
+  updateDealerTenantIdAction,
   type DealerIdFormState,
 } from "./actions";
 import { AddDealerIdForm } from "./add-id-form";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { formatDate, formatPKR } from "@/lib/format";
-import { Lock, ArrowRightCircle } from "lucide-react";
+import { Lock, ArrowRightCircle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { InterIdRow } from "@/lib/db/queries/transfers";
@@ -59,6 +66,7 @@ interface Props {
 export function DealerIdsClient({ dealers, models, stats, transfers, stockByDealer, isAdminPreview }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const [editTarget, setEditTarget] = useState<DealerSummary | null>(null);
 
   const [transferState, transferAction, transferring] = useActionState<DealerIdFormState, FormData>(
     createDealerInterIdTransferAction,
@@ -148,12 +156,13 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
                 <TableHead className="text-right">Phones (lifetime)</TableHead>
                 <TableHead className="text-right">4% this month</TableHead>
                 <TableHead>Last activity</TableHead>
+                {isAdminPreview ? <TableHead className="w-16 text-right">Edit</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
               {dealers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={isAdminPreview ? 5 : 4} className="py-8 text-center text-sm text-muted-foreground">
                     No Dealer IDs yet. Create one above.
                   </TableCell>
                 </TableRow>
@@ -172,6 +181,13 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
                         {formatPKR(s?.thisMonthBase ?? 0)}
                       </TableCell>
                       <TableCell label="Last activity">{s?.lastActivity ? formatDate(s.lastActivity) : "—"}</TableCell>
+                      {isAdminPreview ? (
+                        <TableCell label="Edit" className="text-right">
+                          <Button variant="ghost" size="icon" aria-label={`Edit ${d.name}`} onClick={() => setEditTarget(d)}>
+                            <Pencil className="size-4" />
+                          </Button>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })
@@ -310,6 +326,56 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
           </CardContent>
         </Card>
       ) : null}
+
+      {editTarget ? <EditDealerIdSheet dealer={editTarget} onClose={() => setEditTarget(null)} /> : null}
     </div>
+  );
+}
+
+function EditDealerIdSheet({ dealer, onClose }: { dealer: DealerSummary; onClose: () => void }) {
+  const router = useRouter();
+  const [name, setName] = useState(dealer.name);
+  const [shopName, setShopName] = useState(dealer.shopName ?? "");
+  const [note, setNote] = useState(dealer.note ?? "");
+  const [pending, start] = useTransition();
+
+  const save = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", dealer.id);
+      fd.set("name", name);
+      fd.set("shopName", shopName);
+      fd.set("note", note);
+      const res = await updateDealerTenantIdAction({}, fd);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success("Dealer ID updated");
+      onClose();
+      router.refresh();
+    });
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>Edit Dealer ID</SheetTitle></SheetHeader>
+        <div className="space-y-4 p-4">
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Shop name</label>
+            <Input value={shopName} onChange={(e) => setShopName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Note (optional)</label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <Button className="w-full" disabled={pending || !name.trim()} onClick={save}>
+            {pending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

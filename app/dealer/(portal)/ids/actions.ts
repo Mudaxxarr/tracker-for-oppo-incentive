@@ -82,6 +82,51 @@ export async function createDealerTenantIdAction(
   return { ok: true };
 }
 
+const UpdateDealerIdSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required.").max(120),
+  shopName: z.string().trim().max(120).optional().default(""),
+  note: z.string().trim().max(500).optional().default(""),
+});
+
+/**
+ * Edit a Dealer ID's name / shop name / note. OWNER-ONLY: only allowed while the
+ * owner is viewing this dealer's portal in preview (owner session present).
+ * Dealers cannot rename their own IDs.
+ */
+export async function updateDealerTenantIdAction(
+  _prev: DealerIdFormState,
+  fd: FormData,
+): Promise<DealerIdFormState> {
+  const session = await getDealerSession();
+  if (!session) return { error: "Unauthorized" };
+  if (!(await isAuthenticated())) return { error: "Only the owner can edit Dealer IDs." };
+
+  const parsed = UpdateDealerIdSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { id, name, shopName, note } = parsed.data;
+
+  // The ID must belong to the previewed tenant — never trust the client's id blindly.
+  const existing = await listDealerIdsForTenant(session.tenantId);
+  if (!existing.some((d) => d.id === id)) return { error: "Invalid Dealer ID." };
+
+  await db
+    .update(schema.dealerIds)
+    .set({ name, shopName: shopName || null, note: note || null })
+    .where(and(eq(schema.dealerIds.id, id), eq(schema.dealerIds.tenantId, session.tenantId)));
+
+  await logAudit({
+    action: "dealer_id.update",
+    entityType: "dealer_id",
+    entityId: id,
+    summary: `[admin] Edited Dealer ID "${name}"`,
+    dealerId: id,
+  });
+  revalidatePath("/dealer/ids");
+  revalidatePath("/dealer");
+  return { ok: true };
+}
+
 // ── Inter-ID Transfers ──────────────────────────────────────────────────────
 
 const TransferSchema = z.object({
