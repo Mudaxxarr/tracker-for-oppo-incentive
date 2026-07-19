@@ -57,6 +57,7 @@ import {
 import {
   deletePurchaseAction,
   deleteInvoiceAction,
+  updateInvoiceDateAction,
   updatePurchaseAction,
   bulkDeletePurchasesAction,
   loadPurchaseBillsAction,
@@ -97,6 +98,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [pendingInvoiceDelete, setPendingInvoiceDelete] = useState<{ billNumber: string; ids: string[] } | null>(null);
+  const [editInvoiceTarget, setEditInvoiceTarget] = useState<{ billNumber: string; ids: string[]; date: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{ line: BillLine; date: string } | null>(null);
   const [, startTransition] = useTransition();
 
@@ -132,6 +134,12 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
     const ids = bill.lines.map((l) => l.id).filter((id): id is string => Boolean(id));
     if (ids.length === 0) return;
     setPendingInvoiceDelete({ billNumber: bill.billNumber, ids });
+  };
+
+  const handleEditInvoice = (bill: BillGroup) => {
+    const ids = bill.lines.map((l) => l.id).filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return;
+    setEditInvoiceTarget({ billNumber: bill.billNumber, ids, date: bill.purchaseDate });
   };
 
   const confirmInvoiceDelete = () => {
@@ -408,7 +416,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
               <PurchaseKpiCard icon={Wallet} label="Total Amount" value={formatPKR(overview.current.totalAmount)} />
               <PurchaseKpiCard icon={Tag} label="Avg. Price" value={formatPKR(overview.current.avgPricePerUnit)} />
             </div>
-            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} onDeleteInvoice={handleDeleteInvoice} />
+            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} onDeleteInvoice={handleDeleteInvoice} onEditInvoice={handleEditInvoice} />
           </div>
         ) : null}
 
@@ -581,7 +589,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
             <PurchaseKpiCard icon={AlertTriangle} label="Low Stock Risk" value={`${lowStockCount} Model${lowStockCount === 1 ? "" : "s"}`} danger={lowStockCount > 0} />
           </div>
 
-          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} onDeleteInvoice={handleDeleteInvoice} />
+          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} onDeleteInvoice={handleDeleteInvoice} onEditInvoice={handleEditInvoice} />
         </div>
       ) : null}
 
@@ -715,7 +723,58 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
           onClose={() => { setEditTarget(null); router.refresh(); }}
         />
       ) : null}
+
+      {editInvoiceTarget ? (
+        <EditInvoiceDateSheet
+          target={editInvoiceTarget}
+          onClose={() => setEditInvoiceTarget(null)}
+          onSaved={() => { setEditInvoiceTarget(null); router.refresh(); }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function EditInvoiceDateSheet({
+  target,
+  onClose,
+  onSaved,
+}: {
+  target: { billNumber: string; ids: string[]; date: string };
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [date, setDate] = useState(target.date);
+  const [pending, start] = useTransition();
+
+  const save = () => {
+    start(async () => {
+      const res = await updateInvoiceDateAction(target.ids, date);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success(`Invoice moved to ${date} (${res.updated} line${res.updated === 1 ? "" : "s"})`);
+      onSaved();
+    });
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>Edit invoice date — Bill {target.billNumber}</SheetTitle></SheetHeader>
+        <div className="space-y-4 p-4">
+          <p className="text-xs text-muted-foreground">
+            Moves all {target.ids.length} line(s) of this invoice to a new date. Quantities and prices stay the same.
+            If any activation would be left unbacked by the new date, the change is blocked.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">New date</label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <Button className="w-full" disabled={pending || !/^\d{4}-\d{2}-\d{2}$/.test(date)} onClick={save}>
+            {pending ? "Saving…" : "Save new date"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

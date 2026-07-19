@@ -328,9 +328,10 @@ export async function updatePurchase(
     unitInvoicePrice: number;
     purchaseDate: string;
     source: PurchaseSource;
-  }
+  },
+  executor: Executor = db,
 ): Promise<void> {
-  await db
+  await executor
     .update(schema.purchases)
     .set({
       quantity: input.quantity,

@@ -298,6 +298,81 @@ export async function deleteDealerInvoiceAction(ids: string[]): Promise<{ error?
   return { deleted: deletedPurchases.length };
 }
 
+/**
+ * Move an entire invoice (all lines sharing a billNumber) to a new date in one go.
+ * Atomic + all-or-nothing. Same forward-move guard as per-line edits (aggregated
+ * per model). Each line is re-priced to the owner's central price for the new date.
+ */
+export async function updateDealerInvoiceDateAction(ids: string[], newDate: string): Promise<{ error?: string; updated?: number }> {
+  const session = await getDealerSession();
+  if (!session) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  if (!dealerId) return { error: "No active Dealer ID" };
+  if (!ids.length) return { error: "No invoice lines to edit" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return { error: "Invalid date" };
+  const tenant = await getTenantById(session.tenantId);
+  const dateErr = guardPurchaseDate(newDate, tenant?.backdateDays ?? 3);
+  if (dateErr) return { error: dateErr };
+
+  const affected: { modelId: string; from: string }[] = [];
+  try {
+    await db.transaction(async (tx) => {
+      const lines = [];
+      for (const id of ids) {
+        const p = await getPurchaseById(id, dealerId, session.tenantId);
+        if (p) lines.push(p);
+      }
+      const forwardQtyByModel = new Map<string, number>();
+      for (const p of lines) {
+        if (newDate > p.purchaseDate) forwardQtyByModel.set(p.modelId, (forwardQtyByModel.get(p.modelId) ?? 0) + p.quantity);
+      }
+      for (const [modelId, qty] of forwardQtyByModel) {
+        const stockAtNewDate = await getStockForModelAsOf(session.tenantId, dealerId, modelId, newDate, tx);
+        if (stockAtNewDate - qty < 0) {
+          const m = await getModelById(modelId);
+          throw new Error(`Cannot move invoice to ${newDate} — activations for ${m?.name ?? "a model"} would become unbacked`);
+        }
+      }
+      for (const p of lines) {
+        const central = await getPriceOnDate(OWNER_TENANT_ID, p.modelId, newDate);
+        if (!central) {
+          const m = await getModelById(p.modelId);
+          throw new Error(`No price set for ${m?.name ?? "a model"} on ${newDate} — contact owner`);
+        }
+        await updatePurchase(p.id, dealerId, session.tenantId, {
+          quantity: p.quantity,
+          unitDealerPrice: central.dealerPrice,
+          unitInvoicePrice: central.invoicePrice,
+          purchaseDate: newDate,
+          source: p.source as PurchaseSource,
+        }, tx);
+        affected.push({ modelId: p.modelId, from: p.purchaseDate });
+      }
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to edit invoice" };
+  }
+
+  await logAudit({
+    action: "purchase.invoice_edit",
+    dealerId,
+    summary: `[Dealer] Moved invoice (${affected.length} line(s)) to ${newDate}`,
+    payload: { ids, newDate },
+  });
+  revalidatePath("/dealer/purchases");
+  revalidatePath("/dealer/dashboard");
+  const byModel = new Map<string, string>();
+  for (const a of affected) {
+    const earliest = a.from < newDate ? a.from : newDate;
+    const cur = byModel.get(a.modelId);
+    if (!cur || earliest < cur) byModel.set(a.modelId, earliest);
+  }
+  for (const [modelId, fromDate] of byModel) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return { updated: affected.length };
+}
+
 const EditPurchaseSchema = z.object({
   id: z.string().min(1),
   quantity: z.coerce.number().int().positive("Quantity must be ≥ 1"),

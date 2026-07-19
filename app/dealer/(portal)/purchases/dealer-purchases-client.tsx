@@ -31,7 +31,7 @@ import { PurchaseTopModelsPanel } from "@/app/(app)/purchases/purchase-top-model
 import { cn } from "@/lib/utils";
 import { formatDate, formatPKR } from "@/lib/format";
 import { Plus, AlertCircle, ShoppingCart, ShoppingCart as ShoppingCartKpi, Boxes, Wallet, Tag, Layers, ArrowLeftRight, Filter } from "lucide-react";
-import { deleteDealerPurchaseAction, deleteDealerInvoiceAction, editDealerPurchaseAction, loadDealerPurchaseBillsAction } from "./actions";
+import { deleteDealerPurchaseAction, deleteDealerInvoiceAction, updateDealerInvoiceDateAction, editDealerPurchaseAction, loadDealerPurchaseBillsAction } from "./actions";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { PurchaseRow, PurchaseOverviewStats } from "@/lib/db/queries/purchases";
@@ -83,6 +83,7 @@ export function DealerPurchasesClient({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
   const [editTarget, setEditTarget] = useState<{ line: BillLine; date: string } | null>(null);
+  const [invoiceEditTarget, setInvoiceEditTarget] = useState<{ billNumber: string; ids: string[]; date: string } | null>(null);
   const [isSyncing, startTransition] = useTransition();
 
   const updateFilter = (key: keyof typeof filters, value: string | undefined) => {
@@ -117,6 +118,12 @@ export function DealerPurchasesClient({
     });
   };
 
+  const handleEditInvoice = (bill: BillGroup) => {
+    const ids = bill.lines.map((l) => l.id).filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return;
+    setInvoiceEditTarget({ billNumber: bill.billNumber, ids, date: bill.purchaseDate });
+  };
+
   const loadMoreBills = (page: number) =>
     loadDealerPurchaseBillsAction({
       modelId: filters.modelId,
@@ -138,6 +145,7 @@ export function DealerPurchasesClient({
       onEditLine={hasDealer ? openEdit : undefined}
       onDeleteLine={hasDealer ? handleDeleteLine : undefined}
       onDeleteInvoice={hasDealer ? handleDeleteInvoice : undefined}
+      onEditInvoice={hasDealer ? handleEditInvoice : undefined}
     />
   );
 
@@ -345,6 +353,7 @@ export function DealerPurchasesClient({
         </div>
 
         {editTarget ? <DealerEditPurchaseSheet line={editTarget.line} date={editTarget.date} onClose={() => setEditTarget(null)} /> : null}
+        {invoiceEditTarget ? <DealerEditInvoiceSheet target={invoiceEditTarget} onClose={() => setInvoiceEditTarget(null)} onSaved={() => { setInvoiceEditTarget(null); router.refresh(); }} /> : null}
       </div>
     );
   }
@@ -438,7 +447,51 @@ export function DealerPurchasesClient({
       </div>
 
       {editTarget ? <DealerEditPurchaseSheet line={editTarget.line} date={editTarget.date} onClose={() => setEditTarget(null)} /> : null}
+      {invoiceEditTarget ? <DealerEditInvoiceSheet target={invoiceEditTarget} onClose={() => setInvoiceEditTarget(null)} onSaved={() => { setInvoiceEditTarget(null); router.refresh(); }} /> : null}
     </div>
+  );
+}
+
+function DealerEditInvoiceSheet({
+  target,
+  onClose,
+  onSaved,
+}: {
+  target: { billNumber: string; ids: string[]; date: string };
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [date, setDate] = useState(target.date);
+  const [pending, start] = useTransition();
+
+  const save = () => {
+    start(async () => {
+      const res = await updateDealerInvoiceDateAction(target.ids, date);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success(`Invoice moved to ${date} (${res.updated} line${res.updated === 1 ? "" : "s"})`);
+      onSaved();
+    });
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>Edit invoice date — Bill {target.billNumber}</SheetTitle></SheetHeader>
+        <div className="space-y-4 p-4">
+          <p className="text-xs text-muted-foreground">
+            Moves all {target.ids.length} line(s) of this invoice to a new date. Price follows the owner&apos;s central
+            price for that date. If any activation would be left unbacked, the change is blocked.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">New date</label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <Button className="w-full" disabled={pending || !/^\d{4}-\d{2}-\d{2}$/.test(date)} onClick={save}>
+            {pending ? "Saving…" : "Save new date"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

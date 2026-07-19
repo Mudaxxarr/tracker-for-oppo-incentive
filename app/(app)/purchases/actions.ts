@@ -11,7 +11,7 @@ import type { BillGroup } from "@/lib/purchases/purchase-stats";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { drainRebateJobs } from "@/lib/db/queries/rebate-jobs";
 import { getModelById, getPriceOnDate, updateModelPrice } from "@/lib/db/queries/models";
-import { PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS, OWNER_ALERT_TYPE } from "@/lib/constants";
+import { PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS, OWNER_ALERT_TYPE, type PurchaseSource } from "@/lib/constants";
 import { getTenantById } from "@/lib/dealer-tenant";
 import { createOwnerAlert } from "@/lib/db/queries/alerts";
 import { logAudit } from "@/lib/audit";
@@ -470,6 +470,76 @@ export async function deleteInvoiceAction(ids: string[]): Promise<{ error?: stri
     await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
   }
   return { deleted: deletedPurchases.length };
+}
+
+/**
+ * Move an entire invoice (all lines sharing a billNumber) to a new date in one go.
+ * Atomic + all-or-nothing: the same forward-move guard as per-line edits, but
+ * aggregated per model (all lines shift together), and rolled back on any conflict.
+ * Quantities, prices and source are preserved — only the date changes.
+ */
+export async function updateInvoiceDateAction(ids: string[], newDate: string): Promise<{ error?: string; updated?: number }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+  if (!ids.length) return { error: "No invoice lines to edit" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return { error: "Invalid date" };
+  const dateErr = guardPurchaseDate(newDate);
+  if (dateErr) return { error: dateErr };
+
+  const affected: { modelId: string; from: string }[] = [];
+  try {
+    await db.transaction(async (tx) => {
+      const lines = [];
+      for (const id of ids) {
+        const p = await getPurchaseById(id, dealerId, OWNER_TENANT_ID);
+        if (p) lines.push(p);
+      }
+      // Forward-move guard, aggregated per model: moving all lines to a later date
+      // must not strand activations that fell between the old and new date.
+      const forwardQtyByModel = new Map<string, number>();
+      for (const p of lines) {
+        if (newDate > p.purchaseDate) forwardQtyByModel.set(p.modelId, (forwardQtyByModel.get(p.modelId) ?? 0) + p.quantity);
+      }
+      for (const [modelId, qty] of forwardQtyByModel) {
+        const stockAtNewDate = await getStockForModelAsOf(OWNER_TENANT_ID, dealerId, modelId, newDate, tx);
+        if (stockAtNewDate - qty < 0) {
+          const m = await getModelById(modelId);
+          throw new Error(`Cannot move invoice to ${newDate} — activations for ${m?.name ?? "a model"} would become unbacked`);
+        }
+      }
+      for (const p of lines) {
+        await updatePurchase(p.id, dealerId, OWNER_TENANT_ID, {
+          quantity: p.quantity,
+          unitDealerPrice: p.unitDealerPrice,
+          unitInvoicePrice: p.unitInvoicePrice,
+          purchaseDate: newDate,
+          source: p.source as PurchaseSource,
+        }, tx);
+        affected.push({ modelId: p.modelId, from: p.purchaseDate });
+      }
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to edit invoice" };
+  }
+
+  await logAudit({
+    action: "purchase.invoice_edit",
+    summary: `Moved invoice (${affected.length} line(s)) to ${newDate}`,
+    payload: { ids, newDate },
+  });
+  revalidatePath("/purchases");
+  revalidatePath("/dashboard");
+  const byModel = new Map<string, string>();
+  for (const a of affected) {
+    const earliest = a.from < newDate ? a.from : newDate;
+    const cur = byModel.get(a.modelId);
+    if (!cur || earliest < cur) byModel.set(a.modelId, earliest);
+  }
+  for (const [modelId, fromDate] of byModel) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return { updated: affected.length };
 }
 
 export async function deletePurchaseAction(id: string): Promise<{ error?: string }> {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ShoppingCart, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ShoppingCart, Pencil, Trash2, CalendarClock } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,12 @@ interface Props {
   /** When provided, each invoice shows a "Delete invoice" control that removes
    *  every line of the bill in one go. */
   onDeleteInvoice?: (bill: BillGroup) => void;
+  /** When provided, each invoice shows an "Edit date" control that moves the
+   *  whole invoice to a new date. */
+  onEditInvoice?: (bill: BillGroup) => void;
 }
 
-export function PurchaseBillTimeline({ initialBills, total, loadMore, onEditLine, onDeleteLine, onDeleteInvoice }: Props) {
+export function PurchaseBillTimeline({ initialBills, total, loadMore, onEditLine, onDeleteLine, onDeleteInvoice, onEditInvoice }: Props) {
   const [bills, setBills] = useState(initialBills);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -90,6 +93,16 @@ export function PurchaseBillTimeline({ initialBills, total, loadMore, onEditLine
                       <span className="font-medium">Bill No. {bill.billNumber}</span>
                       <span className="flex items-center gap-2">
                         <span className="text-muted-foreground">{bill.modelCount} model{bill.modelCount === 1 ? "" : "s"}</span>
+                        {onEditInvoice ? (
+                          <button
+                            type="button"
+                            aria-label="Edit invoice date"
+                            onClick={() => onEditInvoice(bill)}
+                            className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <CalendarClock className="size-3.5" /> Edit date
+                          </button>
+                        ) : null}
                         {onDeleteInvoice ? (
                           <button
                             type="button"
