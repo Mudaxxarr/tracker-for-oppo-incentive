@@ -75,21 +75,26 @@ export async function POST(req: Request) {
     } else {
       // Direct post for admin/owner
       try {
-        const stock = await getStockForModelAsOf(
-          trustedTenantId, trustedDealerId, item.modelId, item.activationDate,
-        );
-        if (stock < item.quantity) throw new Error(`Insufficient stock (${stock} available, ${item.quantity} requested)`);
-        for (let i = 0; i < item.quantity; i++) {
-          await createActivation({
-            tenantId: trustedTenantId,
-            dealerId: trustedDealerId,
-            modelId: item.modelId,
-            activationDate: item.activationDate,
-            imei: item.quantity === 1 && item.imei ? item.imei : null,
-            purchaseId: null,
-            isCrossRegion: item.isCrossRegion,
-          });
-        }
+        // Guard + inserts share one transaction so the multi-unit loop is
+        // all-or-nothing and the stock check can't be raced (same TOCTOU
+        // hardening as the online activation paths).
+        await db.transaction(async (tx) => {
+          const stock = await getStockForModelAsOf(
+            trustedTenantId, trustedDealerId, item.modelId, item.activationDate, tx,
+          );
+          if (stock < item.quantity) throw new Error(`Insufficient stock (${stock} available, ${item.quantity} requested)`);
+          for (let i = 0; i < item.quantity; i++) {
+            await createActivation({
+              tenantId: trustedTenantId,
+              dealerId: trustedDealerId,
+              modelId: item.modelId,
+              activationDate: item.activationDate,
+              imei: item.quantity === 1 && item.imei ? item.imei : null,
+              purchaseId: null,
+              isCrossRegion: item.isCrossRegion,
+            }, tx);
+          }
+        });
         reEvaluateRebatesForDealer(OWNER_TENANT_ID, trustedDealerId, item.modelId, item.activationDate).catch(
           (e: unknown) => console.error("[rebate-reeval]", e),
         );

@@ -29,6 +29,7 @@ export const OWNER_ALERT_TYPE = {
   CR_CAUGHT_PENDING_APPROVAL: "cr_caught_pending_approval",
   ACTIVATION_DELETION_REQUEST: "activation_deletion_request",
   REPRICE_FAILED: "reprice_failed",
+  REBATE_JOB_FAILED: "rebate_job_failed",
 } as const;
 
 export const INTER_ID_STATUS = {
