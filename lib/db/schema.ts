@@ -204,6 +204,48 @@ export const stockInPolicies = pgTable(
   })
 );
 
+// ---------- Combined Stock-In Policies (grouped target, per-model rate) ----------
+// A stock-in policy whose target qty is counted across a GROUP of models; each
+// model in the group is paid at its own per-unit rate. Fully separate from the
+// per-model stockInPolicies table above.
+export const combinedStockInPolicies = pgTable(
+  "combined_stock_in_policies",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => dealerTenants.id),
+    dealerId: text("dealer_id")
+      .notNull()
+      .references(() => dealerIds.id, { onDelete: "cascade" }),
+    periodStart: isoDate("period_start").notNull(),
+    periodEnd: isoDate("period_end").notNull(),
+    targetQty: integer("target_qty").notNull(),
+    createdAt: isoDateTime("created_at").notNull(),
+  },
+  (t) => ({
+    byDealer: index("csip_by_dealer").on(t.tenantId, t.dealerId, t.periodStart),
+  })
+);
+
+export const combinedStockInPolicyModels = pgTable(
+  "combined_stock_in_policy_models",
+  {
+    id: text("id").primaryKey(),
+    policyId: text("policy_id")
+      .notNull()
+      .references(() => combinedStockInPolicies.id, { onDelete: "cascade" }),
+    modelId: text("model_id")
+      .notNull()
+      .references(() => models.id, { onDelete: "restrict" }),
+    perUnitAmount: real("per_unit_amount").notNull(),
+  },
+  (t) => ({
+    byPolicy: index("csipm_by_policy").on(t.policyId),
+    uniqPolicyModel: uniqueIndex("csipm_uniq_policy_model").on(t.policyId, t.modelId),
+  })
+);
+
 // ---------- Activation Incentive Policies ----------
 export const activationIncentivePolicies = pgTable(
   "activation_incentive_policies",
@@ -491,6 +533,10 @@ export type TargetBonusPolicy = typeof targetBonusPolicies.$inferSelect;
 export type NewTargetBonusPolicy = typeof targetBonusPolicies.$inferInsert;
 export type StockInPolicy = typeof stockInPolicies.$inferSelect;
 export type NewStockInPolicy = typeof stockInPolicies.$inferInsert;
+export type CombinedStockInPolicy = typeof combinedStockInPolicies.$inferSelect;
+export type NewCombinedStockInPolicy = typeof combinedStockInPolicies.$inferInsert;
+export type CombinedStockInPolicyModel = typeof combinedStockInPolicyModels.$inferSelect;
+export type NewCombinedStockInPolicyModel = typeof combinedStockInPolicyModels.$inferInsert;
 export type ActivationIncentivePolicy = typeof activationIncentivePolicies.$inferSelect;
 export type NewActivationIncentivePolicy = typeof activationIncentivePolicies.$inferInsert;
 export type DealerIncentivePolicy = typeof dealerIncentivePolicies.$inferSelect & {

@@ -1,7 +1,7 @@
 import "server-only";
 import { revalidateTag } from "next/cache";
 import { db, schema } from "../client";
-import { and, asc, desc, eq, gte, lte, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
 // ===== Target Bonus =====
@@ -99,6 +99,102 @@ export async function updateStockInPolicy(id: string, tenantId: string, dealerId
 export async function deleteStockInPolicy(id: string, tenantId: string, dealerId: string) {
   await db.delete(schema.stockInPolicies)
     .where(and(eq(schema.stockInPolicies.id, id), eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId)));
+  revalidateTag("dealer-policies", {});
+}
+
+// ===== Combined Stock-In (grouped target, per-model rate) =====
+
+export interface CombinedStockInPolicyRow {
+  id: string; periodStart: string; periodEnd: string; targetQty: number;
+  models: { modelId: string; modelName: string; perUnitAmount: number }[];
+}
+
+export async function listCombinedStockInPolicies(tenantId: string, dealerId: string): Promise<CombinedStockInPolicyRow[]> {
+  const policies = await db.select().from(schema.combinedStockInPolicies)
+    .where(and(eq(schema.combinedStockInPolicies.tenantId, tenantId), eq(schema.combinedStockInPolicies.dealerId, dealerId)))
+    .orderBy(desc(schema.combinedStockInPolicies.periodStart));
+  if (policies.length === 0) return [];
+  const modelRows = await db
+    .select({ policyId: schema.combinedStockInPolicyModels.policyId, modelId: schema.combinedStockInPolicyModels.modelId,
+      modelName: schema.models.name, perUnitAmount: schema.combinedStockInPolicyModels.perUnitAmount })
+    .from(schema.combinedStockInPolicyModels)
+    .innerJoin(schema.models, eq(schema.models.id, schema.combinedStockInPolicyModels.modelId))
+    .where(inArray(schema.combinedStockInPolicyModels.policyId, policies.map((p) => p.id)))
+    .orderBy(asc(schema.models.name));
+  const byPolicy = new Map<string, { modelId: string; modelName: string; perUnitAmount: number }[]>();
+  for (const r of modelRows) {
+    const list = byPolicy.get(r.policyId) ?? [];
+    list.push({ modelId: r.modelId, modelName: r.modelName, perUnitAmount: r.perUnitAmount });
+    byPolicy.set(r.policyId, list);
+  }
+  return policies.map((p) => ({
+    id: p.id, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetQty,
+    models: byPolicy.get(p.id) ?? [],
+  }));
+}
+
+/**
+ * Safety guard: returns the name of the first of `modelIds` that already has a
+ * stock-in policy — per-model OR combined — whose window overlaps
+ * [periodStart, periodEnd], or null if none. Enforces the owner's invariant that
+ * a model's stock-in policies never overlap in time, so no double-pay is possible.
+ */
+export async function findStockInOverlapForModels(
+  tenantId: string, dealerId: string, modelIds: string[],
+  periodStart: string, periodEnd: string, excludeCombinedId?: string,
+): Promise<string | null> {
+  if (modelIds.length === 0) return null;
+  const perModel = await db
+    .select({ modelName: schema.models.name })
+    .from(schema.stockInPolicies)
+    .innerJoin(schema.models, eq(schema.models.id, schema.stockInPolicies.modelId))
+    .where(and(
+      eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId),
+      inArray(schema.stockInPolicies.modelId, modelIds),
+      lte(schema.stockInPolicies.periodStart, periodEnd), gte(schema.stockInPolicies.periodEnd, periodStart),
+    ))
+    .limit(1);
+  if (perModel[0]) return perModel[0].modelName;
+
+  const combined = await db
+    .select({ modelName: schema.models.name })
+    .from(schema.combinedStockInPolicyModels)
+    .innerJoin(schema.combinedStockInPolicies, eq(schema.combinedStockInPolicies.id, schema.combinedStockInPolicyModels.policyId))
+    .innerJoin(schema.models, eq(schema.models.id, schema.combinedStockInPolicyModels.modelId))
+    .where(and(
+      eq(schema.combinedStockInPolicies.tenantId, tenantId), eq(schema.combinedStockInPolicies.dealerId, dealerId),
+      inArray(schema.combinedStockInPolicyModels.modelId, modelIds),
+      lte(schema.combinedStockInPolicies.periodStart, periodEnd), gte(schema.combinedStockInPolicies.periodEnd, periodStart),
+      ...(excludeCombinedId ? [ne(schema.combinedStockInPolicies.id, excludeCombinedId)] : []),
+    ))
+    .limit(1);
+  return combined[0]?.modelName ?? null;
+}
+
+export async function createCombinedStockInPolicy(input: {
+  tenantId: string; dealerId: string; periodStart: string; periodEnd: string; targetQty: number;
+  models: { modelId: string; perUnitAmount: number }[];
+}): Promise<string> {
+  const id = randomUUID();
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.combinedStockInPolicies).values({
+      id, tenantId: input.tenantId, dealerId: input.dealerId,
+      periodStart: input.periodStart, periodEnd: input.periodEnd, targetQty: input.targetQty,
+    });
+    for (const m of input.models) {
+      await tx.insert(schema.combinedStockInPolicyModels).values({
+        id: randomUUID(), policyId: id, modelId: m.modelId, perUnitAmount: m.perUnitAmount,
+      });
+    }
+  });
+  revalidateTag("dealer-policies", {});
+  return id;
+}
+
+export async function deleteCombinedStockInPolicy(id: string, tenantId: string, dealerId: string) {
+  // policy-models rows cascade via FK.
+  await db.delete(schema.combinedStockInPolicies)
+    .where(and(eq(schema.combinedStockInPolicies.id, id), eq(schema.combinedStockInPolicies.tenantId, tenantId), eq(schema.combinedStockInPolicies.dealerId, dealerId)));
   revalidateTag("dealer-policies", {});
 }
 

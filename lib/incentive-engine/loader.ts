@@ -25,6 +25,8 @@ const getCachedDealerPolicyContext = unstable_cache(
       stockInPolicies,
       activationIncentivePolicies,
       dealerIncentivePolicies,
+      combinedPolicyRows,
+      combinedModelRows,
     ] = await Promise.all([
       db.select().from(schema.models),
       db
@@ -43,8 +45,27 @@ const getCachedDealerPolicyContext = unstable_cache(
         .select()
         .from(schema.dealerIncentivePolicies)
         .where(and(eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId))),
+      db
+        .select()
+        .from(schema.combinedStockInPolicies)
+        .where(and(eq(schema.combinedStockInPolicies.tenantId, tenantId), eq(schema.combinedStockInPolicies.dealerId, dealerId))),
+      db
+        .select({ policyId: schema.combinedStockInPolicyModels.policyId, modelId: schema.combinedStockInPolicyModels.modelId, perUnitAmount: schema.combinedStockInPolicyModels.perUnitAmount })
+        .from(schema.combinedStockInPolicyModels)
+        .innerJoin(schema.combinedStockInPolicies, eq(schema.combinedStockInPolicies.id, schema.combinedStockInPolicyModels.policyId))
+        .where(and(eq(schema.combinedStockInPolicies.tenantId, tenantId), eq(schema.combinedStockInPolicies.dealerId, dealerId))),
     ]);
-    return { models, targetBonusPolicies, stockInPolicies, activationIncentivePolicies, dealerIncentivePolicies };
+    const combinedModelsByPolicy = new Map<string, { modelId: string; perUnitAmount: number }[]>();
+    for (const r of combinedModelRows) {
+      const list = combinedModelsByPolicy.get(r.policyId) ?? [];
+      list.push({ modelId: r.modelId, perUnitAmount: r.perUnitAmount });
+      combinedModelsByPolicy.set(r.policyId, list);
+    }
+    const combinedStockInPolicies = combinedPolicyRows.map((p) => ({
+      id: p.id, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetQty,
+      models: combinedModelsByPolicy.get(p.id) ?? [],
+    }));
+    return { models, targetBonusPolicies, stockInPolicies, activationIncentivePolicies, dealerIncentivePolicies, combinedStockInPolicies };
   },
   ["dealer-policy-context"],
   { revalidate: 300, tags: ["models", "dealer-policies"] },
@@ -80,6 +101,7 @@ export async function buildIncentiveReport(input: {
     stockInPolicies,
     activationIncentivePolicies,
     dealerIncentivePolicies,
+    combinedStockInPolicies,
   } = await getCachedDealerPolicyContext(dealerId);
 
   // Compute the full window (union) of report + all policy windows.
@@ -93,6 +115,7 @@ export async function buildIncentiveReport(input: {
   for (const p of stockInPolicies) apply(p.periodStart, p.periodEnd);
   for (const p of activationIncentivePolicies) apply(p.periodStart, p.periodEnd);
   for (const p of dealerIncentivePolicies) apply(p.periodStart, p.periodEnd);
+  for (const p of combinedStockInPolicies) apply(p.periodStart, p.periodEnd);
 
   const [activations, purchases, interIdOut] = await Promise.all([
     db
@@ -170,6 +193,7 @@ export async function buildIncentiveReport(input: {
       targetQty: p.targetQty,
     })),
     dealerIncentivePolicies,
+    combinedStockInPolicies,
     interIdOut: interIdOut.map((t) => ({
       id: t.id,
       modelId: t.modelId,
@@ -234,6 +258,7 @@ export async function buildMonthlyEarnings(
       stockInPolicies,
       activationIncentivePolicies,
       dealerIncentivePolicies,
+      combinedStockInPolicies,
     },
   ] = await Promise.all([getConstants(), getCachedDealerPolicyContext(dealerId)]);
 
@@ -248,6 +273,7 @@ export async function buildMonthlyEarnings(
   for (const p of stockInPolicies) extend(p.periodStart, p.periodEnd);
   for (const p of activationIncentivePolicies) extend(p.periodStart, p.periodEnd);
   for (const p of dealerIncentivePolicies) extend(p.periodStart, p.periodEnd);
+  for (const p of combinedStockInPolicies) extend(p.periodStart, p.periodEnd);
 
   // Fetch all transactional data for the full extended range in one batch
   const [activations, purchases, interIdOut] = await Promise.all([
@@ -285,6 +311,7 @@ export async function buildMonthlyEarnings(
       periodEnd: p.periodEnd, perUnitAmount: p.perUnitAmount, targetQty: p.targetQty,
     })),
     dealerIncentivePolicies,
+    combinedStockInPolicies,
     interIdOut: interIdOut.map((t) => ({
       id: t.id, modelId: t.modelId, quantity: t.quantity, transferDate: t.transferDate,
     })),
