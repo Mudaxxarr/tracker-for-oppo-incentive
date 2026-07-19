@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
-import { createPurchase, updatePurchase, deletePurchase, getPurchaseById, getStockForModel, getNextBillNumber, listPurchaseBills } from "@/lib/db/queries/purchases";
+import { db } from "@/lib/db/client";
+import { createPurchase, updatePurchase, deletePurchase, getPurchaseById, getStockForModel, getStockForModelAsOf, getNextBillNumber, listPurchaseBills } from "@/lib/db/queries/purchases";
 import type { BillGroup } from "@/lib/purchases/purchase-stats";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
@@ -247,16 +248,68 @@ export async function deleteDealerPurchaseAction(id: string): Promise<{ error?: 
   return {};
 }
 
+/**
+ * Delete an entire invoice (all lines sharing a billNumber) in one go.
+ * All-or-nothing: any line with stock already activated/transferred blocks the
+ * whole delete (the throw rolls back the txn) — nothing is removed.
+ */
+export async function deleteDealerInvoiceAction(ids: string[]): Promise<{ error?: string; deleted?: number }> {
+  const session = await getDealerSession();
+  if (!session) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerIdForTenant(session.tenantId);
+  if (!dealerId) return { error: "No active Dealer ID" };
+  if (!ids.length) return { error: "No invoice lines to delete" };
+
+  const deletedPurchases: { modelId: string; purchaseDate: string }[] = [];
+  try {
+    await db.transaction(async (tx) => {
+      for (const id of ids) {
+        const purchase = await getPurchaseById(id, dealerId, session.tenantId);
+        if (!purchase) continue;
+        const stock = await getStockForModel(session.tenantId, dealerId, purchase.modelId, tx);
+        if (stock < purchase.quantity) {
+          const m = await getModelById(purchase.modelId);
+          throw new Error(`Cannot delete invoice — ${purchase.quantity - stock} unit(s) of ${m?.name ?? "a model"} already activated or transferred out`);
+        }
+        await deletePurchase(id, dealerId, session.tenantId, tx);
+        deletedPurchases.push({ modelId: purchase.modelId, purchaseDate: purchase.purchaseDate });
+      }
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to delete invoice" };
+  }
+
+  await logAudit({
+    action: "purchase.invoice_delete",
+    dealerId,
+    summary: `[Dealer] Deleted entire invoice: ${deletedPurchases.length} line(s)`,
+    payload: { ids },
+  });
+  revalidatePath("/dealer/purchases");
+  revalidatePath("/dealer/dashboard");
+  const byModel = new Map<string, string>();
+  for (const { modelId, purchaseDate } of deletedPurchases) {
+    const existing = byModel.get(modelId);
+    if (!existing || purchaseDate < existing) byModel.set(modelId, purchaseDate);
+  }
+  for (const [modelId, fromDate] of byModel) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return { deleted: deletedPurchases.length };
+}
+
 const EditPurchaseSchema = z.object({
   id: z.string().min(1),
   quantity: z.coerce.number().int().positive("Quantity must be ≥ 1"),
   unitDealerPrice: z.coerce.number().nonnegative(),
   unitInvoicePrice: z.coerce.number().nonnegative(),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date").optional(),
 });
 
-/** Edit a single purchase line (qty + prices). Date & source stay as-is. */
+/** Edit a single purchase line (qty + date). Price stays the owner's central
+ *  price for the effective date; source is unchanged. */
 export async function editDealerPurchaseAction(input: {
-  id: string; quantity: number; unitDealerPrice: number; unitInvoicePrice: number;
+  id: string; quantity: number; unitDealerPrice: number; unitInvoicePrice: number; purchaseDate?: string;
 }): Promise<{ error?: string; ok?: boolean }> {
   const session = await getDealerSession();
   if (!session) return { error: "Not authenticated" };
@@ -270,8 +323,23 @@ export async function editDealerPurchaseAction(input: {
   const purchase = await getPurchaseById(id, dealerId, session.tenantId);
   if (!purchase) return { error: "Purchase not found" };
 
-  // Purchase price is the owner's central price — submitted price is ignored.
-  const central = await getPriceOnDate(OWNER_TENANT_ID, purchase.modelId, purchase.purchaseDate);
+  const newDate = parsed.data.purchaseDate ?? purchase.purchaseDate;
+  if (newDate !== purchase.purchaseDate) {
+    const tenant = await getTenantById(session.tenantId);
+    const dateErr = guardPurchaseDate(newDate, tenant?.backdateDays ?? 3);
+    if (dateErr) return { error: dateErr };
+    // Moving the date forward must not leave activations in the gap unbacked.
+    if (newDate > purchase.purchaseDate) {
+      const stockAtNewDate = await getStockForModelAsOf(session.tenantId, dealerId, purchase.modelId, newDate);
+      if (stockAtNewDate - purchase.quantity < 0) {
+        const m = await getModelById(purchase.modelId);
+        return { error: `Cannot move date forward — activations between ${purchase.purchaseDate} and ${newDate} would become unbacked for ${m?.name ?? "this model"}` };
+      }
+    }
+  }
+
+  // Purchase price is the owner's central price for the effective date — submitted price is ignored.
+  const central = await getPriceOnDate(OWNER_TENANT_ID, purchase.modelId, newDate);
   if (!central) return { error: "No price set for this model on that date — contact owner" };
   const unitDealerPrice = central.dealerPrice;
   const unitInvoicePrice = central.invoicePrice;
@@ -290,7 +358,7 @@ export async function editDealerPurchaseAction(input: {
     quantity,
     unitDealerPrice,
     unitInvoicePrice,
-    purchaseDate: purchase.purchaseDate,
+    purchaseDate: newDate,
     source: purchase.source as PurchaseSource,
   });
 
@@ -299,11 +367,12 @@ export async function editDealerPurchaseAction(input: {
     entityType: "purchase",
     entityId: id,
     dealerId,
-    summary: `[Dealer] Edited purchase ${id.slice(0, 8)}: qty ${purchase.quantity}→${quantity} @ ${formatPKR(unitDealerPrice)}`,
+    summary: `[Dealer] Edited purchase ${id.slice(0, 8)}: qty ${purchase.quantity}→${quantity}, date ${purchase.purchaseDate}→${newDate} @ ${formatPKR(unitDealerPrice)}`,
   });
   revalidatePath("/dealer/purchases");
   revalidatePath("/dealer/dashboard");
-  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, purchase.modelId, purchase.purchaseDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  const triggerDate = newDate < purchase.purchaseDate ? newDate : purchase.purchaseDate;
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, purchase.modelId, triggerDate, session.tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
   return { ok: true };
 }
 

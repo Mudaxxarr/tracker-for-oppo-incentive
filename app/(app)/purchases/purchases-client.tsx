@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   deletePurchaseAction,
+  deleteInvoiceAction,
   updatePurchaseAction,
   bulkDeletePurchasesAction,
   loadPurchaseBillsAction,
@@ -95,6 +96,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
+  const [pendingInvoiceDelete, setPendingInvoiceDelete] = useState<{ billNumber: string; ids: string[] } | null>(null);
   const [editTarget, setEditTarget] = useState<{ line: BillLine; date: string } | null>(null);
   const [, startTransition] = useTransition();
 
@@ -125,6 +127,24 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
 
   const handleEditLine = (line: BillLine, bill: BillGroup) => setEditTarget({ line, date: bill.purchaseDate });
   const handleDeleteLine = (line: BillLine) => setPendingDelete({ id: line.id, label: line.modelName });
+
+  const handleDeleteInvoice = (bill: BillGroup) => {
+    const ids = bill.lines.map((l) => l.id).filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return;
+    setPendingInvoiceDelete({ billNumber: bill.billNumber, ids });
+  };
+
+  const confirmInvoiceDelete = () => {
+    if (!pendingInvoiceDelete) return;
+    const { ids } = pendingInvoiceDelete;
+    setPendingInvoiceDelete(null);
+    startTransition(async () => {
+      const res = await deleteInvoiceAction(ids);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success(`Invoice deleted (${res.deleted} line${res.deleted === 1 ? "" : "s"})`);
+      router.refresh();
+    });
+  };
 
   const confirmDelete = () => {
     if (!pendingDelete) return;
@@ -224,6 +244,29 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
             <AlertDialogAction onClick={confirmBulkDelete}>
               <Trash2 className="size-4" />
               Delete {selected.size}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingInvoiceDelete} onOpenChange={(o) => { if (!o) setPendingInvoiceDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </AlertDialogMedia>
+            <AlertDialogTitle className="font-semibold">
+              Delete entire invoice {pendingInvoiceDelete?.billNumber}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Removes all {pendingInvoiceDelete?.ids.length} line(s) of this invoice. This cannot be undone. If any unit has already been activated or transferred, the whole delete is blocked.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmInvoiceDelete}>
+              <Trash2 className="size-4" />
+              Delete invoice
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -365,7 +408,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
               <PurchaseKpiCard icon={Wallet} label="Total Amount" value={formatPKR(overview.current.totalAmount)} />
               <PurchaseKpiCard icon={Tag} label="Avg. Price" value={formatPKR(overview.current.avgPricePerUnit)} />
             </div>
-            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} />
+            <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} onDeleteInvoice={handleDeleteInvoice} />
           </div>
         ) : null}
 
@@ -538,7 +581,7 @@ export function PurchasesClient({ models, initialPurchases, initialFilters, hasD
             <PurchaseKpiCard icon={AlertTriangle} label="Low Stock Risk" value={`${lowStockCount} Model${lowStockCount === 1 ? "" : "s"}`} danger={lowStockCount > 0} />
           </div>
 
-          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} />
+          <PurchaseBillTimeline initialBills={bills} total={billsTotal} loadMore={loadMoreBills} onEditLine={handleEditLine} onDeleteLine={handleDeleteLine} onDeleteInvoice={handleDeleteInvoice} />
         </div>
       ) : null}
 

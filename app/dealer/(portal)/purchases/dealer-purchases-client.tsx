@@ -31,7 +31,7 @@ import { PurchaseTopModelsPanel } from "@/app/(app)/purchases/purchase-top-model
 import { cn } from "@/lib/utils";
 import { formatDate, formatPKR } from "@/lib/format";
 import { Plus, AlertCircle, ShoppingCart, ShoppingCart as ShoppingCartKpi, Boxes, Wallet, Tag, Layers, ArrowLeftRight, Filter } from "lucide-react";
-import { deleteDealerPurchaseAction, editDealerPurchaseAction, loadDealerPurchaseBillsAction } from "./actions";
+import { deleteDealerPurchaseAction, deleteDealerInvoiceAction, editDealerPurchaseAction, loadDealerPurchaseBillsAction } from "./actions";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { PurchaseRow, PurchaseOverviewStats } from "@/lib/db/queries/purchases";
@@ -82,7 +82,7 @@ export function DealerPurchasesClient({
   const [mobileTab, setMobileTab] = useState<"daily" | "overview">("daily");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
-  const [editLine, setEditLine] = useState<BillLine | null>(null);
+  const [editTarget, setEditTarget] = useState<{ line: BillLine; date: string } | null>(null);
   const [isSyncing, startTransition] = useTransition();
 
   const updateFilter = (key: keyof typeof filters, value: string | undefined) => {
@@ -103,7 +103,19 @@ export function DealerPurchasesClient({
     });
   };
 
-  const openEdit = (line: BillLine) => setEditLine(line);
+  const openEdit = (line: BillLine, bill: BillGroup) => setEditTarget({ line, date: bill.purchaseDate });
+
+  const handleDeleteInvoice = (bill: BillGroup) => {
+    const ids = bill.lines.map((l) => l.id).filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return;
+    if (!confirm(`Delete the entire invoice (Bill ${bill.billNumber}, ${ids.length} line${ids.length === 1 ? "" : "s"})? This cannot be undone. If any unit is already activated or transferred, the whole delete is blocked.`)) return;
+    startTransition(async () => {
+      const res = await deleteDealerInvoiceAction(ids);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success(`Invoice deleted (${res.deleted} line${res.deleted === 1 ? "" : "s"})`);
+      router.refresh();
+    });
+  };
 
   const loadMoreBills = (page: number) =>
     loadDealerPurchaseBillsAction({
@@ -125,6 +137,7 @@ export function DealerPurchasesClient({
       loadMore={loadMoreBills}
       onEditLine={hasDealer ? openEdit : undefined}
       onDeleteLine={hasDealer ? handleDeleteLine : undefined}
+      onDeleteInvoice={hasDealer ? handleDeleteInvoice : undefined}
     />
   );
 
@@ -331,7 +344,7 @@ export function DealerPurchasesClient({
           {billTimeline}
         </div>
 
-        {editLine ? <DealerEditPurchaseSheet line={editLine} onClose={() => setEditLine(null)} /> : null}
+        {editTarget ? <DealerEditPurchaseSheet line={editTarget.line} date={editTarget.date} onClose={() => setEditTarget(null)} /> : null}
       </div>
     );
   }
@@ -424,27 +437,27 @@ export function DealerPurchasesClient({
         {view === "overview" ? renderOverview(false) : billTimeline}
       </div>
 
-      {editLine ? <DealerEditPurchaseSheet line={editLine} onClose={() => setEditLine(null)} /> : null}
+      {editTarget ? <DealerEditPurchaseSheet line={editTarget.line} date={editTarget.date} onClose={() => setEditTarget(null)} /> : null}
     </div>
   );
 }
 
-function DealerEditPurchaseSheet({ line, onClose }: { line: BillLine; onClose: () => void }) {
+function DealerEditPurchaseSheet({ line, date, onClose }: { line: BillLine; date: string; onClose: () => void }) {
   const router = useRouter();
   const [qty, setQty] = useState(String(line.quantity));
-  const [dealer, setDealer] = useState(String(line.unitDealerPrice));
-  const [invoice, setInvoice] = useState(String(line.unitInvoicePrice));
+  const [purchaseDate, setPurchaseDate] = useState(date);
   const [pending, start] = useTransition();
 
-  const invalid = !(Number(qty) >= 1) || !(Number(dealer) >= 0) || !(Number(invoice) >= 0);
+  const invalid = !(Number(qty) >= 1) || !/^\d{4}-\d{2}-\d{2}$/.test(purchaseDate);
 
   const save = () => {
     start(async () => {
       const res = await editDealerPurchaseAction({
         id: line.id,
         quantity: Number(qty),
-        unitDealerPrice: Number(dealer),
-        unitInvoicePrice: Number(invoice),
+        unitDealerPrice: line.unitDealerPrice,
+        unitInvoicePrice: line.unitInvoicePrice,
+        purchaseDate,
       });
       if (res.error) { toast.error(res.error); return; }
       toast.success("Purchase updated");
@@ -458,21 +471,17 @@ function DealerEditPurchaseSheet({ line, onClose }: { line: BillLine; onClose: (
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader><SheetTitle>Edit purchase — {line.modelName}</SheetTitle></SheetHeader>
         <div className="space-y-4 p-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Qty</label>
               <Input type="number" min={1} step={1} value={qty} onChange={(e) => setQty(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Dealer ₨</label>
-              <Input type="number" min={0} step="any" value={dealer} onChange={(e) => setDealer(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Invoice ₨</label>
-              <Input type="number" min={0} step="any" value={invoice} onChange={(e) => setInvoice(e.target.value)} />
+              <label className="text-xs text-muted-foreground">Date</label>
+              <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Date &amp; source stay the same. To change those, delete and re-add.</p>
+          <p className="text-xs text-muted-foreground">Price follows the owner&apos;s central price for the selected date — it updates automatically on save. Source is unchanged.</p>
           <Button className="w-full" disabled={pending || invalid} onClick={save}>
             {pending ? "Saving…" : "Save changes"}
           </Button>

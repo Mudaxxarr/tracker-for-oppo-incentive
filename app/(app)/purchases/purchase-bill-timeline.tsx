@@ -18,9 +18,12 @@ interface Props {
   onEditLine?: (line: BillLine, bill: BillGroup) => void;
   /** When provided, each line shows a delete control (dealer portal only). */
   onDeleteLine?: (line: BillLine, bill: BillGroup) => void;
+  /** When provided, each invoice shows a "Delete invoice" control that removes
+   *  every line of the bill in one go. */
+  onDeleteInvoice?: (bill: BillGroup) => void;
 }
 
-export function PurchaseBillTimeline({ initialBills, total, loadMore, onEditLine, onDeleteLine }: Props) {
+export function PurchaseBillTimeline({ initialBills, total, loadMore, onEditLine, onDeleteLine, onDeleteInvoice }: Props) {
   const [bills, setBills] = useState(initialBills);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -85,7 +88,19 @@ export function PurchaseBillTimeline({ initialBills, total, loadMore, onEditLine
                   <div key={bill.billNumber} className="rounded-lg border border-border p-3">
                     <div className="mb-2 flex items-center justify-between gap-2 text-xs">
                       <span className="font-medium">Bill No. {bill.billNumber}</span>
-                      <span className="text-muted-foreground">{bill.modelCount} model{bill.modelCount === 1 ? "" : "s"}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-muted-foreground">{bill.modelCount} model{bill.modelCount === 1 ? "" : "s"}</span>
+                        {onDeleteInvoice ? (
+                          <button
+                            type="button"
+                            aria-label="Delete entire invoice"
+                            onClick={() => onDeleteInvoice(bill)}
+                            className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="size-3.5" /> Delete invoice
+                          </button>
+                        ) : null}
+                      </span>
                     </div>
                     <div className="space-y-1.5">
                       {bill.lines.map((line, i) => (

@@ -422,6 +422,56 @@ export async function bulkDeletePurchasesAction(ids: string[]): Promise<{ delete
   return { deleted };
 }
 
+/**
+ * Delete an entire invoice (all purchase lines sharing a billNumber) in one go.
+ * All-or-nothing: if ANY line's stock is already activated/transferred out, the
+ * whole delete is blocked and nothing is removed (the throw rolls back the txn).
+ */
+export async function deleteInvoiceAction(ids: string[]): Promise<{ error?: string; deleted?: number }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const dealerId = await getActiveDealerId();
+  if (!dealerId) return { error: "No active Dealer ID" };
+  if (!ids.length) return { error: "No invoice lines to delete" };
+
+  const deletedPurchases: { modelId: string; purchaseDate: string }[] = [];
+  try {
+    await db.transaction(async (tx) => {
+      for (const id of ids) {
+        const purchase = await getPurchaseById(id, dealerId, OWNER_TENANT_ID);
+        if (!purchase) continue;
+        // Cumulative within the txn: each delete lowers stock, so the guard sees
+        // prior deletes of the same model in this invoice.
+        const stock = await getStockForModel(OWNER_TENANT_ID, dealerId, purchase.modelId, tx);
+        if (stock < purchase.quantity) {
+          const m = await getModelById(purchase.modelId);
+          throw new Error(`Cannot delete invoice — ${purchase.quantity - stock} unit(s) of ${m?.name ?? "a model"} already activated or transferred out`);
+        }
+        await deletePurchase(id, dealerId, OWNER_TENANT_ID, tx);
+        deletedPurchases.push({ modelId: purchase.modelId, purchaseDate: purchase.purchaseDate });
+      }
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to delete invoice" };
+  }
+
+  await logAudit({
+    action: "purchase.invoice_delete",
+    summary: `Deleted entire invoice: ${deletedPurchases.length} line(s)`,
+    payload: { ids },
+  });
+  revalidatePath("/purchases");
+  revalidatePath("/dashboard");
+  const byModel = new Map<string, string>();
+  for (const { modelId, purchaseDate } of deletedPurchases) {
+    const existing = byModel.get(modelId);
+    if (!existing || purchaseDate < existing) byModel.set(modelId, purchaseDate);
+  }
+  for (const [modelId, fromDate] of byModel) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, modelId, fromDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return { deleted: deletedPurchases.length };
+}
+
 export async function deletePurchaseAction(id: string): Promise<{ error?: string }> {
   if (!(await isAuthenticated())) return { error: "Not authenticated" };
   const dealerId = await getActiveDealerId();
