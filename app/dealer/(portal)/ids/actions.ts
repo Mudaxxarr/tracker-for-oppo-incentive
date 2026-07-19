@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { getDealerSession } from "@/lib/dealer-auth";
+import { isAuthenticated } from "@/lib/auth";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { listDealerIdsForTenant, setActiveDealerIdForTenant, getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { db, schema } from "@/lib/db/client";
@@ -50,10 +51,13 @@ export async function createDealerTenantIdAction(
   if (!shopName) return { error: "Shop name is required." };
   if (shopName.length > 120) return { error: "Shop name must be 120 characters or fewer." };
 
-  // Locked decision: only the first Dealer ID is self-service.
-  // Additional IDs require admin approval (separate subscription fee).
+  // Locked decision: only the first Dealer ID is self-service — additional IDs
+  // require admin approval (separate subscription fee). The owner IS that admin,
+  // so when they open a dealer's portal in preview (owner session still present),
+  // the cap is lifted and they can provision extra IDs directly.
+  const isOwner = await isAuthenticated();
   const existing = await listDealerIdsForTenant(session.tenantId);
-  if (existing.length > 0) {
+  if (existing.length > 0 && !isOwner) {
     return { error: "Additional Dealer IDs require admin approval. Contact your OPPO account manager." };
   }
 
@@ -70,7 +74,7 @@ export async function createDealerTenantIdAction(
     action: "dealer_id.create",
     entityType: "dealer_id",
     entityId: id,
-    summary: `Created Dealer ID "${name}"`,
+    summary: `Created Dealer ID "${name}"${isOwner && existing.length > 0 ? " (admin-provisioned)" : ""}`,
     dealerId: id,
   });
   revalidatePath("/dealer/ids");

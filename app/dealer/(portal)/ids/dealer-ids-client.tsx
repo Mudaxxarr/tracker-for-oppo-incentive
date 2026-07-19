@@ -51,9 +51,12 @@ interface Props {
   stats: Record<string, PerIdStat>;
   transfers: InterIdRow[];
   stockByDealer: Record<string, string[]>;
+  /** Owner viewing this dealer's portal in preview — unlocks provisioning
+   *  additional Dealer IDs (dealers themselves are capped at one self-service ID). */
+  isAdminPreview?: boolean;
 }
 
-export function DealerIdsClient({ dealers, models, stats, transfers, stockByDealer }: Props) {
+export function DealerIdsClient({ dealers, models, stats, transfers, stockByDealer, isAdminPreview }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -102,6 +105,18 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Create your Dealer ID</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AddDealerIdForm />
+          </CardContent>
+        </Card>
+      ) : isAdminPreview ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Add another Dealer ID (admin)</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              You&apos;re viewing this dealer as owner — you can provision additional IDs here. Dealers can&apos;t self-add extra IDs.
+            </p>
           </CardHeader>
           <CardContent>
             <AddDealerIdForm />

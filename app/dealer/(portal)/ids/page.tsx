@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
+import { isAuthenticated } from "@/lib/auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
@@ -18,11 +19,15 @@ export default async function DealerIdsPage() {
 
   const features = await getTenantFeaturesById(session.tenantId);
   const { tenantId } = session;
+  // Owner viewing this dealer's portal in preview (owner session still present)
+  // gets owner-only powers here — chiefly provisioning additional Dealer IDs.
+  const isAdminPreview = await isAuthenticated();
 
   const dealers = await listDealerIdsForTenant(tenantId);
   // Auto-enable for dealers who own 2+ IDs even if the `ids` feature flag is off —
-  // they need Inter-ID Transfer to move stock between their own IDs.
-  if (!isFeatureEnabled(features, "ids") && dealers.length < 2) return <FeatureDisabled />;
+  // they need Inter-ID Transfer to move stock between their own IDs. The owner in
+  // preview always reaches this page so they can add the second ID in the first place.
+  if (!isFeatureEnabled(features, "ids") && dealers.length < 2 && !isAdminPreview) return <FeatureDisabled />;
   const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
 
   const [stats, stockData, allTransfersNested] = await Promise.all([
@@ -48,6 +53,7 @@ export default async function DealerIdsPage() {
       stats={stats}
       transfers={transfers}
       stockByDealer={stockByDealer}
+      isAdminPreview={isAdminPreview}
     />
   );
 }
