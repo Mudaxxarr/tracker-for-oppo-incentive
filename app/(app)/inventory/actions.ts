@@ -56,23 +56,27 @@ export async function quickActivateAction(
 
   if (activationDate > todayPKT()) return { error: "Activation date cannot be in the future." };
 
-  // Forward-minimum stock guards backdating oversell across later dates.
-  const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate);
-  if (stock < quantity) {
-    return { error: `Only ${stock} unit(s) available from ${activationDate} onward` };
-  }
-
-  for (let i = 0; i < quantity; i++) {
-    await createActivation({
-      tenantId,
-      dealerId,
-      modelId,
-      activationDate,
-      imei: null,
-      purchaseId: null,
-      isCrossRegion: false,
-    });
-  }
+  let stockError: string | null = null;
+  await db.transaction(async (tx) => {
+    // Forward-minimum stock guards backdating oversell across later dates.
+    const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate, tx);
+    if (stock < quantity) {
+      stockError = `Only ${stock} unit(s) available from ${activationDate} onward`;
+      return;
+    }
+    for (let i = 0; i < quantity; i++) {
+      await createActivation({
+        tenantId,
+        dealerId,
+        modelId,
+        activationDate,
+        imei: null,
+        purchaseId: null,
+        isCrossRegion: false,
+      }, tx);
+    }
+  });
+  if (stockError) return { error: stockError };
 
   const m = await getModelById(modelId);
   await logAudit({
@@ -113,24 +117,28 @@ export async function quickMoveAction(
 
   if (toDealerId === dealerId) return { error: "Source and destination must be different" };
 
-  // Forward-minimum stock guards backdating oversell across later dates.
-  const stockAsOf = await getMinForwardStock(tenantId, dealerId, modelId, transferDate);
-  if (stockAsOf < quantity) {
-    return {
-      error: `Only ${stockAsOf} unit(s) available from ${transferDate} onward`,
-    };
-  }
-
   try {
-    const id = await createInterIdTransfer({
-      tenantId,
-      fromDealerId: dealerId,
-      toDealerId,
-      modelId,
-      quantity,
-      transferDate,
-      note: note ?? null,
+    let stockError: string | null = null;
+    let id: string | undefined;
+    await db.transaction(async (tx) => {
+      // Forward-minimum stock guards backdating oversell across later dates.
+      const stockAsOf = await getMinForwardStock(tenantId, dealerId, modelId, transferDate, tx);
+      if (stockAsOf < quantity) {
+        stockError = `Only ${stockAsOf} unit(s) available from ${transferDate} onward`;
+        return;
+      }
+      id = await createInterIdTransfer({
+        tenantId,
+        fromDealerId: dealerId,
+        toDealerId,
+        modelId,
+        quantity,
+        transferDate,
+        note: note ?? null,
+      }, tx);
     });
+    if (stockError) return { error: stockError };
+    if (!id) return { error: "Transfer failed" };
 
     const [m, dst] = await Promise.all([
       getModelById(modelId),
@@ -244,9 +252,6 @@ export async function crCaughtAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { modelId, quantity, fineAmount, caughtDate, note } = parsed.data;
 
-  const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
-  if (stock < quantity) return { error: `Only ${stock} unit(s) available from ${caughtDate} onward` };
-
   const priceInfo = await getPriceOnDate(tenantId, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;
 
@@ -257,7 +262,18 @@ export async function crCaughtAction(
   const isTrusted = isOwner || staffSession?.role === "accountant";
   const status = isTrusted ? "active" : "pending_owner_approval";
 
-  const id = await createCrCaught({ tenantId, dealerId, modelId, quantity, fineAmount: fineAmount ?? 0, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null, status });
+  let stockError: string | null = null;
+  let id: string | undefined;
+  await db.transaction(async (tx) => {
+    const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate, tx);
+    if (stock < quantity) {
+      stockError = `Only ${stock} unit(s) available from ${caughtDate} onward`;
+      return;
+    }
+    id = await createCrCaught({ tenantId, dealerId, modelId, quantity, fineAmount: fineAmount ?? 0, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null, status }, tx);
+  });
+  if (stockError) return { error: stockError };
+  if (!id) return { error: "Failed to record CR-caught" };
   const m = await getModelById(modelId);
 
   if (!isTrusted) {

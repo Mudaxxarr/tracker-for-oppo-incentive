@@ -108,21 +108,27 @@ export async function createDealerInterIdTransferAction(
   const toValid = allIds.find((x) => x.id === d.toDealerId);
   if (!fromValid || !toValid) return { error: "Invalid dealer ID." };
 
-  // Check stock on transfer date
-  const stock = await getStockForModelAsOf(tenantId, d.fromDealerId, d.modelId, d.transferDate);
-  if (stock < d.quantity) {
-    return { error: `Only ${stock} unit(s) available as of ${d.transferDate}.` };
-  }
-
-  const id = await createInterIdTransfer({
-    tenantId,
-    fromDealerId: d.fromDealerId,
-    toDealerId: d.toDealerId,
-    modelId: d.modelId,
-    quantity: d.quantity,
-    transferDate: d.transferDate,
-    note: d.note ?? null,
+  let stockError: string | null = null;
+  let id: string | undefined;
+  await db.transaction(async (tx) => {
+    // Check stock on transfer date
+    const stock = await getStockForModelAsOf(tenantId, d.fromDealerId, d.modelId, d.transferDate, tx);
+    if (stock < d.quantity) {
+      stockError = `Only ${stock} unit(s) available as of ${d.transferDate}.`;
+      return;
+    }
+    id = await createInterIdTransfer({
+      tenantId,
+      fromDealerId: d.fromDealerId,
+      toDealerId: d.toDealerId,
+      modelId: d.modelId,
+      quantity: d.quantity,
+      transferDate: d.transferDate,
+      note: d.note ?? null,
+    }, tx);
   });
+  if (stockError) return { error: stockError };
+  if (!id) return { error: "Transfer failed" };
   await logAudit({
     action: "inter_id_transfer.create",
     summary: `[Dealer] Transfer ${d.quantity} units from ${fromValid.name} → ${toValid.name}`,

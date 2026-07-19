@@ -6,6 +6,8 @@ import { CROSS_REGION_STATUS, INTER_ID_STATUS, PURCHASE_SOURCE } from "@/lib/con
 import { getPriceOnDate } from "./models";
 import { getNextBillNumber } from "./purchases";
 
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export interface CrossRegionRow {
   id: string; modelId: string; modelName: string; quantity: number;
   reportedDate: string; shiftedToIdDate: string | null; status: string;
@@ -176,10 +178,10 @@ export async function listPendingInbound(tenantId: string, toDealerId: string): 
 export async function createInterIdTransfer(input: {
   tenantId: string; fromDealerId: string; toDealerId: string; modelId: string;
   quantity: number; transferDate: string; note: string | null;
-}) {
+}, executor: Executor = db) {
   if (input.fromDealerId === input.toDealerId) throw new Error("Source and destination must be different dealer IDs");
   const id = randomUUID();
-  await db.insert(schema.interIdTransfers).values({ id, ...input, status: INTER_ID_STATUS.PENDING });
+  await executor.insert(schema.interIdTransfers).values({ id, ...input, status: INTER_ID_STATUS.PENDING });
   return id;
 }
 
@@ -195,16 +197,27 @@ export async function acceptInterIdTransfer(tenantId: string, id: string, toDeal
   // portal, where the row's own tenant already IS the owner tenant.
   const price = await getPriceOnDate(priceTenantId ?? tenantId, transfer.modelId, transfer.transferDate);
   if (!price) return { ok: false, message: "No dealer price defined for this model on the transfer date" };
-  const billNumber = await getNextBillNumber(tenantId, toDealerId, transfer.transferDate);
-  await db.insert(schema.purchases).values({
-    id: randomUUID(), tenantId, dealerId: toDealerId, modelId: transfer.modelId,
-    quantity: transfer.quantity, unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
-    purchaseDate: transfer.transferDate, source: PURCHASE_SOURCE.REGULAR,
-    referenceNote: `Inter-ID transfer in (${id.slice(0, 8)})`,
-    billNumber,
+
+  return db.transaction(async (tx) => {
+    // Conditioned on status still PENDING so a crash between the two writes, or two
+    // concurrent accepts of the same transfer, cannot both insert a purchase / credit
+    // stock twice: only the update that actually flips PENDING → ACCEPTED proceeds.
+    const updated = await tx.update(schema.interIdTransfers)
+      .set({ status: INTER_ID_STATUS.ACCEPTED })
+      .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.status, INTER_ID_STATUS.PENDING)))
+      .returning({ id: schema.interIdTransfers.id });
+    if (updated.length === 0) return { ok: false, message: "Transfer is not pending" };
+
+    const billNumber = await getNextBillNumber(tenantId, toDealerId, transfer.transferDate, tx);
+    await tx.insert(schema.purchases).values({
+      id: randomUUID(), tenantId, dealerId: toDealerId, modelId: transfer.modelId,
+      quantity: transfer.quantity, unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
+      purchaseDate: transfer.transferDate, source: PURCHASE_SOURCE.REGULAR,
+      referenceNote: `Inter-ID transfer in (${id.slice(0, 8)})`,
+      billNumber,
+    });
+    return { ok: true };
   });
-  await db.update(schema.interIdTransfers).set({ status: INTER_ID_STATUS.ACCEPTED }).where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId)));
-  return { ok: true };
 }
 
 export async function rejectInterIdTransfer(tenantId: string, id: string, toDealerId: string): Promise<{ ok: boolean; message?: string }> {

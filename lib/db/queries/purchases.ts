@@ -104,15 +104,15 @@ export async function getStockForModel(tenantId: string, dealerId: string, model
   return Number(pq) - Number(aq) - Number(tq) - crcQty;
 }
 
-export async function getStockForModelAsOf(tenantId: string, dealerId: string, modelId: string, asOf: string): Promise<number> {
+export async function getStockForModelAsOf(tenantId: string, dealerId: string, modelId: string, asOf: string, executor: Executor = db): Promise<number> {
   const [[{ qty: pq }], [{ qty: aq }], [{ qty: tq }], crcQty] = await Promise.all([
-    db.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
+    executor.select({ qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
       .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, dealerId), eq(schema.purchases.modelId, modelId), lte(schema.purchases.purchaseDate, asOf), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))),
-    db.select({ qty: sql<number>`COUNT(*)` })
+    executor.select({ qty: sql<number>`COUNT(*)` })
       .from(schema.activations)
       .where(and(eq(schema.activations.tenantId, tenantId), eq(schema.activations.dealerId, dealerId), eq(schema.activations.modelId, modelId), lte(schema.activations.activationDate, asOf))),
-    db.select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
+    executor.select({ qty: sql<number>`COALESCE(SUM(${schema.interIdTransfers.quantity}), 0)` })
       .from(schema.interIdTransfers)
       .where(and(
         eq(schema.interIdTransfers.tenantId, tenantId),
@@ -121,7 +121,7 @@ export async function getStockForModelAsOf(tenantId: string, dealerId: string, m
         lte(schema.interIdTransfers.transferDate, asOf),
         ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED)
       )),
-    getCrCaughtAsOf(tenantId, dealerId, modelId, asOf),
+    getCrCaughtAsOf(tenantId, dealerId, modelId, asOf, executor),
   ]);
   return Number(pq) - Number(aq) - Number(tq) - crcQty;
 }

@@ -101,21 +101,27 @@ export async function createInterIdTransferAction(
   const { fromDealerId, toDealerId, modelId, quantity, transferDate } = parsed.data;
   if (fromDealerId === toDealerId) return { error: "Source and destination must be different" };
 
-  const stock = await getStockForModelAsOf(OWNER_TENANT_ID, fromDealerId, modelId, transferDate);
-  if (stock < quantity) {
-    return { error: `Only ${stock} unit(s) available in source ID as of ${transferDate}` };
-  }
-
   try {
-    const id = await createInterIdTransfer({
-      tenantId: OWNER_TENANT_ID,
-      fromDealerId: parsed.data.fromDealerId,
-      toDealerId: parsed.data.toDealerId,
-      modelId: parsed.data.modelId,
-      quantity: parsed.data.quantity,
-      transferDate: parsed.data.transferDate,
-      note: parsed.data.note ?? null,
+    let stockError: string | null = null;
+    let id: string | undefined;
+    await db.transaction(async (tx) => {
+      const stock = await getStockForModelAsOf(OWNER_TENANT_ID, fromDealerId, modelId, transferDate, tx);
+      if (stock < quantity) {
+        stockError = `Only ${stock} unit(s) available in source ID as of ${transferDate}`;
+        return;
+      }
+      id = await createInterIdTransfer({
+        tenantId: OWNER_TENANT_ID,
+        fromDealerId: parsed.data.fromDealerId,
+        toDealerId: parsed.data.toDealerId,
+        modelId: parsed.data.modelId,
+        quantity: parsed.data.quantity,
+        transferDate: parsed.data.transferDate,
+        note: parsed.data.note ?? null,
+      }, tx);
     });
+    if (stockError) return { error: stockError };
+    if (!id) return { error: "Transfer failed" };
     const m = await getModelById(parsed.data.modelId);
     const [src, dst] = await Promise.all([
       db.select().from(schema.dealerIds).where(eq(schema.dealerIds.id, parsed.data.fromDealerId)).limit(1),

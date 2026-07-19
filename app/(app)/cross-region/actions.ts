@@ -5,6 +5,7 @@ import { z } from "zod";
 import { isAuthenticated, isAnyAuthenticated } from "@/lib/auth";
 import { getStaffSession } from "@/lib/staff-auth";
 import { getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
+import { db } from "@/lib/db/client";
 import {
   createCrossRegion,
   deleteCrossRegion,
@@ -214,22 +215,30 @@ export async function crOutwardAction(
   // Cash-only fines are owner-only
   if (quantity === 0 && !isOwner) return { error: "Only the owner can log cash-only fines" };
 
-  if (quantity > 0) {
-    const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
-    if (stock < quantity) return { error: `Only ${stock} unit(s) in stock from ${caughtDate} onward` };
-  }
-
   const priceInfo = quantity > 0 ? await getPriceOnDate(tenantId, modelId, caughtDate) : null;
   const priceSnap = priceInfo?.dealerPrice ?? 0;
   const status = isOwner ? "active" : "pending_owner_approval";
 
-  const m = await getModelById(modelId);
-  const id = await createCrCaught({
-    tenantId, dealerId, modelId,
-    quantity, fineAmount: fineAmount ?? 0,
-    caughtDate, dealerPriceSnapshot: priceSnap,
-    note: note ?? null, status,
+  let stockError: string | null = null;
+  let id: string | undefined;
+  await db.transaction(async (tx) => {
+    if (quantity > 0) {
+      const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate, tx);
+      if (stock < quantity) {
+        stockError = `Only ${stock} unit(s) in stock from ${caughtDate} onward`;
+        return;
+      }
+    }
+    id = await createCrCaught({
+      tenantId, dealerId, modelId,
+      quantity, fineAmount: fineAmount ?? 0,
+      caughtDate, dealerPriceSnapshot: priceSnap,
+      note: note ?? null, status,
+    }, tx);
   });
+  if (stockError) return { error: stockError };
+  if (!id) return { error: "Failed to record CR-caught" };
+  const m = await getModelById(modelId);
 
   if (!isOwner && quantity > 0) {
     await createOwnerAlert({

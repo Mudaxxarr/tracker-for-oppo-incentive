@@ -30,6 +30,7 @@ const TYPE_LABELS: Record<string, string> = {
   offline_activation_pending: "Offline Activation",
   offline_purchase_pending: "Offline Purchase",
   offline_conflict: "Sync Conflict",
+  reprice_failed: "Reprice Failed",
 };
 
 const TYPE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -40,6 +41,7 @@ const TYPE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "ou
   offline_activation_pending: "secondary",
   offline_purchase_pending: "secondary",
   offline_conflict: "destructive",
+  reprice_failed: "destructive",
 };
 
 interface Props {

@@ -5,7 +5,9 @@ import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, sql } from "drizzle-o
 import { randomUUID } from "node:crypto";
 import { reEvaluateRebatesForDealer } from "./rebates";
 import { enqueueRebateJob } from "./rebate-jobs";
+import { createOwnerAlert } from "./alerts";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
+import { OWNER_ALERT_TYPE } from "@/lib/constants";
 
 export interface ModelWithCurrentPrice {
   id: string;
@@ -252,10 +254,16 @@ export async function syncPurchaseSnapshotsAllTenants(modelId: string): Promise<
  * back the committed price write.
  */
 export async function reAdjustAllDealersForPriceChange(modelId: string, fromDate: string): Promise<void> {
+  let repriceFailed = false;
   try {
     await syncActivationSnapshotsAllTenants(modelId);
     await syncPurchaseSnapshotsAllTenants(modelId);
+  } catch (e) {
+    repriceFailed = true;
+    console.error("[reAdjust-reprice]", modelId, fromDate, e);
+  }
 
+  try {
     const ownerDealers = await db
       .select({ id: schema.dealerIds.id })
       .from(schema.dealerIds)
@@ -275,10 +283,28 @@ export async function reAdjustAllDealersForPriceChange(modelId: string, fromDate
         )
       );
     }
+  } catch (e) {
+    console.error("[reAdjust-owner-dealers]", modelId, fromDate, e);
+  }
 
+  // Always enqueue the background job for every other-tenant dealer, even if a
+  // step above failed — drainRebateJobs is the only retry path they have, and a
+  // repricing failure must not also cost them their one chance at a recompute.
+  try {
     await enqueueRebateJob(modelId, fromDate);
   } catch (e) {
-    console.error("[reAdjust]", modelId, fromDate, e);
+    console.error("[reAdjust-enqueue]", modelId, fromDate, e);
+  }
+
+  if (repriceFailed) {
+    await createOwnerAlert({
+      tenantId: OWNER_TENANT_ID,
+      type: OWNER_ALERT_TYPE.REPRICE_FAILED,
+      entityType: "model",
+      entityId: modelId,
+      dealerId: null,
+      message: `Repricing failed for a price change effective ${fromDate}. Some dealers' activations/purchases may still show the old price — check server logs, then re-save the price entry to retry.`,
+    }).catch((e) => console.error("[reAdjust-alert]", e));
   }
 }
 

@@ -6,6 +6,7 @@ import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant, getTenantById } from "@/lib/dealer-tenant";
 import { getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { INTER_ID_STATUS } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -60,7 +61,8 @@ export async function createPosSaleAction(
   if (stock < 1) return { error: "No stock available for this model today." };
 
   const priceData = await getPriceOnDate(OWNER_TENANT_ID, d.modelId, today);
-  const pricedAt = priceData?.dealerPrice ?? 0;
+  if (!priceData) return { error: "No dealer price defined for this model on or before today" };
+  const pricedAt = priceData.dealerPrice;
 
   // Fetch model name for return
   const modelRows = await db
@@ -126,6 +128,8 @@ export async function createPosSaleAction(
   });
   revalidatePath("/dealer/activations");
   revalidatePath("/dealer/pos");
+  // POS sale deducts stock like any other activation → recompute rebate eligibility.
+  reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, d.modelId, today, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
 
   return { activationId: activationId!, pricedAt, modelName };
 }

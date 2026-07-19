@@ -65,24 +65,30 @@ export async function dealerQuickActivateAction(
   const minDate = new Date(Date.now() - backdateDays * 86400000).toISOString().slice(0, 10);
   if (activationDate < minDate) return { error: `Activation date cannot be more than ${backdateDays} day(s) in the past.` };
 
-  const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate);
-  if (stock < quantity) return { error: `Only ${stock} unit(s) available from ${activationDate} onward` };
-
   const price = await getPriceOnDate(OWNER_TENANT_ID, modelId, activationDate);
   if (!price) return { error: "No dealer price defined for this model on or before the activation date" };
 
-  for (let i = 0; i < quantity; i++) {
-    await createActivation({
-      tenantId,
-      dealerId,
-      modelId,
-      activationDate,
-      imei: null,
-      purchaseId: null,
-      isCrossRegion: false,
-      dealerPriceOverride: price.dealerPrice,
-    });
-  }
+  let stockError: string | null = null;
+  await db.transaction(async (tx) => {
+    const stock = await getMinForwardStock(tenantId, dealerId, modelId, activationDate, tx);
+    if (stock < quantity) {
+      stockError = `Only ${stock} unit(s) available from ${activationDate} onward`;
+      return;
+    }
+    for (let i = 0; i < quantity; i++) {
+      await createActivation({
+        tenantId,
+        dealerId,
+        modelId,
+        activationDate,
+        imei: null,
+        purchaseId: null,
+        isCrossRegion: false,
+        dealerPriceOverride: price.dealerPrice,
+      }, tx);
+    }
+  });
+  if (stockError) return { error: stockError };
 
   const m = await getModelById(modelId);
   await logAudit({
@@ -123,19 +129,27 @@ export async function dealerQuickMoveAction(
 
   if (toDealerId === dealerId) return { error: "Source and destination must be different" };
 
-  const stockAsOf = await getMinForwardStock(tenantId, dealerId, modelId, transferDate);
-  if (stockAsOf < quantity) return { error: `Only ${stockAsOf} unit(s) available from ${transferDate} onward` };
-
   try {
-    const id = await createInterIdTransfer({
-      tenantId,
-      fromDealerId: dealerId,
-      toDealerId,
-      modelId,
-      quantity,
-      transferDate,
-      note: note ?? null,
+    let stockError: string | null = null;
+    let id: string | undefined;
+    await db.transaction(async (tx) => {
+      const stockAsOf = await getMinForwardStock(tenantId, dealerId, modelId, transferDate, tx);
+      if (stockAsOf < quantity) {
+        stockError = `Only ${stockAsOf} unit(s) available from ${transferDate} onward`;
+        return;
+      }
+      id = await createInterIdTransfer({
+        tenantId,
+        fromDealerId: dealerId,
+        toDealerId,
+        modelId,
+        quantity,
+        transferDate,
+        note: note ?? null,
+      }, tx);
     });
+    if (stockError) return { error: stockError };
+    if (!id) return { error: "Transfer failed" };
 
     const [m, dst] = await Promise.all([
       getModelById(modelId),
@@ -246,13 +260,19 @@ export async function dealerCrCaughtAction(
   const { modelId, quantity, caughtDate, note } = parsed.data;
   const tenantId = session.tenantId;
 
-  const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
-  if (stock < quantity) return { error: `Only ${stock} unit(s) available from ${caughtDate} onward` };
-
   const priceInfo = await getPriceOnDate(OWNER_TENANT_ID, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;
 
-  await createCrCaught({ tenantId, dealerId, modelId, quantity, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null });
+  let stockError: string | null = null;
+  await db.transaction(async (tx) => {
+    const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate, tx);
+    if (stock < quantity) {
+      stockError = `Only ${stock} unit(s) available from ${caughtDate} onward`;
+      return;
+    }
+    await createCrCaught({ tenantId, dealerId, modelId, quantity, caughtDate, dealerPriceSnapshot: priceSnap, note: note ?? null }, tx);
+  });
+  if (stockError) return { error: stockError };
 
   const m = await getModelById(modelId);
   await logAudit({

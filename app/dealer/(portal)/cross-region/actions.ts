@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
+import { db } from "@/lib/db/client";
 import { createCrossRegion, updateCrossRegionStatus, deleteCrossRegion } from "@/lib/db/queries/transfers";
 import { getMinForwardStock } from "@/lib/db/queries/purchases";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
@@ -211,26 +212,34 @@ export async function dealerCrOutwardAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { modelId, quantity, fineAmount, caughtDate, note } = parsed.data;
 
-  const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate);
-  if (stock < quantity) return { error: `Only ${stock} unit(s) in stock from ${caughtDate} onward` };
-
   // Prices are owner-configured (single source of truth) — snapshot from OWNER_TENANT_ID.
   const priceInfo = await getPriceOnDate(OWNER_TENANT_ID, modelId, caughtDate);
   const priceSnap = priceInfo?.dealerPrice ?? 0;
 
-  const m = await getModelById(modelId);
-  const id = await createCrCaught({
-    tenantId,
-    dealerId,
-    modelId,
-    quantity,
-    fineAmount: fineAmount ?? 0,
-    caughtDate,
-    dealerPriceSnapshot: priceSnap,
-    note: note ?? null,
-    status: "active", // deducts stock immediately — no owner approval
-    createdByUserId: session.userId,
+  let stockError: string | null = null;
+  let id: string | undefined;
+  await db.transaction(async (tx) => {
+    const stock = await getMinForwardStock(tenantId, dealerId, modelId, caughtDate, tx);
+    if (stock < quantity) {
+      stockError = `Only ${stock} unit(s) in stock from ${caughtDate} onward`;
+      return;
+    }
+    id = await createCrCaught({
+      tenantId,
+      dealerId,
+      modelId,
+      quantity,
+      fineAmount: fineAmount ?? 0,
+      caughtDate,
+      dealerPriceSnapshot: priceSnap,
+      note: note ?? null,
+      status: "active", // deducts stock immediately — no owner approval
+      createdByUserId: session.userId,
+    }, tx);
   });
+  if (stockError) return { error: stockError };
+  if (!id) return { error: "Failed to record CR-caught" };
+  const m = await getModelById(modelId);
 
   await logAudit({
     action: "cr_caught.create",

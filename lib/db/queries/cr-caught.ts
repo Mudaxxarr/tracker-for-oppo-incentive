@@ -3,6 +3,8 @@ import { db, schema } from "../client";
 import { and, desc, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export interface CrCaughtRow {
   id: string;
   modelId: string;
@@ -45,9 +47,9 @@ export async function createCrCaught(input: {
   note: string | null;
   status?: string;
   createdByUserId?: string | null;
-}): Promise<string> {
+}, executor: Executor = db): Promise<string> {
   const id = randomUUID();
-  await db.insert(schema.crCaught).values({ id, ...input, fineAmount: input.fineAmount ?? 0, status: input.status ?? "active" });
+  await executor.insert(schema.crCaught).values({ id, ...input, fineAmount: input.fineAmount ?? 0, status: input.status ?? "active" });
   return id;
 }
 
@@ -97,8 +99,8 @@ export async function getCrCaughtForStockCalc(tenantId: string, dealerId: string
   return Number(qty);
 }
 
-export async function getCrCaughtAsOf(tenantId: string, dealerId: string, modelId: string, asOf: string): Promise<number> {
-  const [{ qty }] = await db
+export async function getCrCaughtAsOf(tenantId: string, dealerId: string, modelId: string, asOf: string, executor: Executor = db): Promise<number> {
+  const [{ qty }] = await executor
     .select({ qty: sql<number>`COALESCE(SUM(${schema.crCaught.quantity}), 0)` })
     .from(schema.crCaught)
     .where(
