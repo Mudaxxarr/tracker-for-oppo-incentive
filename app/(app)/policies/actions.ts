@@ -29,6 +29,16 @@ const StockInSchema = z.object({
   minQty: z.coerce.number().int().positive(),
 });
 
+const CombinedStockInSchema = z.object({
+  periodStart: Period.start,
+  periodEnd: Period.end,
+  targetQty: z.coerce.number().int().min(1, "Target must be ≥ 1"),
+  models: z.array(z.object({
+    modelId: z.string().min(1, "Model required"),
+    perUnitAmount: z.coerce.number().min(0, "Rate must be ≥ 0"),
+  })).min(1, "Add at least one model"),
+});
+
 const ActivationIncentiveSchema = z.object({
   modelId: z.string().min(1),
   periodStart: Period.start,
@@ -90,6 +100,9 @@ export async function createStockInAction(
   const overlap = await Q.findOverlappingStockInPolicy(c.tenantId, c.dealerId, parsed.data.modelId, parsed.data.periodStart, parsed.data.periodEnd);
   if (overlap)
     return { error: `A stock-in policy for this model already covers ${overlap.periodStart} → ${overlap.periodEnd}. Overlapping periods are not allowed.` };
+  const combinedClash = await Q.findStockInOverlapForModels(c.tenantId, c.dealerId, [parsed.data.modelId], parsed.data.periodStart, parsed.data.periodEnd);
+  if (combinedClash)
+    return { error: `"${combinedClash}" is already in a combined stock-in policy overlapping ${parsed.data.periodStart} → ${parsed.data.periodEnd}. Overlapping periods are not allowed.` };
   const id = await Q.createStockInPolicy({
     tenantId: c.tenantId,
     dealerId: c.dealerId,
@@ -107,6 +120,35 @@ export async function createStockInAction(
     summary: `Stock-In ${m?.name ?? "?"}: ${formatPKR(parsed.data.perUnitAmount)}/unit${
       parsed.data.minQty ? ` (min ${parsed.data.minQty})` : ""
     } (${parsed.data.periodStart} → ${parsed.data.periodEnd})`,
+    payload: parsed.data,
+  });
+  revalidatePath("/policies");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function createCombinedStockInAction(
+  input: z.infer<typeof CombinedStockInSchema>
+): Promise<PolicyFormState> {
+  const c = await ctx();
+  if (!c) return { error: "Not authenticated or no active Dealer ID" };
+  const parsed = CombinedStockInSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { periodStart, periodEnd, targetQty, models } = parsed.data;
+  if (periodEnd < periodStart) return { error: "End date must be on/after start date" };
+  const modelIds = models.map((m) => m.modelId);
+  if (new Set(modelIds).size !== modelIds.length) return { error: "Each model can appear only once" };
+  // Safety guard: none of these models may already be in an overlapping stock-in
+  // policy (per-model OR combined) — enforces the no-overlap invariant.
+  const clash = await Q.findStockInOverlapForModels(c.tenantId, c.dealerId, modelIds, periodStart, periodEnd);
+  if (clash)
+    return { error: `"${clash}" already has a stock-in policy overlapping ${periodStart} → ${periodEnd}. Overlapping periods are not allowed.` };
+  const id = await Q.createCombinedStockInPolicy({ tenantId: c.tenantId, dealerId: c.dealerId, periodStart, periodEnd, targetQty, models });
+  await logAudit({
+    action: "policy.combined_stock_in.create",
+    entityType: "combined_stock_in_policy",
+    entityId: id,
+    summary: `Combined Stock-In: target ${targetQty} across ${models.length} model(s) (${periodStart} → ${periodEnd})`,
     payload: parsed.data,
   });
   revalidatePath("/policies");
@@ -271,7 +313,7 @@ export async function updateDealerIncentiveAction(_prev: PolicyFormState, fd: Fo
 }
 
 export async function deletePolicyAction(
-  type: "target-bonus" | "stock-in" | "activation-incentive" | "dealer-incentive",
+  type: "target-bonus" | "stock-in" | "combined-stock-in" | "activation-incentive" | "dealer-incentive",
   id: string
 ): Promise<void> {
   const c = await ctx();
@@ -282,6 +324,9 @@ export async function deletePolicyAction(
       break;
     case "stock-in":
       await Q.deleteStockInPolicy(id, c.tenantId, c.dealerId);
+      break;
+    case "combined-stock-in":
+      await Q.deleteCombinedStockInPolicy(id, c.tenantId, c.dealerId);
       break;
     case "activation-incentive":
       await Q.deleteActivationIncentivePolicy(id, c.tenantId, c.dealerId);

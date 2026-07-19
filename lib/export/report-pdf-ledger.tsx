@@ -222,7 +222,10 @@ function ModelBlock({
   if (row.stockInEarned > 0 || stockPolicy) {
     const rate = stockPolicy ? fmtPKR(stockPolicy.perUnitAmount) : "policy rate";
     const note = stockPolicy?.targetQty != null ? `  (min. ${stockPolicy.targetQty} required)` : "";
-    entries.push({ key: "stock", label: "Stock-In", formula: `${row.effectiveStockInQty} × ${rate}${note}`, amount: row.stockInEarned, credit: row.stockInEarned > 0, showBadge: !!stockPolicy, eligible: stockPolicy?.eligible });
+    const formula = row.effectiveStockInQty > 0 || stockPolicy
+      ? `${row.effectiveStockInQty} × ${rate}${note}`
+      : `combined policy (grouped target)`;
+    entries.push({ key: "stock", label: "Stock-In", formula, amount: row.stockInEarned, credit: row.stockInEarned > 0, showBadge: !!stockPolicy, eligible: stockPolicy?.eligible });
   }
 
   // Dealer Incentive

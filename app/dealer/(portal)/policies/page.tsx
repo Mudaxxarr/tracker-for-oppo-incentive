@@ -8,6 +8,7 @@ import { OWNER_TENANT_ID } from "@/lib/dealer";
 import {
   listTargetBonusPolicies,
   listStockInPolicies,
+  listCombinedStockInPolicies,
   listActivationIncentivePolicies,
   listDealerIncentivePolicies,
 } from "@/lib/db/queries/policies";
@@ -22,7 +23,8 @@ async function computeAchievements(
   tb: Awaited<ReturnType<typeof listTargetBonusPolicies>>,
   si: Awaited<ReturnType<typeof listStockInPolicies>>,
   ai: Awaited<ReturnType<typeof listActivationIncentivePolicies>>,
-  di: Awaited<ReturnType<typeof listDealerIncentivePolicies>>
+  di: Awaited<ReturnType<typeof listDealerIncentivePolicies>>,
+  cs: Awaited<ReturnType<typeof listCombinedStockInPolicies>>
 ): Promise<PolicyAchievements> {
   const [allActivations, allPurchases] = await Promise.all([
     db
@@ -63,7 +65,15 @@ async function computeAchievements(
     ).length;
   }
 
-  return { targetBonus, stockIn, activationIncentive, dealerIncentive };
+  const combinedStockIn: Record<string, number> = {};
+  for (const p of cs) {
+    const modelIds = new Set(p.models.map((m) => m.modelId));
+    combinedStockIn[p.id] = allPurchases
+      .filter((r) => modelIds.has(r.modelId) && r.purchaseDate >= p.periodStart && r.purchaseDate <= p.periodEnd)
+      .reduce((s, r) => s + r.quantity, 0);
+  }
+
+  return { targetBonus, stockIn, activationIncentive, dealerIncentive, combinedStockIn };
 }
 
 export default async function DealerPoliciesPage() {
@@ -85,29 +95,32 @@ export default async function DealerPoliciesPage() {
         models={models}
         targetBonus={[]}
         stockIn={[]}
+        combinedStockIn={[]}
         activationIncentive={[]}
         dealerIncentive={[]}
-        achievements={{ targetBonus: {}, stockIn: {}, activationIncentive: {}, dealerIncentive: {} }}
+        achievements={{ targetBonus: {}, stockIn: {}, combinedStockIn: {}, activationIncentive: {}, dealerIncentive: {} }}
         hasDealer={false}
       />
     );
   }
 
-  const [tb, si, ai, di] = await Promise.all([
+  const [tb, si, ai, di, cs] = await Promise.all([
     listTargetBonusPolicies(OWNER_TENANT_ID, dealerId),
     listStockInPolicies(OWNER_TENANT_ID, dealerId),
     listActivationIncentivePolicies(OWNER_TENANT_ID, dealerId),
     listDealerIncentivePolicies(OWNER_TENANT_ID, dealerId),
+    listCombinedStockInPolicies(OWNER_TENANT_ID, dealerId),
   ]);
 
   // Use session.tenantId (dealer's own data) for achievement counting
-  const achievements = await computeAchievements(session.tenantId, dealerId, tb, si, ai, di);
+  const achievements = await computeAchievements(session.tenantId, dealerId, tb, si, ai, di, cs);
 
   return (
     <DealerPoliciesClient
       models={models}
       targetBonus={tb}
       stockIn={si}
+      combinedStockIn={cs}
       activationIncentive={ai}
       dealerIncentive={di}
       achievements={achievements}

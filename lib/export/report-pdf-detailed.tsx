@@ -313,7 +313,12 @@ function ModelCard({
   if (row.stockInEarned > 0 || stockPolicy) {
     const rate = stockPolicy ? fmtPKR(stockPolicy.perUnitAmount) : "policy rate";
     const note = stockPolicy?.targetQty != null ? ` (needed at least ${stockPolicy.targetQty} purchased)` : "";
-    rows.push({ key: "stock", label: "Stock-In", formula: `${row.effectiveStockInQty} phones bought × ${rate} each${note}`, amount: row.stockInEarned });
+    // effectiveStockInQty is per-model-policy based; a model earning only via a
+    // combined (grouped) policy has qty 0 here but a real amount — label it plainly.
+    const formula = row.effectiveStockInQty > 0 || stockPolicy
+      ? `${row.effectiveStockInQty} phones bought × ${rate} each${note}`
+      : `combined stock-in policy (grouped target)`;
+    rows.push({ key: "stock", label: "Stock-In", formula, amount: row.stockInEarned });
   }
 
   // Dealer Incentive — ONE whole-shop policy; this row is only this model's share of it.

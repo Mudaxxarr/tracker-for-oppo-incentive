@@ -26,6 +26,7 @@ import {
   createActivationIncentiveAction,
   bulkCreateDealerIncentivesAction,
   createStockInAction,
+  createCombinedStockInAction,
   createTargetBonusAction,
   deletePolicyAction,
   updateTargetBonusAction,
@@ -39,6 +40,7 @@ import { toast } from "sonner";
 import type {
   ActivationIncentivePolicyRow,
   StockInPolicyRow,
+  CombinedStockInPolicyRow,
   DealerIncentivePolicyRow,
 } from "@/lib/db/queries/policies";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
@@ -46,6 +48,7 @@ import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 export interface PolicyAchievements {
   targetBonus: Record<string, number>;
   stockIn: Record<string, number>;
+  combinedStockIn: Record<string, number>;
   activationIncentive: Record<string, number>;
   dealerIncentive: Record<string, number>;
 }
@@ -62,6 +65,7 @@ interface Props {
   models: ModelWithCurrentPrice[];
   targetBonus: TargetBonusRow[];
   stockIn: StockInPolicyRow[];
+  combinedStockIn: CombinedStockInPolicyRow[];
   activationIncentive: ActivationIncentivePolicyRow[];
   dealerIncentive: DealerIncentivePolicyRow[];
   achievements: PolicyAchievements;
@@ -112,9 +116,10 @@ export function PoliciesClient(props: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [editId, setEditId] = useState<string | null>(null);
+  const [showCombinedForm, setShowCombinedForm] = useState(false);
 
   const onDelete = (
-    type: "target-bonus" | "stock-in" | "activation-incentive" | "dealer-incentive",
+    type: "target-bonus" | "stock-in" | "combined-stock-in" | "activation-incentive" | "dealer-incentive",
     id: string,
     label: string
   ) => {
@@ -291,6 +296,80 @@ export function PoliciesClient(props: Props) {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Combined stock-in: separate entry — grouped target, per-model rate */}
+          <Card>
+            <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+              <div>
+                <CardTitle className="text-base">Combined Stock-In Policy</CardTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  One target counted across several models together; each model paid at its own rate.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowCombinedForm((v) => !v)}>
+                {showCombinedForm ? "Close" : "+ Combined policy"}
+              </Button>
+            </CardHeader>
+            {showCombinedForm && (
+              <CardContent>
+                <CombinedStockInForm
+                  models={props.models}
+                  onSuccess={() => { setShowCombinedForm(false); toast.success("Combined stock-in policy added"); router.refresh(); }}
+                />
+              </CardContent>
+            )}
+          </Card>
+
+          {props.combinedStockIn.length > 0 && (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Models (rate / unit)</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead className="text-right">Target qty</TableHead>
+                      <TableHead>Combined purchased</TableHead>
+                      <TableHead></TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {props.combinedStockIn.map((p) => {
+                      const count = achievements.combinedStockIn[p.id] ?? 0;
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell>
+                            <div className="space-y-0.5">
+                              {p.models.map((m) => (
+                                <div key={m.modelId} className="text-sm">
+                                  <span className="font-medium">{m.modelName}</span>{" "}
+                                  <span className="tabular-nums text-muted-foreground">— {formatPKR(m.perUnitAmount)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell label="Period">{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
+                          <TableCell label="Target qty" className="text-right tabular-nums">{p.targetQty}</TableCell>
+                          <TableCell label="Combined purchased"><MiniProgress current={count} target={p.targetQty} /></TableCell>
+                          <TableCell>
+                            {isLive(p.periodStart, p.periodEnd)
+                              ? <Badge>Live</Badge>
+                              : <Badge variant="secondary">Expired</Badge>}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => onDelete("combined-stock-in", p.id, "combined stock-in policy")}>
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ------ Activation Incentive ------ */}
@@ -767,6 +846,78 @@ function BulkDealerIncentiveForm({ models, onSuccess }: { models: ModelWithCurre
       </div>
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Saving…" : "Save Dealer Incentives"}
+      </Button>
+    </form>
+  );
+}
+
+function CombinedStockInForm({ models, onSuccess }: { models: ModelWithCurrentPrice[]; onSuccess?: () => void }) {
+  const { start, end } = MonthDefaults();
+  const [periodStart, setPeriodStart] = useState(start);
+  const [periodEnd, setPeriodEnd] = useState(end);
+  const [target, setTarget] = useState("");
+  const [rates, setRates] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState(false);
+  const [, startTransition] = useTransition();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const chosen = models
+      .filter((m) => rates[m.id] !== undefined && rates[m.id] !== "" && Number(rates[m.id]) >= 0)
+      .map((m) => ({ modelId: m.id, perUnitAmount: Number(rates[m.id]) }));
+    if (chosen.length < 2) { toast.error("Pick at least 2 models with a rate (use the single Stock-In form for one model)"); return; }
+    if (!target || Number(target) < 1) { toast.error("Enter a valid combined target quantity"); return; }
+    setPending(true);
+    startTransition(async () => {
+      const res = await createCombinedStockInAction({
+        periodStart,
+        periodEnd,
+        targetQty: Number(target),
+        models: chosen,
+      });
+      setPending(false);
+      if (res.ok) { setRates({}); setTarget(""); onSuccess?.(); }
+      else toast.error(res.error ?? "Failed");
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Period start</label>
+          <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Period end</label>
+          <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required />
+        </div>
+      </div>
+      <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2.5 dark:border-amber-800/50 dark:bg-amber-950/20">
+        <label className="text-xs font-medium text-amber-700 dark:text-amber-400">Combined Target Quantity</label>
+        <p className="mb-1.5 mt-0.5 text-xs text-muted-foreground">
+          Once total purchases across the selected models reach this number, every model below earns its rate on its full quantity.
+        </p>
+        <Input type="number" min={1} placeholder="e.g. 20" value={target} onChange={(e) => setTarget(e.target.value)} className="max-w-[140px]" required />
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">Per-model rate — leave blank to exclude a model from the group</p>
+        <div className="rounded-lg border divide-y">
+          {models.map((m) => (
+            <div key={m.id} className="flex items-center gap-3 px-3 py-2">
+              <span className="flex-1 text-sm font-medium">{m.name}</span>
+              <Input
+                type="number" step="any" min={0} placeholder="₨ per unit"
+                value={rates[m.id] ?? ""}
+                onChange={(e) => setRates((r) => ({ ...r, [m.id]: e.target.value }))}
+                className="w-32 text-right"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      <Button type="submit" className="w-full" disabled={pending}>
+        {pending ? "Saving…" : "Save Combined Stock-In Policy"}
       </Button>
     </form>
   );
