@@ -44,6 +44,21 @@ export interface EngineStockInPolicy {
   minQty: number | null;
 }
 
+/**
+ * A stock-in policy whose target quantity is counted across a GROUP of models
+ * combined, while the payout rate stays per-model. Evaluated as a separate pass
+ * from the per-model `EngineStockInPolicy` (which is unchanged).
+ */
+export interface EngineCombinedStockInPolicy {
+  id: string;
+  periodStart: ISODate;
+  periodEnd: ISODate;
+  /** Combined target across all models in the group. Only a trigger — once met,
+   *  each model is paid on its FULL eligible qty (like per-model stock-in). */
+  targetQty: number;
+  models: { modelId: string; perUnitAmount: number }[];
+}
+
 export interface EngineActivationIncentivePolicy {
   id: string;
   modelId: string;
@@ -93,6 +108,8 @@ export interface EngineInput {
   stockInPolicies: EngineStockInPolicy[];
   activationIncentivePolicies: EngineActivationIncentivePolicy[];
   dealerIncentivePolicies: EngineDealerIncentivePolicy[];
+  /** Grouped stock-in policies (target counted across models, per-model rate). */
+  combinedStockInPolicies?: EngineCombinedStockInPolicy[];
   /** Phones that left this dealer ID via inter-ID transfer; subtracted from stock-in qty. */
   interIdOut?: EngineInterIdOut[];
 }
@@ -115,6 +132,24 @@ export interface StockInPolicyLedger {
   eligibleQty: number;
   earned: number;
   met: boolean;
+}
+
+export interface CombinedStockInLedger {
+  policyId: string;
+  periodStart: ISODate;
+  periodEnd: ISODate;
+  targetQty: number;
+  /** Sum of every model's eligible qty in the group. */
+  combinedEligibleQty: number;
+  met: boolean;
+  perModel: {
+    modelId: string;
+    modelName: string;
+    eligibleQty: number;
+    perUnitAmount: number;
+    earned: number;
+  }[];
+  totalEarned: number;
 }
 
 export interface ActivationIncentivePolicyLedger {
@@ -189,6 +224,9 @@ export interface IncentiveReport {
 
   targetBonus: TargetBonusOutcome;
   dealerIncentives: DealerIncentiveOutcome[];
+  /** Grouped stock-in policies evaluated this period. Earnings are also folded
+   *  into each model row's `stockInEarned` + totals; this is the detail view. */
+  combinedStockInLedger: CombinedStockInLedger[];
 
   rows: IncentiveReportRow[];
 

@@ -8,6 +8,7 @@ import type {
   IncentiveReportRow,
   PriceSubperiod,
   StockInPolicyLedger,
+  CombinedStockInLedger,
   ActivationIncentivePolicyLedger,
   TargetBonusOutcome,
   ISODate,
@@ -119,6 +120,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     stockInPolicies,
     activationIncentivePolicies,
     dealerIncentivePolicies,
+    combinedStockInPolicies = [],
     interIdOut = [],
   } = input;
 
@@ -214,6 +216,56 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     byModel.get(t.modelId)!.interIdOutQty += t.quantity;
   }
 
+  // ----- Combined stock-in policies (grouped target, per-model rate) -----
+  // Evaluated as a SEPARATE, additive pass so per-model stock-in is untouched.
+  // Target is counted across the group's models; once met, each model is paid on
+  // its FULL eligible qty (regular purchases − inter-ID out, in the policy window)
+  // at its own rate. Earnings are folded into each model's stockInEarned below.
+  const combinedEarnedByModel = new Map<string, number>();
+  const combinedStockInLedger: CombinedStockInLedger[] = [];
+  for (const cp of combinedStockInPolicies) {
+    if (!(cp.periodStart <= periodEnd && cp.periodEnd >= periodStart)) continue;
+    const perModelElig = cp.models.map((cm) => {
+      const regularQty = purchases
+        .filter((p) => p.modelId === cm.modelId && p.source === "REGULAR" && inRange(p.purchaseDate, cp.periodStart, cp.periodEnd))
+        .reduce((s, p) => s + p.quantity, 0);
+      const outQty = interIdOut
+        .filter((t) => t.modelId === cm.modelId && inRange(t.transferDate, cp.periodStart, cp.periodEnd))
+        .reduce((s, t) => s + t.quantity, 0);
+      return { modelId: cm.modelId, perUnitAmount: cm.perUnitAmount, eligibleQty: Math.max(0, regularQty - outQty) };
+    });
+    const combinedEligibleQty = perModelElig.reduce((s, m) => s + m.eligibleQty, 0);
+    const met = combinedEligibleQty >= cp.targetQty && combinedEligibleQty > 0;
+    let totalEarned = 0;
+    const perModel = perModelElig.map((m) => {
+      const earned = met ? round2(m.eligibleQty * m.perUnitAmount) : 0;
+      totalEarned += earned;
+      if (earned > 0) combinedEarnedByModel.set(m.modelId, round2((combinedEarnedByModel.get(m.modelId) ?? 0) + earned));
+      return {
+        modelId: m.modelId,
+        modelName: modelMap.get(m.modelId)?.name ?? `(unknown ${m.modelId})`,
+        eligibleQty: m.eligibleQty,
+        perUnitAmount: m.perUnitAmount,
+        earned,
+      };
+    });
+    combinedStockInLedger.push({
+      policyId: cp.id,
+      periodStart: cp.periodStart,
+      periodEnd: cp.periodEnd,
+      targetQty: cp.targetQty,
+      combinedEligibleQty,
+      met,
+      perModel,
+      totalEarned: round2(totalEarned),
+    });
+  }
+  // A model that only earns via a combined policy (no report-window activity)
+  // still needs a row so its earnings aren't dropped.
+  for (const modelId of combinedEarnedByModel.keys()) {
+    if (!byModel.has(modelId)) byModel.set(modelId, blank());
+  }
+
   const basePct = baseIncentivePercent / 100;
   const bonusPct = tbpEligible ? (tbp!.bonusPercent / 100) : 0;
 
@@ -232,7 +284,8 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     if (
       bucket.activations.length === 0 &&
       bucket.regularQty === 0 &&
-      bucket.crossRegionQty === 0
+      bucket.crossRegionQty === 0 &&
+      (combinedEarnedByModel.get(modelId) ?? 0) === 0
     ) {
       // Nothing happened for this model in window — skip.
       continue;
@@ -322,6 +375,9 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       totalSipInterIdOutQty += sipInterIdOutQty;
       stockInEarned += policyEarned;
     }
+    // Fold in any grouped (combined) stock-in earnings for this model.
+    stockInEarned += combinedEarnedByModel.get(modelId) ?? 0;
+
     const effectiveStockInQty = Math.max(0, totalSipRegularQty - totalSipInterIdOutQty);
 
     const priceSubperiods: PriceSubperiod[] = [...subMap.entries()]
@@ -388,6 +444,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       perUnitAmount: ds.policy.perUnitAmount,
       earned: round2(ds.earned),
     })),
+    combinedStockInLedger,
     rows,
     totals: {
       basePercentEarned: round2(totalsBase),

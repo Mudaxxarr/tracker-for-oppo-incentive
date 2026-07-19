@@ -347,3 +347,77 @@ describe("incentive-engine: empty + edge cases", () => {
     ).toThrow();
   });
 });
+
+describe("incentive-engine: combined stock-in policy (grouped target, per-model rate)", () => {
+  const reg = (id: string, modelId: string, quantity: number) => ({
+    id, modelId, quantity, unitDealerPrice: 50_000, purchaseDate: "2026-05-10", source: "REGULAR" as const,
+  });
+  const combined = {
+    id: "cp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetQty: 20,
+    models: [{ modelId: MODEL_A.id, perUnitAmount: 500 }, { modelId: MODEL_B.id, perUnitAmount: 900 }],
+  };
+
+  it("target met by the group → each model paid on its FULL qty at its own rate", () => {
+    // 12 of A + 8 of B = 20 combined = target. Earned: 12×500 + 8×900 = 13_200.
+    const result = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 12), reg("p2", MODEL_B.id, 8)],
+      combinedStockInPolicies: [combined],
+    }));
+    const led = result.combinedStockInLedger[0];
+    expect(led.met).toBe(true);
+    expect(led.combinedEligibleQty).toBe(20);
+    expect(led.totalEarned).toBe(13_200);
+    expect(result.rows.find((r) => r.modelId === MODEL_A.id)!.stockInEarned).toBe(6_000);
+    expect(result.rows.find((r) => r.modelId === MODEL_B.id)!.stockInEarned).toBe(7_200);
+    expect(result.totals.stockInEarned).toBe(13_200);
+    expect(result.totals.grandTotal).toBe(13_200);
+  });
+
+  it("target NOT met by the group → nobody earns", () => {
+    // 12 + 5 = 17 < 20.
+    const result = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 12), reg("p2", MODEL_B.id, 5)],
+      combinedStockInPolicies: [combined],
+    }));
+    expect(result.combinedStockInLedger[0].met).toBe(false);
+    expect(result.rows.find((r) => r.modelId === MODEL_A.id)!.stockInEarned).toBe(0);
+    expect(result.totals.stockInEarned).toBe(0);
+  });
+
+  it("qty beyond the target → the WHOLE qty is paid (target is only a trigger)", () => {
+    // 25 + 15 = 40. Earned: 25×500 + 15×900 = 26_000.
+    const result = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 25), reg("p2", MODEL_B.id, 15)],
+      combinedStockInPolicies: [combined],
+    }));
+    expect(result.combinedStockInLedger[0].totalEarned).toBe(26_000);
+    expect(result.rows.find((r) => r.modelId === MODEL_A.id)!.stockInEarned).toBe(12_500);
+    expect(result.rows.find((r) => r.modelId === MODEL_B.id)!.stockInEarned).toBe(13_500);
+  });
+
+  it("inter-ID outbound transfers reduce the combined eligible qty", () => {
+    // 12 A + 12 B, but 4 B transferred out → B eligible 8 → combined 20 = target (met).
+    const result = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 12), reg("p2", MODEL_B.id, 12)],
+      interIdOut: [{ id: "t1", modelId: MODEL_B.id, quantity: 4, transferDate: "2026-05-15" }],
+      combinedStockInPolicies: [combined],
+    }));
+    const led = result.combinedStockInLedger[0];
+    expect(led.combinedEligibleQty).toBe(20);
+    expect(led.met).toBe(true);
+    expect(result.rows.find((r) => r.modelId === MODEL_B.id)!.stockInEarned).toBe(7_200);
+  });
+
+  it("one model can carry the whole target; a zero-qty group member earns 0", () => {
+    // 20 A + 0 B = 20 (met). A earns 20×500=10_000; B earns 0.
+    const result = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 20)],
+      combinedStockInPolicies: [combined],
+    }));
+    const led = result.combinedStockInLedger[0];
+    expect(led.met).toBe(true);
+    expect(led.perModel.find((m) => m.modelId === MODEL_B.id)!.earned).toBe(0);
+    expect(result.rows.find((r) => r.modelId === MODEL_A.id)!.stockInEarned).toBe(10_000);
+    expect(result.totals.stockInEarned).toBe(10_000);
+  });
+});
