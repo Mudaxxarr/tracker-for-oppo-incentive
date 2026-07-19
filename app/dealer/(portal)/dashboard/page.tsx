@@ -135,7 +135,10 @@ export default async function DealerDashboardPage({
         ),
       )
       .groupBy(schema.purchases.modelId),
-    buildIncentiveReport({ dealerId, periodStart: prevPeriod.from, periodEnd: prevPeriod.to, dataTenantId: stats.tenantId }).catch(() => null),
+    buildIncentiveReport({ dealerId, periodStart: prevPeriod.from, periodEnd: prevPeriod.to, dataTenantId: stats.tenantId }).catch((e) => {
+      console.error("[dealer-dashboard] previous-period incentive report failed", e);
+      return null;
+    }),
     sumRebatesForPeriod(stats.tenantId, dealerId, prevPeriod.from, prevPeriod.to),
     listActivations({ tenantId: stats.tenantId, dealerId, from: last7StartStr, to: last7EndStr }),
   ]);
@@ -144,7 +147,11 @@ export default async function DealerDashboardPage({
   // matches the existing "Total before fines" figure shown in the net-payout card.
   const totalReceivable = report.totals.grandTotal + rebateEarned;
   const prevTotalReceivable = (prevReport?.totals.grandTotal ?? 0) + prevRebateEarned;
-  const totalReceivableGrowthPercent = percentChange(totalReceivable, prevTotalReceivable);
+  // If the previous-period report itself failed to compute (prevReport === null),
+  // the baseline is incomplete (rebate-only), so a percentChange against it would be
+  // a plausible-but-wrong number. Show no growth badge instead of a misleading one.
+  const totalReceivableGrowthPercent =
+    prevReport === null ? null : percentChange(totalReceivable, prevTotalReceivable);
 
   // Last 7 calendar days of net sales value (qty x price) and activation count,
   // zero-filled so every day shows even with no activity that day.
