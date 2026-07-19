@@ -20,9 +20,12 @@ import { logoutAction } from "@/app/dealer/actions";
 interface Props {
   features: DealerFeatures;
   role?: string;
+  /** When the dealer owns 2+ IDs, the IDs / Inter-ID Transfer tab is shown
+   *  even if the `ids` feature flag is off. */
+  hasMultipleIds?: boolean;
 }
 
-export function DealerBottomNav({ features, role }: Props) {
+export function DealerBottomNav({ features, role, hasMultipleIds }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -30,7 +33,9 @@ export function DealerBottomNav({ features, role }: Props) {
 
   const enabled = DEALER_NAV.filter(
     (item) =>
-      (!item.feature || isFeatureEnabled(features, item.feature)) &&
+      (!item.feature ||
+        isFeatureEnabled(features, item.feature) ||
+        (item.href === "/dealer/ids" && hasMultipleIds)) &&
       !(role === "exec" && item.adminOnly),
   );
   // Five quick items in the bar (matches the admin/owner mobile nav); everything else lives behind "More".

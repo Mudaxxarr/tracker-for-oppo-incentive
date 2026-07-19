@@ -17,11 +17,12 @@ export default async function DealerIdsPage() {
   if (session.role === "exec") redirect("/dealer/dashboard");
 
   const features = await getTenantFeaturesById(session.tenantId);
-  if (!isFeatureEnabled(features, "ids")) return <FeatureDisabled />;
-
   const { tenantId } = session;
 
   const dealers = await listDealerIdsForTenant(tenantId);
+  // Auto-enable for dealers who own 2+ IDs even if the `ids` feature flag is off —
+  // they need Inter-ID Transfer to move stock between their own IDs.
+  if (!isFeatureEnabled(features, "ids") && dealers.length < 2) return <FeatureDisabled />;
   const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
 
   const [stats, stockData, allTransfersNested] = await Promise.all([

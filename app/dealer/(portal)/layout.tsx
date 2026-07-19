@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { Suspense } from "react";
 import { getDealerSession } from "@/lib/dealer-auth";
-import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
+import { getActiveDealerIdForTenant, listDealerIdsForTenant } from "@/lib/dealer-tenant";
 import { db, schema } from "@/lib/db/client";
 import { eq } from "drizzle-orm";
 import { DealerTopBar } from "@/components/dealer/dealer-top-bar";
@@ -36,7 +36,7 @@ export default async function DealerLayout({
     console.error("ensureTodayBackup failed:", err),
   );
 
-  const [tenantRows, features, isAdminPreview, activeDealerId] = await Promise.all([
+  const [tenantRows, features, isAdminPreview, dealerIds, activeDealerId] = await Promise.all([
     db
       .select({ businessName: schema.dealerTenants.businessName })
       .from(schema.dealerTenants)
@@ -44,20 +44,16 @@ export default async function DealerLayout({
       .limit(1),
     getTenantFeaturesById(session.tenantId),
     isAuthenticated(),
+    listDealerIdsForTenant(session.tenantId),
     getActiveDealerIdForTenant(session.tenantId),
   ]);
   const businessName = tenantRows[0]?.businessName ?? "Dealer Portal";
 
-  // Top bar shows the active Dealer ID's shop name when set.
-  let shopName: string | null = null;
-  if (activeDealerId) {
-    const shopRows = await db
-      .select({ shopName: schema.dealerIds.shopName })
-      .from(schema.dealerIds)
-      .where(eq(schema.dealerIds.id, activeDealerId))
-      .limit(1);
-    shopName = shopRows[0]?.shopName ?? null;
-  }
+  // Multi-ID dealers get a top-bar ID switcher + the IDs/Inter-ID Transfer tab
+  // auto-enabled, regardless of the `ids` feature flag.
+  const idOptions = dealerIds.map((d) => ({ id: d.id, name: d.name }));
+  const hasMultipleIds = dealerIds.length >= 2;
+  const shopName = dealerIds.find((d) => d.id === activeDealerId)?.shopName ?? null;
 
   const headerStore = await headers();
   const cookieStore = await cookies();
@@ -79,16 +75,18 @@ export default async function DealerLayout({
         shopName={shopName}
         isAdmin={isAdminPreview}
         showViewSwitcher={session.tenantId === TEST_SANDBOX_TENANT_ID}
+        idOptions={idOptions}
+        activeDealerId={activeDealerId}
       />
       {expirySoonDays && <DealerExpiryWarning daysLeft={expirySoonDays} />}
       {isGrace && <DealerGraceBanner />}
       <div className="flex flex-1">
-        <DealerSidebar features={features} role={session.role} />
+        <DealerSidebar features={features} role={session.role} hasMultipleIds={hasMultipleIds} />
         <main className="flex flex-1 flex-col overflow-x-hidden pb-16 md:pb-0">
           <div className="px-3 py-4 md:px-6 md:py-6">{children}</div>
         </main>
       </div>
-      <DealerBottomNav features={features} role={session.role} />
+      <DealerBottomNav features={features} role={session.role} hasMultipleIds={hasMultipleIds} />
       <InstallPrompt />
       <OfflineSync />
       <DealerBackHandler />

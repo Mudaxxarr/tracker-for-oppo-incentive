@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DealerLogoTrigger } from "./dealer-logo-trigger";
 import { DealerViewSwitcher } from "./dealer-view-switcher";
+import { DealerIdSwitcher, type DealerIdOption } from "./dealer-id-switcher";
 import { LogOut, HelpCircle } from "lucide-react";
 
 interface DealerTopBarProps {
@@ -12,9 +13,12 @@ interface DealerTopBarProps {
   shopName?: string | null;
   isAdmin?: boolean;
   showViewSwitcher?: boolean;
+  idOptions?: DealerIdOption[];
+  activeDealerId?: string | null;
 }
 
-export function DealerTopBar({ businessName, shopName, isAdmin, showViewSwitcher }: DealerTopBarProps) {
+export function DealerTopBar({ businessName, shopName, isAdmin, showViewSwitcher, idOptions, activeDealerId }: DealerTopBarProps) {
+  const showIdSwitcher = (idOptions?.length ?? 0) >= 2;
   return (
     <header
       className="sticky top-0 z-20 border-b border-border bg-card"
@@ -23,7 +27,11 @@ export function DealerTopBar({ businessName, shopName, isAdmin, showViewSwitcher
       <div className="flex h-14 items-center gap-3 px-3 md:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2 font-medium">
           <DealerLogoTrigger isAdmin={isAdmin} />
-          <span className="truncate text-sm">{shopName ?? businessName}</span>
+          {showIdSwitcher ? (
+            <DealerIdSwitcher options={idOptions!} activeId={activeDealerId ?? null} />
+          ) : (
+            <span className="truncate text-sm">{shopName ?? businessName}</span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {showViewSwitcher && <DealerViewSwitcher />}

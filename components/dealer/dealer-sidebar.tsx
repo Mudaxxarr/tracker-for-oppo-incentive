@@ -109,13 +109,18 @@ function SlidingNav({ items, pathname }: SlidingNavProps) {
 interface Props {
   features: DealerFeatures;
   role?: string;
+  /** When the dealer owns 2+ IDs, the IDs / Inter-ID Transfer tab is shown
+   *  even if the `ids` feature flag is off. */
+  hasMultipleIds?: boolean;
 }
 
-export function DealerSidebar({ features, role }: Props) {
+export function DealerSidebar({ features, role, hasMultipleIds }: Props) {
   const pathname = usePathname();
   const visible = NAV.filter(
     (item) =>
-      (!item.feature || isFeatureEnabled(features, item.feature)) &&
+      (!item.feature ||
+        isFeatureEnabled(features, item.feature) ||
+        (item.href === "/dealer/ids" && hasMultipleIds)) &&
       !(role === "exec" && item.adminOnly),
   );
 
