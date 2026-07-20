@@ -24,10 +24,21 @@ import {
   createDealerIdAction,
   createInterIdTransferAction,
   deleteDealerIdAction,
+  acceptInterIdTransferAction,
+  rejectInterIdTransferAction,
+  updateInterIdTransferAction,
+  deleteInterIdTransferAction,
   type IdFormState,
 } from "./actions";
+import { Badge } from "@/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { formatDate, formatPKR } from "@/lib/format";
-import { Trash2, Plus, ArrowRightCircle } from "lucide-react";
+import { Trash2, Plus, ArrowRightCircle, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelWithCurrentPrice } from "@/lib/db/queries/models";
 import type { InterIdRow } from "@/lib/db/queries/transfers";
@@ -69,6 +80,7 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
   const [from, setFrom] = useState<string>(dealers[0]?.id ?? "");
   const [to, setTo] = useState<string>(dealers[1]?.id ?? "");
   const [modelId, setModelId] = useState<string>("");
+  const [transferEdit, setTransferEdit] = useState<InterIdRow | null>(null);
 
   // Only show models that the source dealer actually has in stock
   const availableModels = from
@@ -113,6 +125,38 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
 
   const today = new Date().toISOString().slice(0, 10);
   const dealerName = (id: string) => dealers.find((d) => d.id === id)?.name ?? "—";
+  const pendingCount = transfers.filter((t) => t.status === "PENDING").length;
+
+  const statusBadge = (status: string) => {
+    if (status === "ACCEPTED") return <Badge className="border-green-200 bg-green-500/15 text-green-700">Accepted</Badge>;
+    if (status === "REJECTED") return <Badge variant="destructive">Rejected</Badge>;
+    return <Badge variant="outline">Pending</Badge>;
+  };
+
+  const runTransferAction = (fn: () => Promise<{ error?: string }>, okMsg: string) => {
+    startTransition(async () => {
+      const res = await fn();
+      if (res.error) { toast.error(res.error); return; }
+      toast.success(okMsg);
+      router.refresh();
+    });
+  };
+
+  const handleAcceptTransfer = (t: InterIdRow) =>
+    runTransferAction(() => acceptInterIdTransferAction(t.id), "Transfer accepted — stock moved in");
+
+  const handleRejectTransfer = (t: InterIdRow) => {
+    if (!confirm(`Reject this transfer (${t.quantity} × ${t.modelName})? The stock stays with the source ID.`)) return;
+    runTransferAction(() => rejectInterIdTransferAction(t.id), "Transfer rejected");
+  };
+
+  const handleDeleteTransfer = (t: InterIdRow) => {
+    const extra = t.status === "ACCEPTED"
+      ? " This transfer was already accepted — the stock it added to the destination will be reversed."
+      : "";
+    if (!confirm(`Delete this transfer (${t.quantity} × ${t.modelName})?${extra} This cannot be undone.`)) return;
+    runTransferAction(() => deleteInterIdTransferAction(t.id), "Transfer deleted");
+  };
 
   return (
     <div className="space-y-6">
@@ -273,6 +317,11 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Recent inter-ID transfers</CardTitle>
+            {pendingCount > 0 ? (
+              <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                {pendingCount} transfer{pendingCount === 1 ? "" : "s"} waiting to be accepted — use Accept below to move the stock into the destination ID.
+              </p>
+            ) : null}
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -283,6 +332,8 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
                   <TableHead>To</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -293,6 +344,29 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
                     <TableCell label="To">{dealerName(t.toDealerId)}</TableCell>
                     <TableCell label="Model">{t.modelName}</TableCell>
                     <TableCell label="Qty" className="text-right tabular-nums">{t.quantity}</TableCell>
+                    <TableCell label="Status">{statusBadge(t.status)}</TableCell>
+                    <TableCell label="Actions">
+                      <div className="flex items-center justify-end gap-1">
+                        {t.status === "PENDING" ? (
+                          <>
+                            <Button size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => handleAcceptTransfer(t)}>
+                              <Check className="size-3.5" /> Accept
+                            </Button>
+                            <Button variant="ghost" size="icon" className="size-7" aria-label="Reject transfer" onClick={() => handleRejectTransfer(t)}>
+                              <X className="size-4" />
+                            </Button>
+                          </>
+                        ) : null}
+                        {t.status !== "REJECTED" ? (
+                          <Button variant="ghost" size="icon" className="size-7" aria-label="Edit transfer" onClick={() => setTransferEdit(t)}>
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        ) : null}
+                        <Button variant="ghost" size="icon" className="size-7" aria-label="Delete transfer" onClick={() => handleDeleteTransfer(t)}>
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -300,6 +374,61 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
           </CardContent>
         </Card>
       ) : null}
+
+      {transferEdit ? (
+        <EditTransferSheet
+          transfer={transferEdit}
+          onClose={() => setTransferEdit(null)}
+          onSaved={() => { setTransferEdit(null); router.refresh(); }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function EditTransferSheet({
+  transfer, onClose, onSaved,
+}: { transfer: InterIdRow; onClose: () => void; onSaved: () => void }) {
+  const [qty, setQty] = useState(String(transfer.quantity));
+  const [date, setDate] = useState(transfer.transferDate);
+  const [pending, start] = useTransition();
+
+  const invalid = !(Number(qty) >= 1) || !/^\d{4}-\d{2}-\d{2}$/.test(date);
+
+  const save = () => {
+    start(async () => {
+      const res = await updateInterIdTransferAction(transfer.id, { quantity: Number(qty), transferDate: date });
+      if (res.error) { toast.error(res.error); return; }
+      toast.success("Transfer updated");
+      onSaved();
+    });
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>Edit transfer — {transfer.modelName}</SheetTitle></SheetHeader>
+        <div className="space-y-4 p-4">
+          <p className="text-xs text-muted-foreground">
+            {transfer.status === "ACCEPTED"
+              ? "This transfer is already accepted — changing it also updates the stock it added to the destination ID (re-priced for the new date)."
+              : "Still pending — changing it only adjusts what leaves the source ID."}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Quantity</label>
+              <Input type="number" min={1} step={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Date</label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+          </div>
+          <Button className="w-full" disabled={pending || invalid} onClick={save}>
+            {pending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

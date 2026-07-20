@@ -4,7 +4,7 @@ import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { CROSS_REGION_STATUS, INTER_ID_STATUS, PURCHASE_SOURCE } from "@/lib/constants";
 import { getPriceOnDate } from "./models";
-import { getNextBillNumber } from "./purchases";
+import { getNextBillNumber, getStockForModel, getStockForModelAsOf } from "./purchases";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -185,6 +185,12 @@ export async function createInterIdTransfer(input: {
   return id;
 }
 
+export async function getInterIdTransfer(id: string, tenantId: string) {
+  const rows = await db.select().from(schema.interIdTransfers)
+    .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId))).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function acceptInterIdTransfer(tenantId: string, id: string, toDealerId: string, priceTenantId?: string): Promise<{ ok: boolean; message?: string }> {
   const rows = await db.select().from(schema.interIdTransfers)
     .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId), eq(schema.interIdTransfers.toDealerId, toDealerId)))
@@ -228,4 +234,81 @@ export async function rejectInterIdTransfer(tenantId: string, id: string, toDeal
   if (rows[0].status !== INTER_ID_STATUS.PENDING) return { ok: false, message: "Transfer is not pending" };
   await db.update(schema.interIdTransfers).set({ status: INTER_ID_STATUS.REJECTED }).where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId)));
   return { ok: true };
+}
+
+/** Info returned by edit/delete so callers can re-evaluate rebates for both sides. */
+export interface TransferMutationResult {
+  ok: boolean; message?: string;
+  modelId?: string; fromDealerId?: string; toDealerId?: string; earliestDate?: string;
+}
+
+/** referenceNote the accept flow stamps on the inbound purchase — used to find it. */
+function inboundNote(id: string): string {
+  return `Inter-ID transfer in (${id.slice(0, 8)})`;
+}
+
+/**
+ * Edit a transfer's quantity/date. PENDING → just the transfer. ACCEPTED → also
+ * re-syncs the inbound purchase it created (qty/date/central price), guarding both
+ * source (extra units available) and destination (removed units not yet consumed).
+ */
+export async function updateInterIdTransfer(
+  id: string, tenantId: string, input: { quantity: number; transferDate: string }, priceTenantId?: string,
+): Promise<TransferMutationResult> {
+  if (input.quantity < 1) return { ok: false, message: "Quantity must be ≥ 1" };
+  const rows = await db.select().from(schema.interIdTransfers)
+    .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId))).limit(1);
+  if (rows.length === 0) return { ok: false, message: "Transfer not found" };
+  const t = rows[0];
+  if (t.status === INTER_ID_STATUS.REJECTED) return { ok: false, message: "Rejected transfers can't be edited" };
+  const newQty = input.quantity, newDate = input.transferDate;
+  const delta = newQty - t.quantity;
+
+  return db.transaction(async (tx) => {
+    if (delta > 0) {
+      const srcStock = await getStockForModelAsOf(tenantId, t.fromDealerId, t.modelId, newDate, tx);
+      if (srcStock < delta) return { ok: false, message: `Only ${srcStock} more unit(s) available at the source ID` };
+    }
+    if (t.status === INTER_ID_STATUS.ACCEPTED) {
+      if (delta < 0) {
+        const dstStock = await getStockForModel(tenantId, t.toDealerId, t.modelId, tx);
+        if (dstStock < -delta) return { ok: false, message: `Destination has only ${dstStock} free unit(s); can't reduce by ${-delta}` };
+      }
+      const price = await getPriceOnDate(priceTenantId ?? tenantId, t.modelId, newDate);
+      if (!price) return { ok: false, message: "No dealer price defined for this model on the new date" };
+      await tx.update(schema.purchases)
+        .set({ quantity: newQty, purchaseDate: newDate, unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice })
+        .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, t.toDealerId), eq(schema.purchases.referenceNote, inboundNote(id))));
+    }
+    await tx.update(schema.interIdTransfers).set({ quantity: newQty, transferDate: newDate })
+      .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId)));
+    return { ok: true, modelId: t.modelId, fromDealerId: t.fromDealerId, toDealerId: t.toDealerId,
+      earliestDate: newDate < t.transferDate ? newDate : t.transferDate };
+  });
+}
+
+/**
+ * Delete a transfer. PENDING/REJECTED → just remove it (source stock returns).
+ * ACCEPTED → also delete the inbound purchase it created, guarded so the
+ * destination can't have already activated/transferred those units.
+ */
+export async function deleteInterIdTransfer(id: string, tenantId: string): Promise<TransferMutationResult> {
+  const rows = await db.select().from(schema.interIdTransfers)
+    .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId))).limit(1);
+  if (rows.length === 0) return { ok: false, message: "Transfer not found" };
+  const t = rows[0];
+
+  return db.transaction(async (tx) => {
+    if (t.status === INTER_ID_STATUS.ACCEPTED) {
+      const dstStock = await getStockForModel(tenantId, t.toDealerId, t.modelId, tx);
+      if (dstStock < t.quantity) {
+        return { ok: false, message: `Destination has used ${t.quantity - dstStock} of the ${t.quantity} transferred unit(s) — can't delete` };
+      }
+      await tx.delete(schema.purchases)
+        .where(and(eq(schema.purchases.tenantId, tenantId), eq(schema.purchases.dealerId, t.toDealerId), eq(schema.purchases.referenceNote, inboundNote(id))));
+    }
+    await tx.delete(schema.interIdTransfers)
+      .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId)));
+    return { ok: true, modelId: t.modelId, fromDealerId: t.fromDealerId, toDealerId: t.toDealerId, earliestDate: t.transferDate };
+  });
 }

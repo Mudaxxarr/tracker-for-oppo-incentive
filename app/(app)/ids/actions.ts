@@ -5,7 +5,7 @@ import { z } from "zod";
 import { isAuthenticated } from "@/lib/auth";
 import { db, schema } from "@/lib/db/client";
 import { setActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer";
-import { createInterIdTransfer } from "@/lib/db/queries/transfers";
+import { createInterIdTransfer, getInterIdTransfer, acceptInterIdTransfer, rejectInterIdTransfer, updateInterIdTransfer, deleteInterIdTransfer } from "@/lib/db/queries/transfers";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { getModelById } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
@@ -147,4 +147,60 @@ export async function createInterIdTransferAction(
     });
     return { error: msg };
   }
+}
+
+const EditTransferSchema = z.object({
+  quantity: z.coerce.number().int().positive(),
+  transferDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export async function acceptInterIdTransferAction(id: string): Promise<{ error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const t = await getInterIdTransfer(id, OWNER_TENANT_ID);
+  if (!t) return { error: "Transfer not found" };
+  const res = await acceptInterIdTransfer(OWNER_TENANT_ID, id, t.toDealerId, OWNER_TENANT_ID);
+  if (!res.ok) return { error: res.message };
+  await logAudit({ action: "inter_id.accept", entityType: "inter_id_transfer", entityId: id, summary: `Accepted inter-ID transfer ${id.slice(0, 8)}` });
+  revalidatePath("/ids"); revalidatePath("/purchases"); revalidatePath("/dashboard");
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, t.toDealerId, t.modelId, t.transferDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return {};
+}
+
+export async function rejectInterIdTransferAction(id: string): Promise<{ error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const t = await getInterIdTransfer(id, OWNER_TENANT_ID);
+  if (!t) return { error: "Transfer not found" };
+  const res = await rejectInterIdTransfer(OWNER_TENANT_ID, id, t.toDealerId);
+  if (!res.ok) return { error: res.message };
+  await logAudit({ action: "inter_id.reject", entityType: "inter_id_transfer", entityId: id, summary: `Rejected inter-ID transfer ${id.slice(0, 8)}` });
+  revalidatePath("/ids"); revalidatePath("/purchases"); revalidatePath("/dashboard");
+  // Reject returns the reserved stock to the source → re-evaluate source rebates.
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, t.fromDealerId, t.modelId, t.transferDate).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return {};
+}
+
+export async function updateInterIdTransferAction(id: string, input: { quantity: number; transferDate: string }): Promise<{ error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const parsed = EditTransferSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const res = await updateInterIdTransfer(id, OWNER_TENANT_ID, parsed.data, OWNER_TENANT_ID);
+  if (!res.ok) return { error: res.message };
+  await logAudit({ action: "inter_id.update", entityType: "inter_id_transfer", entityId: id, summary: `Edited inter-ID transfer ${id.slice(0, 8)}: qty ${parsed.data.quantity}, ${parsed.data.transferDate}` });
+  revalidatePath("/ids"); revalidatePath("/purchases"); revalidatePath("/dashboard");
+  for (const dealerId of [res.fromDealerId!, res.toDealerId!]) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, res.modelId!, res.earliestDate!).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return {};
+}
+
+export async function deleteInterIdTransferAction(id: string): Promise<{ error?: string }> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const res = await deleteInterIdTransfer(id, OWNER_TENANT_ID);
+  if (!res.ok) return { error: res.message };
+  await logAudit({ action: "inter_id.delete", entityType: "inter_id_transfer", entityId: id, summary: `Deleted inter-ID transfer ${id.slice(0, 8)}` });
+  revalidatePath("/ids"); revalidatePath("/purchases"); revalidatePath("/dashboard");
+  for (const dealerId of [res.fromDealerId!, res.toDealerId!]) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, res.modelId!, res.earliestDate!).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return {};
 }

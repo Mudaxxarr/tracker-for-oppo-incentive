@@ -12,9 +12,13 @@ import { z } from "zod";
 import {
   createInterIdTransfer,
   listInterIdTransfers,
+  getInterIdTransfer,
   acceptInterIdTransfer,
   rejectInterIdTransfer,
+  updateInterIdTransfer,
+  deleteInterIdTransfer,
 } from "@/lib/db/queries/transfers";
+import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { listStockForDealer, getStockForModelAsOf } from "@/lib/db/queries/purchases";
 import { and, eq, gte, sql } from "drizzle-orm";
 
@@ -190,29 +194,67 @@ export async function createDealerInterIdTransferAction(
   return { ok: true };
 }
 
-export async function acceptDealerTransferAction(transferId: string): Promise<void> {
-  const session = await requireSession();
-  const { tenantId } = session;
-  const dealerId = await getActiveDealerIdForTenant(tenantId);
-  if (!dealerId) throw new Error("No active dealer ID.");
-  const result = await acceptInterIdTransfer(tenantId, transferId, dealerId, OWNER_TENANT_ID);
-  if (!result.ok) throw new Error(result.message ?? "Failed to accept transfer.");
-  await logAudit({ action: "inter_id_transfer.accept", summary: `Accepted transfer ${transferId.slice(0, 8)}`, dealerId });
+function revalidateDealerIds() {
   revalidatePath("/dealer/ids");
   revalidatePath("/dealer/inventory");
   revalidatePath("/dealer/dashboard");
 }
 
-export async function rejectDealerTransferAction(transferId: string): Promise<void> {
+export async function acceptDealerTransferAction(transferId: string): Promise<{ error?: string }> {
   const session = await requireSession();
   const { tenantId } = session;
-  const dealerId = await getActiveDealerIdForTenant(tenantId);
-  if (!dealerId) throw new Error("No active dealer ID.");
-  const result = await rejectInterIdTransfer(tenantId, transferId, dealerId);
-  if (!result.ok) throw new Error(result.message ?? "Failed to reject transfer.");
-  await logAudit({ action: "inter_id_transfer.reject", summary: `Rejected transfer ${transferId.slice(0, 8)}`, dealerId });
-  revalidatePath("/dealer/ids");
-  revalidatePath("/dealer/inventory");
+  // Credit the transfer's OWN destination ID — not whatever ID happens to be active.
+  const t = await getInterIdTransfer(transferId, tenantId);
+  if (!t) return { error: "Transfer not found" };
+  const result = await acceptInterIdTransfer(tenantId, transferId, t.toDealerId, OWNER_TENANT_ID);
+  if (!result.ok) return { error: result.message ?? "Failed to accept transfer." };
+  await logAudit({ action: "inter_id_transfer.accept", summary: `[Dealer] Accepted transfer ${transferId.slice(0, 8)}`, dealerId: t.toDealerId });
+  revalidateDealerIds();
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, t.toDealerId, t.modelId, t.transferDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return {};
+}
+
+export async function rejectDealerTransferAction(transferId: string): Promise<{ error?: string }> {
+  const session = await requireSession();
+  const { tenantId } = session;
+  const t = await getInterIdTransfer(transferId, tenantId);
+  if (!t) return { error: "Transfer not found" };
+  const result = await rejectInterIdTransfer(tenantId, transferId, t.toDealerId);
+  if (!result.ok) return { error: result.message ?? "Failed to reject transfer." };
+  await logAudit({ action: "inter_id_transfer.reject", summary: `[Dealer] Rejected transfer ${transferId.slice(0, 8)}`, dealerId: t.fromDealerId });
+  revalidateDealerIds();
+  // Reject returns the reserved stock to the source → re-evaluate source rebates.
+  await reEvaluateRebatesForDealer(OWNER_TENANT_ID, t.fromDealerId, t.modelId, t.transferDate, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  return {};
+}
+
+export async function editDealerTransferAction(transferId: string, input: { quantity: number; transferDate: string }): Promise<{ error?: string }> {
+  const session = await requireSession();
+  const { tenantId } = session;
+  if (!(Number.isInteger(input.quantity) && input.quantity > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(input.transferDate)) {
+    return { error: "Invalid quantity or date" };
+  }
+  const res = await updateInterIdTransfer(transferId, tenantId, input, OWNER_TENANT_ID);
+  if (!res.ok) return { error: res.message };
+  await logAudit({ action: "inter_id_transfer.update", summary: `[Dealer] Edited transfer ${transferId.slice(0, 8)}: qty ${input.quantity}, ${input.transferDate}`, dealerId: res.fromDealerId });
+  revalidateDealerIds();
+  for (const dealerId of [res.fromDealerId!, res.toDealerId!]) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, res.modelId!, res.earliestDate!, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return {};
+}
+
+export async function deleteDealerTransferAction(transferId: string): Promise<{ error?: string }> {
+  const session = await requireSession();
+  const { tenantId } = session;
+  const res = await deleteInterIdTransfer(transferId, tenantId);
+  if (!res.ok) return { error: res.message };
+  await logAudit({ action: "inter_id_transfer.delete", summary: `[Dealer] Deleted transfer ${transferId.slice(0, 8)}`, dealerId: res.fromDealerId });
+  revalidateDealerIds();
+  for (const dealerId of [res.fromDealerId!, res.toDealerId!]) {
+    await reEvaluateRebatesForDealer(OWNER_TENANT_ID, dealerId, res.modelId!, res.earliestDate!, tenantId).catch((e: unknown) => console.error("[rebate-reeval]", e));
+  }
+  return {};
 }
 
 export async function getDealerIdStatsAction(dealerIds: string[]) {
