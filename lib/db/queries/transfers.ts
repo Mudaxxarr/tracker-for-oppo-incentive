@@ -218,7 +218,7 @@ export async function acceptInterIdTransfer(tenantId: string, id: string, toDeal
     await tx.insert(schema.purchases).values({
       id: randomUUID(), tenantId, dealerId: toDealerId, modelId: transfer.modelId,
       quantity: transfer.quantity, unitDealerPrice: price.dealerPrice, unitInvoicePrice: price.invoicePrice,
-      purchaseDate: transfer.transferDate, source: PURCHASE_SOURCE.REGULAR,
+      purchaseDate: transfer.transferDate, source: PURCHASE_SOURCE.INTER_ID_TRANSFER_IN,
       referenceNote: `Inter-ID transfer in (${id.slice(0, 8)})`,
       billNumber,
     });
@@ -254,6 +254,7 @@ function inboundNote(id: string): string {
  */
 export async function updateInterIdTransfer(
   id: string, tenantId: string, input: { quantity: number; transferDate: string }, priceTenantId?: string,
+  options?: { requireToDealerId?: string },
 ): Promise<TransferMutationResult> {
   if (input.quantity < 1) return { ok: false, message: "Quantity must be ≥ 1" };
   const rows = await db.select().from(schema.interIdTransfers)
@@ -261,6 +262,11 @@ export async function updateInterIdTransfer(
   if (rows.length === 0) return { ok: false, message: "Transfer not found" };
   const t = rows[0];
   if (t.status === INTER_ID_STATUS.REJECTED) return { ok: false, message: "Rejected transfers can't be edited" };
+  // Receiver-only revert: an ACCEPTED transfer can only be modified from the ID that
+  // received the stock. (Owner path passes no requireToDealerId → owner may override.)
+  if (options?.requireToDealerId && t.status === INTER_ID_STATUS.ACCEPTED && t.toDealerId !== options.requireToDealerId) {
+    return { ok: false, message: "Only the receiving ID can change an accepted transfer" };
+  }
   const newQty = input.quantity, newDate = input.transferDate;
   const delta = newQty - t.quantity;
 
@@ -292,11 +298,20 @@ export async function updateInterIdTransfer(
  * ACCEPTED → also delete the inbound purchase it created, guarded so the
  * destination can't have already activated/transferred those units.
  */
-export async function deleteInterIdTransfer(id: string, tenantId: string): Promise<TransferMutationResult> {
+export async function deleteInterIdTransfer(
+  id: string, tenantId: string, options?: { requireToDealerId?: string },
+): Promise<TransferMutationResult> {
   const rows = await db.select().from(schema.interIdTransfers)
     .where(and(eq(schema.interIdTransfers.id, id), eq(schema.interIdTransfers.tenantId, tenantId))).limit(1);
   if (rows.length === 0) return { ok: false, message: "Transfer not found" };
   const t = rows[0];
+
+  // Receiver-only revert: once ACCEPTED, only the ID that received the stock
+  // (toDealerId) may cancel and revert it. No owner/sender override. PENDING and
+  // REJECTED transfers moved no stock, so either side may still delete them.
+  if (options?.requireToDealerId && t.status === INTER_ID_STATUS.ACCEPTED && t.toDealerId !== options.requireToDealerId) {
+    return { ok: false, message: "Only the receiving ID can cancel an accepted transfer" };
+  }
 
   return db.transaction(async (tx) => {
     if (t.status === INTER_ID_STATUS.ACCEPTED) {

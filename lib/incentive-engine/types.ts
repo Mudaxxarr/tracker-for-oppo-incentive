@@ -8,7 +8,7 @@
 
 export type ISODate = string;
 
-export type EnginePurchaseSource = "REGULAR" | "CROSS_REGION_TRANSFER_IN";
+export type EnginePurchaseSource = "REGULAR" | "CROSS_REGION_TRANSFER_IN" | "INTER_ID_TRANSFER_IN";
 
 export interface EngineActivation {
   id: string;

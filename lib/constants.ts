@@ -5,6 +5,10 @@ export const DEFAULT_TARGET_BONUS_PERCENT = 1;
 export const PURCHASE_SOURCE = {
   REGULAR: "REGULAR",
   CROSS_REGION_TRANSFER_IN: "CROSS_REGION_TRANSFER_IN",
+  // Stock received via an accepted inter-ID transfer. Counts as physical stock but,
+  // unlike REGULAR, earns NO stock-in and does NOT count toward the target-bonus gate
+  // for the receiver (the purchaser keeps that credit — owner rule).
+  INTER_ID_TRANSFER_IN: "INTER_ID_TRANSFER_IN",
 } as const;
 export type PurchaseSource = (typeof PURCHASE_SOURCE)[keyof typeof PURCHASE_SOURCE];
 

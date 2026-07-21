@@ -5,7 +5,7 @@ import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { and, eq, gte, lte, ne, or, type SQL } from "drizzle-orm";
 import { calculateIncentives, type EngineInput, type IncentiveReport } from "./index";
 import { getConstants } from "@/lib/settings";
-import { PURCHASE_REVIEW_STATUS } from "@/lib/constants";
+import { INTER_ID_STATUS, PURCHASE_REVIEW_STATUS } from "@/lib/constants";
 
 /**
  * Models + this dealer's 4 policy tables - re-fetched identically on every
@@ -149,7 +149,8 @@ export async function buildIncentiveReport(input: {
           eq(schema.interIdTransfers.tenantId, dataTenantId),
           eq(schema.interIdTransfers.fromDealerId, dealerId),
           gte(schema.interIdTransfers.transferDate, minStart),
-          lte(schema.interIdTransfers.transferDate, maxEnd)
+          lte(schema.interIdTransfers.transferDate, maxEnd),
+          eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED)
         ) as SQL
       ),
   ]);
@@ -173,7 +174,7 @@ export async function buildIncentiveReport(input: {
       quantity: p.quantity,
       unitDealerPrice: p.unitDealerPrice,
       purchaseDate: p.purchaseDate,
-      source: p.source as "REGULAR" | "CROSS_REGION_TRANSFER_IN",
+      source: p.source as "REGULAR" | "CROSS_REGION_TRANSFER_IN" | "INTER_ID_TRANSFER_IN",
     })),
     targetBonusPolicies,
     stockInPolicies: stockInPolicies.map((p) => ({
@@ -284,7 +285,7 @@ export async function buildMonthlyEarnings(
       and(eq(schema.purchases.tenantId, effectiveDataTenantId), eq(schema.purchases.dealerId, dealerId), gte(schema.purchases.purchaseDate, minStart), lte(schema.purchases.purchaseDate, maxEnd), ne(schema.purchases.reviewStatus, PURCHASE_REVIEW_STATUS.PENDING_REVIEW))
     ),
     db.select().from(schema.interIdTransfers).where(
-      and(eq(schema.interIdTransfers.tenantId, effectiveDataTenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), gte(schema.interIdTransfers.transferDate, minStart), lte(schema.interIdTransfers.transferDate, maxEnd))
+      and(eq(schema.interIdTransfers.tenantId, effectiveDataTenantId), eq(schema.interIdTransfers.fromDealerId, dealerId), gte(schema.interIdTransfers.transferDate, minStart), lte(schema.interIdTransfers.transferDate, maxEnd), eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED))
     ),
   ]);
 
@@ -299,7 +300,7 @@ export async function buildMonthlyEarnings(
     purchases: purchases.map((p) => ({
       id: p.id, modelId: p.modelId, quantity: p.quantity,
       unitDealerPrice: p.unitDealerPrice, purchaseDate: p.purchaseDate,
-      source: p.source as "REGULAR" | "CROSS_REGION_TRANSFER_IN",
+      source: p.source as "REGULAR" | "CROSS_REGION_TRANSFER_IN" | "INTER_ID_TRANSFER_IN",
     })),
     targetBonusPolicies,
     stockInPolicies: stockInPolicies.map((p) => ({

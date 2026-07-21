@@ -225,12 +225,12 @@ describe("incentive-engine: inter-ID transfer integrity", () => {
   });
 });
 
-describe("incentive-engine: inter-ID source-side stock-in decrement", () => {
-  it("subtracts outbound inter-ID transfers from source dealer's stock-in qty", () => {
+describe("incentive-engine: outbound transfers never reduce the source's stock-in", () => {
+  it("stock-in stays on the full purchased qty even when some units leave via inter-ID transfer", () => {
     const result = calculateIncentives(
       baseInput({
         purchases: [
-          // 10 regular at source, but 4 are about to leave via inter-ID transfer.
+          // 10 regular at source; 4 later leave via inter-ID transfer — stock-in stays on all 10.
           { id: "p1", modelId: MODEL_A.id, quantity: 10, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
         ],
         stockInPolicies: [
@@ -243,12 +243,12 @@ describe("incentive-engine: inter-ID source-side stock-in decrement", () => {
     );
     const row = result.rows.find((r) => r.modelId === MODEL_A.id)!;
     expect(row.stockInRegularQty).toBe(10);
-    expect(row.interIdOutQty).toBe(4);
-    expect(row.effectiveStockInQty).toBe(6);
-    expect(row.stockInEarned).toBe(6_000); // 6 effective × 1000
+    expect(row.interIdOutQty).toBe(4);          // still reported for info
+    expect(row.effectiveStockInQty).toBe(10);   // NOT 6 — the purchaser keeps it
+    expect(row.stockInEarned).toBe(10_000);     // 10 × 1000
   });
 
-  it("does not go negative if outbound exceeds regular qty", () => {
+  it("transferring out more than were purchased still keeps stock-in on the purchased qty", () => {
     const result = calculateIncentives(
       baseInput({
         purchases: [
@@ -263,8 +263,8 @@ describe("incentive-engine: inter-ID source-side stock-in decrement", () => {
       })
     );
     const row = result.rows.find((r) => r.modelId === MODEL_A.id)!;
-    expect(row.effectiveStockInQty).toBe(0);
-    expect(row.stockInEarned).toBe(0);
+    expect(row.effectiveStockInQty).toBe(2);
+    expect(row.stockInEarned).toBe(2_000);
   });
 });
 
@@ -395,17 +395,17 @@ describe("incentive-engine: combined stock-in policy (grouped target, per-model 
     expect(result.rows.find((r) => r.modelId === MODEL_B.id)!.stockInEarned).toBe(13_500);
   });
 
-  it("inter-ID outbound transfers reduce the combined eligible qty", () => {
-    // 12 A + 12 B, but 4 B transferred out → B eligible 8 → combined 20 = target (met).
+  it("outbound transfers do NOT reduce the combined eligible qty (purchaser keeps it)", () => {
+    // 12 A + 12 B = 24 purchased; 4 B leave via transfer but combined qty stays 24.
     const result = calculateIncentives(baseInput({
       purchases: [reg("p1", MODEL_A.id, 12), reg("p2", MODEL_B.id, 12)],
       interIdOut: [{ id: "t1", modelId: MODEL_B.id, quantity: 4, transferDate: "2026-05-15" }],
       combinedStockInPolicies: [combined],
     }));
     const led = result.combinedStockInLedger[0];
-    expect(led.combinedEligibleQty).toBe(20);
+    expect(led.combinedEligibleQty).toBe(24); // NOT 20 — transfer out ignored
     expect(led.met).toBe(true);
-    expect(result.rows.find((r) => r.modelId === MODEL_B.id)!.stockInEarned).toBe(7_200);
+    expect(result.rows.find((r) => r.modelId === MODEL_B.id)!.stockInEarned).toBe(10_800); // 12 × 900
   });
 
   it("one model can carry the whole target; a zero-qty group member earns 0", () => {
@@ -419,5 +419,54 @@ describe("incentive-engine: combined stock-in policy (grouped target, per-model 
     expect(led.perModel.find((m) => m.modelId === MODEL_B.id)!.earned).toBe(0);
     expect(result.rows.find((r) => r.modelId === MODEL_A.id)!.stockInEarned).toBe(10_000);
     expect(result.totals.stockInEarned).toBe(10_000);
+  });
+});
+
+describe("incentive-engine: transfer stock-in rules (purchaser keeps stock-in)", () => {
+  const reg = (id: string, modelId: string, qty: number, date = "2026-05-05") => ({
+    id, modelId, quantity: qty, unitDealerPrice: 50_000, purchaseDate: date, source: "REGULAR" as const,
+  });
+
+  it("#1 source keeps FULL stock-in after transferring units out (transfer out never reverses stock-in)", () => {
+    const result = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 20)],
+      interIdOut: [{ id: "t1", modelId: MODEL_A.id, quantity: 10, transferDate: "2026-05-10" }],
+      stockInPolicies: [{ id: "s1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-31", perUnitAmount: 1000, minQty: 10 }],
+    }));
+    const row = result.rows.find((r) => r.modelId === MODEL_A.id)!;
+    expect(row.stockInEarned).toBe(20_000); // 20 × 1000, NOT (20-10) × 1000
+    expect(row.effectiveStockInQty).toBe(20);
+  });
+
+  it("#2 stock received via inter-ID transfer earns no stock-in and does not count toward the target-bonus gate", () => {
+    const result = calculateIncentives(baseInput({
+      purchases: [
+        reg("p1", MODEL_A.id, 10),
+        { id: "p2", modelId: MODEL_A.id, quantity: 10, unitDealerPrice: 50_000, purchaseDate: "2026-05-06", source: "INTER_ID_TRANSFER_IN" as const },
+      ],
+      activations: [{ id: "a1", modelId: MODEL_A.id, activationDate: "2026-05-15", dealerPriceSnapshot: 100_000, isCrossRegion: false }],
+      stockInPolicies: [{ id: "s1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-31", perUnitAmount: 1000, minQty: 5 }],
+      targetBonusPolicies: [{ id: "tb1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 15, bonusPercent: 1 }],
+    }));
+    const row = result.rows.find((r) => r.modelId === MODEL_A.id)!;
+    expect(row.stockInEarned).toBe(10_000);       // only the 10 REGULAR, transfer-in excluded
+    expect(result.targetBonus.eligible).toBe(false); // REGULAR gate qty = 10 < 15 (transfer-in doesn't count)
+    expect(row.bonusPercentEarned).toBe(0);
+  });
+
+  it("#3 an outbound transfer (any status) has zero effect on stock-in earning", () => {
+    const noTransfer = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 15)],
+      stockInPolicies: [{ id: "s1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-31", perUnitAmount: 500, minQty: 5 }],
+    }));
+    const withTransfer = calculateIncentives(baseInput({
+      purchases: [reg("p1", MODEL_A.id, 15)],
+      interIdOut: [{ id: "t1", modelId: MODEL_A.id, quantity: 8, transferDate: "2026-05-12" }],
+      stockInPolicies: [{ id: "s1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-31", perUnitAmount: 500, minQty: 5 }],
+    }));
+    const a = noTransfer.rows.find((r) => r.modelId === MODEL_A.id)!.stockInEarned;
+    const b = withTransfer.rows.find((r) => r.modelId === MODEL_A.id)!.stockInEarned;
+    expect(a).toBe(7_500);
+    expect(b).toBe(7_500); // identical — the transfer out changed nothing
   });
 });

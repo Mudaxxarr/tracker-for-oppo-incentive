@@ -203,10 +203,13 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     if (p.source === "REGULAR") {
       bucket.regularQty += p.quantity;
       totalRegular += p.quantity;
-    } else {
+    } else if (p.source === "CROSS_REGION_TRANSFER_IN") {
       bucket.crossRegionQty += p.quantity;
       totalCross += p.quantity;
     }
+    // INTER_ID_TRANSFER_IN is real stock but neither a company purchase nor a
+    // cross-region-in — excluded from both display totals (and, via the REGULAR
+    // filters below, from stock-in earning + the target-bonus gate).
   }
 
   // ----- Inter-ID outbound transfers in report window -----
@@ -229,10 +232,9 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       const regularQty = purchases
         .filter((p) => p.modelId === cm.modelId && p.source === "REGULAR" && inRange(p.purchaseDate, cp.periodStart, cp.periodEnd))
         .reduce((s, p) => s + p.quantity, 0);
-      const outQty = interIdOut
-        .filter((t) => t.modelId === cm.modelId && inRange(t.transferDate, cp.periodStart, cp.periodEnd))
-        .reduce((s, t) => s + t.quantity, 0);
-      return { modelId: cm.modelId, perUnitAmount: cm.perUnitAmount, eligibleQty: Math.max(0, regularQty - outQty) };
+      // Owner rule: stock-in is never reversed by an outbound transfer — the
+      // purchaser keeps it. So eligible qty = REGULAR (direct company) purchases only.
+      return { modelId: cm.modelId, perUnitAmount: cm.perUnitAmount, eligibleQty: regularQty };
     });
     const combinedEligibleQty = perModelElig.reduce((s, m) => s + m.eligibleQty, 0);
     const met = combinedEligibleQty >= cp.targetQty && combinedEligibleQty > 0;
@@ -357,7 +359,10 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
             inRange(t.transferDate, sip.periodStart, sip.periodEnd)
         )
         .reduce((sum, t) => sum + t.quantity, 0);
-      const eligibleQty = Math.max(0, sipRegularQty - sipInterIdOutQty);
+      // Owner rule: outbound transfers never reverse stock-in — the purchaser keeps
+      // it. Eligible qty = REGULAR (direct company) purchases only. sipInterIdOutQty
+      // is retained for the informational interIdOutQty row field, not for earning.
+      const eligibleQty = sipRegularQty;
       const minQty = sip.minQty ?? 0;
       const met = eligibleQty >= minQty && eligibleQty > 0;
       const policyEarned = met ? round2(eligibleQty * sip.perUnitAmount) : 0;
@@ -378,7 +383,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     // Fold in any grouped (combined) stock-in earnings for this model.
     stockInEarned += combinedEarnedByModel.get(modelId) ?? 0;
 
-    const effectiveStockInQty = Math.max(0, totalSipRegularQty - totalSipInterIdOutQty);
+    const effectiveStockInQty = totalSipRegularQty;
 
     const priceSubperiods: PriceSubperiod[] = [...subMap.entries()]
       .map(([dealerPrice, qty]) => ({

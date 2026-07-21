@@ -234,7 +234,8 @@ export async function editDealerTransferAction(transferId: string, input: { quan
   if (!(Number.isInteger(input.quantity) && input.quantity > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(input.transferDate)) {
     return { error: "Invalid quantity or date" };
   }
-  const res = await updateInterIdTransfer(transferId, tenantId, input, OWNER_TENANT_ID);
+  const activeId = await getActiveDealerIdForTenant(tenantId);
+  const res = await updateInterIdTransfer(transferId, tenantId, input, OWNER_TENANT_ID, { requireToDealerId: activeId ?? undefined });
   if (!res.ok) return { error: res.message };
   await logAudit({ action: "inter_id_transfer.update", summary: `[Dealer] Edited transfer ${transferId.slice(0, 8)}: qty ${input.quantity}, ${input.transferDate}`, dealerId: res.fromDealerId });
   revalidateDealerIds();
@@ -247,7 +248,8 @@ export async function editDealerTransferAction(transferId: string, input: { quan
 export async function deleteDealerTransferAction(transferId: string): Promise<{ error?: string }> {
   const session = await requireSession();
   const { tenantId } = session;
-  const res = await deleteInterIdTransfer(transferId, tenantId);
+  const activeId = await getActiveDealerIdForTenant(tenantId);
+  const res = await deleteInterIdTransfer(transferId, tenantId, { requireToDealerId: activeId ?? undefined });
   if (!res.ok) return { error: res.message };
   await logAudit({ action: "inter_id_transfer.delete", summary: `[Dealer] Deleted transfer ${transferId.slice(0, 8)}`, dealerId: res.fromDealerId });
   revalidateDealerIds();
