@@ -94,12 +94,35 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
         .reduce((sum, p) => sum + p.quantity, 0)
     : 0;
   const tbpEligible = !!tbp && tbpPurchaseQty >= tbp.targetActivationsQty;
+
+  // ----- Target Bonus cap (#6) -----
+  // Once the purchase gate is met, the bonus is paid on at most `bonusCapQty` phones,
+  // taken chronologically across the POLICY window. Counting over the report window
+  // instead would grant a fresh N every month of a longer policy, defeating the cap.
+  // Ties on activationDate are broken by id so the chosen set is deterministic.
+  const policyWindowActs = tbp
+    ? activations
+        .filter((a) => inRange(a.activationDate, tbp.periodStart, tbp.periodEnd))
+        .sort((a, b) =>
+          a.activationDate === b.activationDate
+            ? a.id.localeCompare(b.id)
+            : a.activationDate < b.activationDate ? -1 : 1
+        )
+    : [];
+  const bonusCapQty = tbp?.bonusCapQty ?? null;
+  const bonusEligibleActs =
+    bonusCapQty == null ? policyWindowActs : policyWindowActs.slice(0, bonusCapQty);
+  const bonusEligibleIds = new Set(bonusEligibleActs.map((a) => a.id));
+
   const targetBonus: TargetBonusOutcome = {
     policyId: tbp?.id ?? null,
     eligible: tbpEligible,
     targetQty: tbp?.targetActivationsQty ?? null,
     actualQty: tbpPurchaseQty,
     bonusPercent: tbp?.bonusPercent ?? 0,
+    bonusCapQty,
+    bonusEligibleQty: tbpEligible ? bonusEligibleActs.length : 0,
+    policyWindowActivations: policyWindowActs.length,
   };
 
   // ----- Dealer Incentive: all policies run simultaneously -----
@@ -248,6 +271,9 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
 
     // Sub-period breakdown by snapshot price
     const subMap = new Map<number, number>(); // dealerPrice -> qty
+    // Bonus-earning qty is tracked separately: under a cap, only some of a price
+    // band's phones earn the 1%, so it cannot be derived from `subMap` alone.
+    const bonusSubMap = new Map<number, number>(); // dealerPrice -> bonus-earning qty
     let qtyTotal = 0;
     let qtyCross = 0;
     let baseEarned = 0;
@@ -262,7 +288,10 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       subMap.set(price, (subMap.get(price) ?? 0) + 1);
 
       baseEarned += price * basePct;
-      if (tbpEligible) bonusEarned += price * bonusPct;
+      if (tbpEligible && bonusEligibleIds.has(act.id)) {
+        bonusEarned += price * bonusPct;
+        bonusSubMap.set(price, (bonusSubMap.get(price) ?? 0) + 1);
+      }
 
       for (const ds of dipStatuses) {
         if (!ds.eligible) continue;
@@ -343,7 +372,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
         dealerPrice,
         qty,
         basePercentSubtotal: round2(dealerPrice * basePct * qty),
-        bonusPercentSubtotal: round2(dealerPrice * bonusPct * qty),
+        bonusPercentSubtotal: round2(dealerPrice * bonusPct * (bonusSubMap.get(dealerPrice) ?? 0)),
       }))
       .sort((a, b) => a.dealerPrice - b.dealerPrice);
 
@@ -392,6 +421,8 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     dealerIncentives: dipStatuses.map((ds) => ({ policy: ds.policy, eligible: ds.eligible })),
     activationIncentivePolicies,
     activations,
+    bonusSlotsRemaining:
+      bonusCapQty == null ? null : Math.max(0, bonusCapQty - bonusEligibleActs.length),
   });
 
   return {

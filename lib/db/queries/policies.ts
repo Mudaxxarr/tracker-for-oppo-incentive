@@ -14,7 +14,7 @@ export async function listTargetBonusPolicies(tenantId: string, dealerId: string
 
 export async function createTargetBonusPolicy(input: {
   tenantId: string; dealerId: string; periodStart: string; periodEnd: string;
-  targetActivationsQty: number; bonusPercent: number;
+  targetActivationsQty: number; bonusPercent: number; bonusCapQty?: number | null;
 }) {
   const id = randomUUID();
   await db.insert(schema.targetBonusPolicies).values({ id, ...input });
@@ -23,7 +23,7 @@ export async function createTargetBonusPolicy(input: {
 }
 
 export async function updateTargetBonusPolicy(id: string, tenantId: string, dealerId: string, input: {
-  periodStart: string; periodEnd: string; targetActivationsQty: number; bonusPercent: number;
+  periodStart: string; periodEnd: string; targetActivationsQty: number; bonusPercent: number; bonusCapQty?: number | null;
 }) {
   await db.update(schema.targetBonusPolicies).set(input)
     .where(and(eq(schema.targetBonusPolicies.id, id), eq(schema.targetBonusPolicies.tenantId, tenantId), eq(schema.targetBonusPolicies.dealerId, dealerId)));

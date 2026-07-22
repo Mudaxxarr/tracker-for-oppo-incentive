@@ -19,6 +19,12 @@ export interface CrLossInput {
   activationIncentivePolicies: EngineActivationIncentivePolicy[];
   /** All activations the engine loaded — used only for the activation-incentive gate. */
   activations: EngineActivation[];
+  /**
+   * Free slots left under the target-bonus activation cap (#6), or null when uncapped.
+   * A caught phone can only have lost the bonus if a slot would still have been open
+   * for it — once real activations fill the cap, the caught units lost nothing there.
+   */
+  bonusSlotsRemaining?: number | null;
 }
 
 const EMPTY: CrCaughtPotentialLoss = {
@@ -38,15 +44,14 @@ const EMPTY: CrCaughtPotentialLoss = {
  * unit's `caughtDate`. A component is counted only when that policy's gate was actually
  * met — money the dealer was never going to earn was not lost. The base % has no gate.
  *
+ * The bonus component respects the activation cap (#6): free cap slots are handed to the
+ * caught rows oldest-catch-first, and once the cap is full a caught phone lost no bonus
+ * because it could never have earned one.
+ *
  * Deliberately NOT modelled:
  *  - Stock-in. It belongs to whoever purchased from the company and never reverses.
  *  - The marginal/threshold effect (units that caused a gate to be missed). That is a
  *    counterfactual and would reintroduce the guesswork this function exists to remove.
- *
- * TODO(finding #6): once `target_bonus_policies.bonus_cap_qty` lands, the bonus component
- * must become cap-aware. Today every caught unit in a qualified period is credited the full
- * bonus %, but under a cap only the first N activated units earn it, so some caught units
- * would have fallen outside the cap and lost nothing.
  */
 export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
   const {
@@ -56,9 +61,17 @@ export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
     dealerIncentives,
     activationIncentivePolicies,
     activations,
+    bonusSlotsRemaining = null,
   } = input;
 
   if (crCaught.length === 0) return { ...EMPTY, components: [] };
+
+  // Oldest catch first, so the scarce cap slots go to the phones that left earliest.
+  // Ties broken by id to keep the allocation deterministic.
+  const rows = [...crCaught].sort((a, b) =>
+    a.caughtDate === b.caughtDate ? a.id.localeCompare(b.id) : a.caughtDate < b.caughtDate ? -1 : 1
+  );
+  let slotsLeft = bonusSlotsRemaining;
 
   const components: CrLossComponent[] = [];
   let totalUnits = 0;
@@ -67,7 +80,7 @@ export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
   let activationLost = 0;
   let dealerLost = 0;
 
-  for (const r of crCaught) {
+  for (const r of rows) {
     totalUnits += r.quantity;
     const value = r.quantity * r.dealerPriceSnapshot;
 
@@ -76,9 +89,14 @@ export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
     baseLost += baseAmount;
     components.push({ crCaughtId: r.id, kind: "base", policyId: null, gateMet: true, amount: baseAmount });
 
-    // --- Target bonus (the 1%): gated on the report's resolved eligibility ---
+    // --- Target bonus (the 1%): gated on eligibility, then limited by free cap slots ---
+    let bonusUnits = r.quantity;
+    if (slotsLeft != null) {
+      bonusUnits = Math.min(r.quantity, slotsLeft);
+      slotsLeft -= bonusUnits;
+    }
     const bonusAmount = targetBonus.eligible
-      ? round2(value * (targetBonus.bonusPercent / 100))
+      ? round2(bonusUnits * r.dealerPriceSnapshot * (targetBonus.bonusPercent / 100))
       : 0;
     bonusLost += bonusAmount;
     components.push({

@@ -22,6 +22,7 @@ const caught = (over: Partial<EngineCrCaught> = {}): EngineCrCaught => ({
 
 const bonusMet: TargetBonusOutcome = {
   policyId: "tbp1", eligible: true, targetQty: 10, actualQty: 20, bonusPercent: 1,
+  bonusCapQty: null, bonusEligibleQty: 3, policyWindowActivations: 3,
 };
 const bonusMissed: TargetBonusOutcome = { ...bonusMet, eligible: false };
 
@@ -136,6 +137,48 @@ describe("cr-loss: empty input", () => {
       activationIncentiveLost: 0, dealerIncentiveLost: 0, total: 0,
     });
     expect(r.components).toEqual([]);
+  });
+});
+
+describe("cr-loss: bonus is cap-aware (#6)", () => {
+  it("counts no bonus loss when the cap was already used up by real activations", () => {
+    // Cap 500, 700 already activated → a caught phone could never have earned the 1%.
+    const r = base({ bonusSlotsRemaining: 0 });
+    expect(r.bonusPercentLost).toBe(0);
+    expect(r.basePercentLost).toBe(8_000); // base % is unaffected by the cap
+    expect(r.total).toBe(12_000);
+    expect(r.components).toContainEqual({
+      crCaughtId: "cr1", kind: "bonus", policyId: "tbp1", gateMet: true, amount: 0,
+    });
+  });
+
+  it("counts the bonus on only as many caught units as there were free cap slots", () => {
+    // 5 caught, but only 2 slots left under the cap.
+    const r = base({ bonusSlotsRemaining: 2 });
+    expect(r.bonusPercentLost).toBe(800); // 2 * 40000 * 0.01
+    expect(r.basePercentLost).toBe(8_000); // still all 5 units
+  });
+
+  it("counts every caught unit when uncapped", () => {
+    const r = base({ bonusSlotsRemaining: null });
+    expect(r.bonusPercentLost).toBe(2_000); // 5 * 40000 * 0.01
+  });
+
+  it("fills free slots chronologically across rows, oldest catch first", () => {
+    const r = base({
+      bonusSlotsRemaining: 3,
+      crCaught: [
+        caught({ id: "late", quantity: 2, caughtDate: "2026-05-20" }),
+        caught({ id: "early", quantity: 2, caughtDate: "2026-05-05" }),
+      ],
+    });
+    const bonusOf = (id: string) =>
+      r.components.filter((c) => c.crCaughtId === id && c.kind === "bonus")
+        .reduce((s, c) => s + c.amount, 0);
+    // early (2 units) takes 2 slots, late takes the remaining 1
+    expect(bonusOf("early")).toBe(800);
+    expect(bonusOf("late")).toBe(400);
+    expect(r.bonusPercentLost).toBe(1_200);
   });
 });
 
