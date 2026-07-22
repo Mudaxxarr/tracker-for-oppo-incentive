@@ -672,3 +672,115 @@ describe("resolveBaseIncentivePercent (#4)", () => {
     expect(resolveBaseIncentivePercent(0, 3, 4)).toBe(0);
   });
 });
+
+describe("incentive-engine: company relief override (#7)", () => {
+  it("forces the target-bonus gate but still pays on actual activations", () => {
+    const r = calculateIncentives(
+      baseInput({
+        // Only 10 purchased against a target of 500 — the gate is nowhere near met.
+        purchases: [{ id: "p1", modelId: MODEL_A.id, quantity: 10, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" }],
+        activations: [
+          { id: "a1", modelId: MODEL_A.id, activationDate: "2026-05-10", dealerPriceSnapshot: 100_000, isCrossRegion: false },
+          { id: "a2", modelId: MODEL_A.id, activationDate: "2026-05-11", dealerPriceSnapshot: 100_000, isCrossRegion: false },
+        ],
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 500, bonusPercent: 1, reliefGranted: true },
+        ],
+      })
+    );
+    expect(r.targetBonus.eligible).toBe(true);
+    expect(r.targetBonus.reliefGranted).toBe(true);
+    // actualQty still reports the truth for audit — relief does not fake the number
+    expect(r.targetBonus.actualQty).toBe(10);
+    // paid on the 2 real activations only, not on the 500 target
+    expect(r.totals.bonusPercentEarned).toBe(2_000);
+  });
+
+  it("forces a stock-in policy's min-qty gate, paying on the real purchase qty", () => {
+    const r = calculateIncentives(
+      baseInput({
+        purchases: [{ id: "p1", modelId: MODEL_A.id, quantity: 3, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" }],
+        stockInPolicies: [
+          { id: "sip1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-31", perUnitAmount: 1_000, minQty: 50, reliefGranted: true },
+        ],
+      })
+    );
+    const led = r.rows.find((x) => x.modelId === MODEL_A.id)!.stockInLedger[0];
+    expect(led.met).toBe(true);
+    expect(led.eligibleQty).toBe(3);       // actual, not the 50 target
+    expect(r.totals.stockInEarned).toBe(3_000);
+  });
+
+  it("forces a dealer-incentive gate, paying per real activation", () => {
+    const r = calculateIncentives(
+      baseInput({
+        activations: [
+          { id: "a1", modelId: MODEL_A.id, activationDate: "2026-05-10", dealerPriceSnapshot: 100_000, isCrossRegion: false },
+        ],
+        dealerIncentivePolicies: [
+          { id: "dip1", modelId: null, periodStart: "2026-05-01", periodEnd: "2026-05-31", targetTotalActivations: 400, perUnitAmount: 250, reliefGranted: true },
+        ],
+      })
+    );
+    expect(r.dealerIncentives[0].eligible).toBe(true);
+    expect(r.dealerIncentives[0].actualTotal).toBe(1);
+    expect(r.totals.dealerIncentiveEarned).toBe(250);
+  });
+
+  it("forces an activation-incentive gate", () => {
+    const r = calculateIncentives(
+      baseInput({
+        activations: [
+          { id: "a1", modelId: MODEL_A.id, activationDate: "2026-05-10", dealerPriceSnapshot: 100_000, isCrossRegion: false },
+        ],
+        activationIncentivePolicies: [
+          { id: "aip1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-31", perUnitAmount: 700, targetQty: 300, reliefGranted: true },
+        ],
+      })
+    );
+    const led = r.rows.find((x) => x.modelId === MODEL_A.id)!.activationIncentiveLedger[0];
+    expect(led.met).toBe(true);
+    expect(r.totals.activationIncentiveEarned).toBe(700);
+  });
+
+  it("forces a combined stock-in group target", () => {
+    const r = calculateIncentives(
+      baseInput({
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 2, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
+          { id: "p2", modelId: MODEL_B.id, quantity: 1, unitDealerPrice: 50_000, purchaseDate: "2026-05-03", source: "REGULAR" },
+        ],
+        combinedStockInPolicies: [
+          {
+            id: "csp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetQty: 900, reliefGranted: true,
+            models: [
+              { modelId: MODEL_A.id, perUnitAmount: 500 },
+              { modelId: MODEL_B.id, perUnitAmount: 300 },
+            ],
+          },
+        ],
+      })
+    );
+    const led = r.combinedStockInLedger[0];
+    expect(led.met).toBe(true);
+    expect(led.combinedEligibleQty).toBe(3);      // actual, not 900
+    expect(led.totalEarned).toBe(2 * 500 + 1 * 300);
+  });
+
+  it("changes nothing when relief is not granted", () => {
+    const r = calculateIncentives(
+      baseInput({
+        purchases: [{ id: "p1", modelId: MODEL_A.id, quantity: 10, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" }],
+        activations: [
+          { id: "a1", modelId: MODEL_A.id, activationDate: "2026-05-10", dealerPriceSnapshot: 100_000, isCrossRegion: false },
+        ],
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 500, bonusPercent: 1 },
+        ],
+      })
+    );
+    expect(r.targetBonus.eligible).toBe(false);
+    expect(r.targetBonus.reliefGranted).toBe(false);
+    expect(r.totals.bonusPercentEarned).toBe(0);
+  });
+});

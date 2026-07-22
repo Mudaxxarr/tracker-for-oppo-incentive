@@ -21,7 +21,7 @@ const caught = (over: Partial<EngineCrCaught> = {}): EngineCrCaught => ({
 });
 
 const bonusMet: TargetBonusOutcome = {
-  policyId: "tbp1", eligible: true, targetQty: 10, actualQty: 20, bonusPercent: 1,
+  policyId: "tbp1", eligible: true, targetQty: 10, actualQty: 20, bonusPercent: 1, reliefGranted: false,
   bonusCapQty: null, bonusEligibleQty: 3, policyWindowActivations: 3,
 };
 const bonusMissed: TargetBonusOutcome = { ...bonusMet, eligible: false };

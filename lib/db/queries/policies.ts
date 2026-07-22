@@ -40,14 +40,15 @@ export async function deleteTargetBonusPolicy(id: string, tenantId: string, deal
 
 export interface StockInPolicyRow {
   id: string; modelId: string; modelName: string; periodStart: string;
-  periodEnd: string; perUnitAmount: number; minQty: number | null;
+  periodEnd: string; perUnitAmount: number; minQty: number | null; reliefGranted: boolean;
 }
 
 export async function listStockInPolicies(tenantId: string, dealerId: string): Promise<StockInPolicyRow[]> {
   return db
     .select({ id: schema.stockInPolicies.id, modelId: schema.stockInPolicies.modelId, modelName: schema.models.name,
       periodStart: schema.stockInPolicies.periodStart, periodEnd: schema.stockInPolicies.periodEnd,
-      perUnitAmount: schema.stockInPolicies.perUnitAmount, minQty: schema.stockInPolicies.minQty })
+      perUnitAmount: schema.stockInPolicies.perUnitAmount, minQty: schema.stockInPolicies.minQty,
+      reliefGranted: schema.stockInPolicies.reliefGranted })
     .from(schema.stockInPolicies)
     .innerJoin(schema.models, eq(schema.models.id, schema.stockInPolicies.modelId))
     .where(and(eq(schema.stockInPolicies.tenantId, tenantId), eq(schema.stockInPolicies.dealerId, dealerId)))
@@ -105,7 +106,7 @@ export async function deleteStockInPolicy(id: string, tenantId: string, dealerId
 // ===== Combined Stock-In (grouped target, per-model rate) =====
 
 export interface CombinedStockInPolicyRow {
-  id: string; periodStart: string; periodEnd: string; targetQty: number;
+  id: string; periodStart: string; periodEnd: string; targetQty: number; reliefGranted: boolean;
   models: { modelId: string; modelName: string; perUnitAmount: number }[];
 }
 
@@ -128,7 +129,7 @@ export async function listCombinedStockInPolicies(tenantId: string, dealerId: st
     byPolicy.set(r.policyId, list);
   }
   return policies.map((p) => ({
-    id: p.id, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetQty,
+    id: p.id, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetQty, reliefGranted: p.reliefGranted,
     models: byPolicy.get(p.id) ?? [],
   }));
 }
@@ -202,7 +203,7 @@ export async function deleteCombinedStockInPolicy(id: string, tenantId: string, 
 
 export interface ActivationIncentivePolicyRow {
   id: string; modelId: string; modelName: string; periodStart: string;
-  periodEnd: string; perUnitAmount: number; targetQty: number | null;
+  periodEnd: string; perUnitAmount: number; targetQty: number | null; reliefGranted: boolean;
 }
 
 export async function listActivationIncentivePolicies(tenantId: string, dealerId: string): Promise<ActivationIncentivePolicyRow[]> {
@@ -211,7 +212,8 @@ export async function listActivationIncentivePolicies(tenantId: string, dealerId
       modelName: schema.models.name, periodStart: schema.activationIncentivePolicies.periodStart,
       periodEnd: schema.activationIncentivePolicies.periodEnd,
       perUnitAmount: schema.activationIncentivePolicies.perUnitAmount,
-      targetQty: schema.activationIncentivePolicies.targetQty })
+      targetQty: schema.activationIncentivePolicies.targetQty,
+      reliefGranted: schema.activationIncentivePolicies.reliefGranted })
     .from(schema.activationIncentivePolicies)
     .innerJoin(schema.models, eq(schema.models.id, schema.activationIncentivePolicies.modelId))
     .where(and(eq(schema.activationIncentivePolicies.tenantId, tenantId), eq(schema.activationIncentivePolicies.dealerId, dealerId)))
@@ -246,7 +248,7 @@ export async function deleteActivationIncentivePolicy(id: string, tenantId: stri
 
 export interface DealerIncentivePolicyRow {
   id: string; modelId: string | null; modelName: string | null;
-  periodStart: string; periodEnd: string; targetTotalActivations: number; perUnitAmount: number;
+  periodStart: string; periodEnd: string; targetTotalActivations: number; perUnitAmount: number; reliefGranted: boolean;
 }
 
 export async function listDealerIncentivePolicies(tenantId: string, dealerId: string): Promise<DealerIncentivePolicyRow[]> {
@@ -255,7 +257,8 @@ export async function listDealerIncentivePolicies(tenantId: string, dealerId: st
       modelName: schema.models.name, periodStart: schema.dealerIncentivePolicies.periodStart,
       periodEnd: schema.dealerIncentivePolicies.periodEnd,
       targetTotalActivations: schema.dealerIncentivePolicies.targetTotalActivations,
-      perUnitAmount: schema.dealerIncentivePolicies.perUnitAmount })
+      perUnitAmount: schema.dealerIncentivePolicies.perUnitAmount,
+      reliefGranted: schema.dealerIncentivePolicies.reliefGranted })
     .from(schema.dealerIncentivePolicies)
     .leftJoin(schema.models, eq(schema.models.id, schema.dealerIncentivePolicies.modelId))
     .where(and(eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId)))
@@ -284,4 +287,41 @@ export async function deleteDealerIncentivePolicy(id: string, tenantId: string, 
   await db.delete(schema.dealerIncentivePolicies)
     .where(and(eq(schema.dealerIncentivePolicies.id, id), eq(schema.dealerIncentivePolicies.tenantId, tenantId), eq(schema.dealerIncentivePolicies.dealerId, dealerId)));
   revalidateTag("dealer-policies", {});
+}
+
+// ---------- Company relief ("Achieved" override) — audit finding #7 ----------
+
+/** The five policy tables that carry a `reliefGranted` flag. */
+export const RELIEF_TABLES = {
+  target_bonus: schema.targetBonusPolicies,
+  stock_in: schema.stockInPolicies,
+  activation_incentive: schema.activationIncentivePolicies,
+  dealer_incentive: schema.dealerIncentivePolicies,
+  combined_stock_in: schema.combinedStockInPolicies,
+} as const;
+
+export type ReliefPolicyKind = keyof typeof RELIEF_TABLES;
+
+export const isReliefPolicyKind = (v: string): v is ReliefPolicyKind => v in RELIEF_TABLES;
+
+/**
+ * Marks a policy achieved (or reverts it) when the company posted it despite an
+ * unmet target. Always scoped by tenant + dealer so one dealer can never flip
+ * another's policy by guessing an id.
+ */
+export async function setPolicyRelief(
+  kind: ReliefPolicyKind,
+  id: string,
+  tenantId: string,
+  dealerId: string,
+  granted: boolean,
+): Promise<boolean> {
+  const table = RELIEF_TABLES[kind];
+  const updated = await db
+    .update(table)
+    .set({ reliefGranted: granted })
+    .where(and(eq(table.id, id), eq(table.tenantId, tenantId), eq(table.dealerId, dealerId)))
+    .returning({ id: table.id });
+  revalidateTag("dealer-policies", {});
+  return updated.length > 0;
 }

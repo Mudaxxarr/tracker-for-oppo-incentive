@@ -63,7 +63,7 @@ const getCachedDealerPolicyContext = unstable_cache(
       combinedModelsByPolicy.set(r.policyId, list);
     }
     const combinedStockInPolicies = combinedPolicyRows.map((p) => ({
-      id: p.id, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetQty,
+      id: p.id, periodStart: p.periodStart, periodEnd: p.periodEnd, targetQty: p.targetQty, reliefGranted: p.reliefGranted,
       models: combinedModelsByPolicy.get(p.id) ?? [],
     }));
     return { models, targetBonusPolicies, stockInPolicies, activationIncentivePolicies, dealerIncentivePolicies, combinedStockInPolicies };
@@ -215,6 +215,7 @@ export async function buildIncentiveReport(input: {
       periodEnd: p.periodEnd,
       perUnitAmount: p.perUnitAmount,
       minQty: p.minQty,
+      reliefGranted: p.reliefGranted,
     })),
     activationIncentivePolicies: activationIncentivePolicies.map((p) => ({
       id: p.id,
@@ -223,6 +224,7 @@ export async function buildIncentiveReport(input: {
       periodEnd: p.periodEnd,
       perUnitAmount: p.perUnitAmount,
       targetQty: p.targetQty,
+      reliefGranted: p.reliefGranted,
     })),
     dealerIncentivePolicies,
     combinedStockInPolicies,
@@ -349,10 +351,12 @@ export async function buildMonthlyEarnings(
     stockInPolicies: stockInPolicies.map((p) => ({
       id: p.id, modelId: p.modelId, periodStart: p.periodStart,
       periodEnd: p.periodEnd, perUnitAmount: p.perUnitAmount, minQty: p.minQty,
+      reliefGranted: p.reliefGranted,
     })),
     activationIncentivePolicies: activationIncentivePolicies.map((p) => ({
       id: p.id, modelId: p.modelId, periodStart: p.periodStart,
       periodEnd: p.periodEnd, perUnitAmount: p.perUnitAmount, targetQty: p.targetQty,
+      reliefGranted: p.reliefGranted,
     })),
     dealerIncentivePolicies,
     combinedStockInPolicies,

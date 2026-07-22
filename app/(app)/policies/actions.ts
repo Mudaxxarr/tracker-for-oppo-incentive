@@ -351,3 +351,35 @@ export async function deletePolicyAction(
   revalidatePath("/policies");
   revalidatePath("/dashboard");
 }
+
+/**
+ * Company relief — mark a policy achieved even though its target was not met,
+ * or revert that. The engine forces the gate; the reward still computes on the
+ * dealer's actual activity, so this never fabricates volume.
+ */
+export async function setPolicyReliefAction(
+  kind: string,
+  id: string,
+  granted: boolean,
+): Promise<{ error?: string; ok?: boolean }> {
+  const c = await ctx();
+  if (!c) return { error: "Not authenticated or no active Dealer ID" };
+  if (!Q.isReliefPolicyKind(kind)) return { error: "Unknown policy type" };
+
+  const ok = await Q.setPolicyRelief(kind, id, c.tenantId, c.dealerId, granted);
+  if (!ok) return { error: "Policy not found for this Dealer ID" };
+
+  await logAudit({
+    action: granted ? "policy.relief.grant" : "policy.relief.revert",
+    entityType: `${kind}_policy`,
+    entityId: id,
+    summary: granted
+      ? `Marked ${kind.replace(/_/g, " ")} policy achieved (company relief)`
+      : `Reverted company relief on ${kind.replace(/_/g, " ")} policy`,
+    payload: { kind, granted },
+  });
+  revalidatePath("/policies");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  return { ok: true };
+}

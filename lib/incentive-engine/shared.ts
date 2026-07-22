@@ -49,6 +49,8 @@ export function isActivationIncentiveGateMet(
   const thresholdQty = allActivations.filter(
     (a) => a.modelId === modelId && inRange(a.activationDate, p.periodStart, p.periodEnd)
   ).length;
+  // Company relief forces the gate; the earned amount still uses real activation counts.
+  if (p.reliefGranted) return true;
   return p.targetQty == null ? thresholdQty > 0 : thresholdQty >= p.targetQty;
 }
 

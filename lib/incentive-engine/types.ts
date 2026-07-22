@@ -40,6 +40,9 @@ export interface EngineTargetBonusPolicy {
    * Null = uncapped (every activation earns it).
    */
   bonusCapQty?: number | null;
+  /** Company relief: the owner marked this policy achieved despite an unmet target.
+   *  Forces the gate to pass; the reward still computes on actual activity. */
+  reliefGranted?: boolean;
 }
 
 export interface EngineStockInPolicy {
@@ -49,6 +52,9 @@ export interface EngineStockInPolicy {
   periodEnd: ISODate;
   perUnitAmount: number;
   minQty: number | null;
+  /** Company relief: the owner marked this policy achieved despite an unmet target.
+   *  Forces the gate to pass; the reward still computes on actual activity. */
+  reliefGranted?: boolean;
 }
 
 /**
@@ -64,6 +70,9 @@ export interface EngineCombinedStockInPolicy {
    *  each model is paid on its FULL eligible qty (like per-model stock-in). */
   targetQty: number;
   models: { modelId: string; perUnitAmount: number }[];
+  /** Company relief: the owner marked this policy achieved despite an unmet target.
+   *  Forces the gate to pass; the reward still computes on actual activity. */
+  reliefGranted?: boolean;
 }
 
 export interface EngineActivationIncentivePolicy {
@@ -73,6 +82,9 @@ export interface EngineActivationIncentivePolicy {
   periodEnd: ISODate;
   perUnitAmount: number;
   targetQty: number | null;
+  /** Company relief: the owner marked this policy achieved despite an unmet target.
+   *  Forces the gate to pass; the reward still computes on actual activity. */
+  reliefGranted?: boolean;
 }
 
 export interface EngineDealerIncentivePolicy {
@@ -83,6 +95,9 @@ export interface EngineDealerIncentivePolicy {
   periodEnd: ISODate;
   targetTotalActivations: number;
   perUnitAmount: number;
+  /** Company relief: the owner marked this policy achieved despite an unmet target.
+   *  Forces the gate to pass; the reward still computes on actual activity. */
+  reliefGranted?: boolean;
 }
 
 /** Outbound inter-ID transfers for the dealer being reported on.
@@ -219,6 +234,8 @@ export interface TargetBonusOutcome {
   actualQty: number;
   bonusPercent: number;
   /** The policy's cap, or null when uncapped. */
+  /** True when this outcome was forced by company relief rather than a met target. */
+  reliefGranted: boolean;
   bonusCapQty: number | null;
   /** How many of the policy window's activations fall inside the cap. Equals the
    *  activation count when uncapped. Lets the UI show "500 of 700 earned the 1%". */
@@ -229,6 +246,8 @@ export interface TargetBonusOutcome {
 
 export interface DealerIncentiveOutcome {
   policyId: string;
+  /** True when eligibility was forced by company relief. */
+  reliefGranted: boolean;
   modelId: string | null;
   eligible: boolean;
   targetTotal: number;

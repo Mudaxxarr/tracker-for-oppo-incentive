@@ -93,7 +93,9 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
         .filter((p) => p.source === "REGULAR" && inRange(p.purchaseDate, tbp.periodStart, tbp.periodEnd))
         .reduce((sum, p) => sum + p.quantity, 0)
     : 0;
-  const tbpEligible = !!tbp && tbpPurchaseQty >= tbp.targetActivationsQty;
+  // Company relief forces the gate; the reward below still runs on real activity.
+  const tbpRelief = !!tbp?.reliefGranted;
+  const tbpEligible = !!tbp && (tbpPurchaseQty >= tbp.targetActivationsQty || tbpRelief);
 
   // ----- Target Bonus cap (#6) -----
   // Once the purchase gate is met, the bonus is paid on at most `bonusCapQty` phones,
@@ -120,6 +122,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     targetQty: tbp?.targetActivationsQty ?? null,
     actualQty: tbpPurchaseQty,
     bonusPercent: tbp?.bonusPercent ?? 0,
+    reliefGranted: tbpRelief,
     bonusCapQty,
     bonusEligibleQty: tbpEligible ? bonusEligibleActs.length : 0,
     policyWindowActivations: policyWindowActs.length,
@@ -138,7 +141,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     .filter((p) => p.periodStart <= periodEnd && p.periodEnd >= periodStart)
     .map((p) => {
       const actualTotal = activations.filter((a) => inRange(a.activationDate, p.periodStart, p.periodEnd)).length;
-      return { policy: p, eligible: actualTotal >= p.targetTotalActivations, actualTotal, earned: 0 };
+      return { policy: p, eligible: actualTotal >= p.targetTotalActivations || !!p.reliefGranted, actualTotal, earned: 0 };
     });
 
   // ----- Filter activations to report window -----
@@ -213,7 +216,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       return { modelId: cm.modelId, perUnitAmount: cm.perUnitAmount, eligibleQty: regularQty };
     });
     const combinedEligibleQty = perModelElig.reduce((s, m) => s + m.eligibleQty, 0);
-    const met = combinedEligibleQty >= cp.targetQty && combinedEligibleQty > 0;
+    const met = (combinedEligibleQty >= cp.targetQty && combinedEligibleQty > 0) || !!cp.reliefGranted;
     let totalEarned = 0;
     const perModel = perModelElig.map((m) => {
       const earned = met ? round2(m.eligibleQty * m.perUnitAmount) : 0;
@@ -346,7 +349,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       // is retained for the informational interIdOutQty row field, not for earning.
       const eligibleQty = sipRegularQty;
       const minQty = sip.minQty ?? 0;
-      const met = eligibleQty >= minQty && eligibleQty > 0;
+      const met = (eligibleQty >= minQty && eligibleQty > 0) || !!sip.reliefGranted;
       const policyEarned = met ? round2(eligibleQty * sip.perUnitAmount) : 0;
       stockInLedger.push({
         policyId: sip.id,
@@ -437,6 +440,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     targetBonus,
     dealerIncentives: dipStatuses.map((ds) => ({
       policyId: ds.policy.id,
+      reliefGranted: !!ds.policy.reliefGranted,
       modelId: ds.policy.modelId ?? null,
       eligible: ds.eligible,
       targetTotal: ds.policy.targetTotalActivations,
