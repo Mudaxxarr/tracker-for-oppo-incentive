@@ -13,6 +13,25 @@ export const inRange = (d: ISODate, start: ISODate, end: ISODate): boolean =>
 export const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
+ * Resolves which base incentive % a report should use (#4).
+ *
+ * Precedence: an explicit caller value → the dealer ID's own rate → the global constant.
+ * Retail IDs typically sit on the global 4; wholesale IDs carry a 3 override.
+ *
+ * Uses null checks rather than truthiness on purpose: a deliberate 0% override must
+ * stay 0, and `override || global` would quietly pay the global rate instead.
+ */
+export function resolveBaseIncentivePercent(
+  explicit: number | null | undefined,
+  idOverride: number | null | undefined,
+  globalPercent: number,
+): number {
+  if (explicit != null) return explicit;
+  if (idOverride != null) return idOverride;
+  return globalPercent;
+}
+
+/**
  * The activation-incentive gate, in one place.
  *
  * Threshold counts ALL dealer activations of this model inside the policy's own

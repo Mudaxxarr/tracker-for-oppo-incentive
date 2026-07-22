@@ -53,6 +53,8 @@ export const dealerIds = pgTable("dealer_ids", {
   name: text("name").notNull(),
   shopName: text("shop_name"),
   note: text("note"),
+  /** Per-ID base incentive % (retail 4 / wholesale 3). Null = use the global constant. */
+  basePercentOverride: real("base_percent_override"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: isoDateTime("created_at").notNull(),
 });

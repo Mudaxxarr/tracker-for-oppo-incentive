@@ -47,6 +47,7 @@ interface DealerSummary {
   name: string;
   shopName: string | null;
   note: string | null;
+  basePercentOverride: number | null;
 }
 
 interface PerIdStat {
@@ -203,7 +204,14 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
                   return (
                     <TableRow key={d.id}>
                       <TableCell>
-                        <div className="font-medium">{d.name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{d.name}</span>
+                          {d.basePercentOverride != null ? (
+                            <Badge variant="secondary" className="px-1 py-0 text-[10px] font-normal">
+                              {d.basePercentOverride}% base
+                            </Badge>
+                          ) : null}
+                        </div>
                         {d.shopName ? <div className="text-xs text-muted-foreground">{d.shopName}</div> : null}
                         {d.note ? <div className="text-xs text-muted-foreground">{d.note}</div> : null}
                       </TableCell>
@@ -450,6 +458,9 @@ function EditDealerIdSheet({ dealer, onClose }: { dealer: DealerSummary; onClose
   const [name, setName] = useState(dealer.name);
   const [shopName, setShopName] = useState(dealer.shopName ?? "");
   const [note, setNote] = useState(dealer.note ?? "");
+  const [basePct, setBasePct] = useState(
+    dealer.basePercentOverride == null ? "" : String(dealer.basePercentOverride),
+  );
   const [pending, start] = useTransition();
 
   const save = () => {
@@ -459,6 +470,7 @@ function EditDealerIdSheet({ dealer, onClose }: { dealer: DealerSummary; onClose
       fd.set("name", name);
       fd.set("shopName", shopName);
       fd.set("note", note);
+      fd.set("basePercentOverride", basePct);
       const res = await updateDealerTenantIdAction({}, fd);
       if (res.error) { toast.error(res.error); return; }
       toast.success("Dealer ID updated");
@@ -483,6 +495,22 @@ function EditDealerIdSheet({ dealer, onClose }: { dealer: DealerSummary; onClose
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">Note (optional)</label>
             <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Base incentive % for this ID</label>
+            <Input
+              type="number"
+              step="any"
+              min={0}
+              max={100}
+              value={basePct}
+              onChange={(e) => setBasePct(e.target.value)}
+              placeholder="Leave blank = use the global rate"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Retail IDs normally use the global rate; set 3 on wholesale IDs. Changing this
+              also re-computes past reports for this ID.
+            </p>
           </div>
           <Button className="w-full" disabled={pending || !name.trim()} onClick={save}>
             {pending ? "Saving…" : "Save changes"}
