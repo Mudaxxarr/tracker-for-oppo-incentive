@@ -366,7 +366,9 @@ export async function dealerGetModelHistoryAction(modelId: string): Promise<Stoc
   if (!dealerId) return [];
   const tenantId = session.tenantId;
 
-  const allDealers = await listDealerIdsForTenant(tenantId);
+  // Name lookup for movements already on screen: a transfer involving a hidden ID
+  // should still read as its name rather than a raw id fragment.
+  const allDealers = await listDealerIdsForTenant(tenantId, { includeHidden: true });
   const dealerName = (id: string) => allDealers.find((d) => d.id === id)?.name ?? id.slice(0, 8);
 
   const [purchases, activations, transfersOut, transfersIn] = await Promise.all([

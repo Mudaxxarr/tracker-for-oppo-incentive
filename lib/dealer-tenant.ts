@@ -13,11 +13,21 @@ export async function getTenantById(tenantId: string) {
   return rows[0] ?? null;
 }
 
-export async function listDealerIdsForTenant(tenantId: string) {
+/**
+ * A tenant's Dealer IDs. Hidden "favour" IDs are excluded by default — see
+ * listDealerIds in lib/dealer.ts for when to pass `includeHidden`.
+ */
+export async function listDealerIdsForTenant(tenantId: string, opts?: { includeHidden?: boolean }) {
   return db
     .select()
     .from(schema.dealerIds)
-    .where(and(eq(schema.dealerIds.tenantId, tenantId), eq(schema.dealerIds.isActive, true)))
+    .where(
+      and(
+        eq(schema.dealerIds.tenantId, tenantId),
+        eq(schema.dealerIds.isActive, true),
+        ...(opts?.includeHidden ? [] : [eq(schema.dealerIds.isHidden, false)]),
+      ),
+    )
     .orderBy(asc(schema.dealerIds.name));
 }
 

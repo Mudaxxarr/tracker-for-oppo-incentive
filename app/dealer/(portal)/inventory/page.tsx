@@ -26,7 +26,8 @@ export default async function DealerInventoryPage() {
     dealerId
       ? listPendingInbound(session.tenantId, dealerId)
       : Promise.resolve([]),
-    listDealerIdsForTenant(session.tenantId),
+    // Transfer destination picker: hidden favour IDs must be selectable.
+    listDealerIdsForTenant(session.tenantId, { includeHidden: true }),
   ]);
 
   const otherDealers = allDealers

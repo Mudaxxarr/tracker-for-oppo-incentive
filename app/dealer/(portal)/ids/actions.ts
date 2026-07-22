@@ -60,7 +60,9 @@ export async function createDealerTenantIdAction(
   // so when they open a dealer's portal in preview (owner session still present),
   // the cap is lifted and they can provision extra IDs directly.
   const isOwner = await isAuthenticated();
-  const existing = await listDealerIdsForTenant(session.tenantId);
+  // Counts hidden IDs too: a hidden ID still occupies the paid slot, otherwise a
+  // dealer could hide their real ID and claim a free "first" ID all over again.
+  const existing = await listDealerIdsForTenant(session.tenantId, { includeHidden: true });
   if (existing.length > 0 && !isOwner) {
     return { error: "Additional Dealer IDs require admin approval. Contact your OPPO account manager." };
   }
@@ -96,6 +98,8 @@ const UpdateDealerIdSchema = z.object({
     (v) => (v === "" || v == null ? null : v),
     z.coerce.number().min(0).max(100).nullable()
   ),
+  /** Checkbox posts "on" when ticked and nothing at all when not. */
+  isHidden: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
 });
 
 /**
@@ -113,15 +117,16 @@ export async function updateDealerTenantIdAction(
 
   const parsed = UpdateDealerIdSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { id, name, shopName, note, basePercentOverride } = parsed.data;
+  const { id, name, shopName, note, basePercentOverride, isHidden } = parsed.data;
 
   // The ID must belong to the previewed tenant — never trust the client's id blindly.
-  const existing = await listDealerIdsForTenant(session.tenantId);
+  // Includes hidden IDs so a hidden one stays editable (and can be un-hidden).
+  const existing = await listDealerIdsForTenant(session.tenantId, { includeHidden: true });
   if (!existing.some((d) => d.id === id)) return { error: "Invalid Dealer ID." };
 
   await db
     .update(schema.dealerIds)
-    .set({ name, shopName: shopName || null, note: note || null, basePercentOverride })
+    .set({ name, shopName: shopName || null, note: note || null, basePercentOverride, isHidden })
     .where(and(eq(schema.dealerIds.id, id), eq(schema.dealerIds.tenantId, session.tenantId)));
 
   await logAudit({
@@ -160,8 +165,9 @@ export async function createDealerInterIdTransferAction(
   const d = parsed.data;
   if (d.fromDealerId === d.toDealerId) return { error: "Source and destination must be different." };
 
-  // Validate both dealer IDs belong to this tenant
-  const allIds = await listDealerIdsForTenant(tenantId);
+  // Validate both dealer IDs belong to this tenant. Hidden IDs are deliberately
+  // included: parking stock on a favour ID, and pulling it back, are both allowed.
+  const allIds = await listDealerIdsForTenant(tenantId, { includeHidden: true });
   const fromValid = allIds.find((x) => x.id === d.fromDealerId);
   const toValid = allIds.find((x) => x.id === d.toDealerId);
   if (!fromValid || !toValid) return { error: "Invalid dealer ID." };

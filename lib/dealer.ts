@@ -1,17 +1,29 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { db, schema } from "./db/client";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 const ACTIVE_DEALER_COOKIE = "oppo_active_dealer";
 
 export const OWNER_TENANT_ID = "owner";
 
-export async function listDealerIds() {
+/**
+ * Owner-tenant Dealer IDs.
+ *
+ * Hidden "favour" IDs are excluded by default: they must not appear in the ID
+ * switcher, dashboards or reports. Pass `includeHidden` only where a hidden ID
+ * legitimately belongs — the IDs management page (so it can be un-hidden), the
+ * inter-ID transfer pickers, and name lookups for movements already on screen.
+ */
+export async function listDealerIds(opts?: { includeHidden?: boolean }) {
   return db
     .select()
     .from(schema.dealerIds)
-    .where(eq(schema.dealerIds.tenantId, OWNER_TENANT_ID))
+    .where(
+      opts?.includeHidden
+        ? eq(schema.dealerIds.tenantId, OWNER_TENANT_ID)
+        : and(eq(schema.dealerIds.tenantId, OWNER_TENANT_ID), eq(schema.dealerIds.isHidden, false)),
+    )
     .orderBy(asc(schema.dealerIds.name));
 }
 

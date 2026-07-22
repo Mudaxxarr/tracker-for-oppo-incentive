@@ -55,6 +55,9 @@ export const dealerIds = pgTable("dealer_ids", {
   note: text("note"),
   /** Per-ID base incentive % (retail 4 / wholesale 3). Null = use the global constant. */
   basePercentOverride: real("base_percent_override"),
+  /** A "favour" ID used to park stock for an outside dealer. Hidden from the ID switcher,
+   *  dashboards and reports, but still a valid inter-ID transfer endpoint both ways. */
+  isHidden: boolean("is_hidden").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: isoDateTime("created_at").notNull(),
 });

@@ -23,7 +23,8 @@ export default async function DealerIdsPage() {
   // gets owner-only powers here — chiefly provisioning additional Dealer IDs.
   const isAdminPreview = await isAuthenticated();
 
-  const dealers = await listDealerIdsForTenant(tenantId);
+  // The management page must show hidden IDs — otherwise one could never be un-hidden.
+  const dealers = await listDealerIdsForTenant(tenantId, { includeHidden: true });
   // Auto-enable for dealers who own 2+ IDs even if the `ids` feature flag is off —
   // they need Inter-ID Transfer to move stock between their own IDs. The owner in
   // preview always reaches this page so they can add the second ID in the first place.
@@ -48,7 +49,7 @@ export default async function DealerIdsPage() {
 
   return (
     <DealerIdsClient
-      dealers={dealers.map((d) => ({ id: d.id, name: d.name, shopName: d.shopName, note: d.note, basePercentOverride: d.basePercentOverride }))}
+      dealers={dealers.map((d) => ({ id: d.id, name: d.name, shopName: d.shopName, note: d.note, basePercentOverride: d.basePercentOverride, isHidden: d.isHidden }))}
       models={models}
       stats={stats}
       transfers={transfers}

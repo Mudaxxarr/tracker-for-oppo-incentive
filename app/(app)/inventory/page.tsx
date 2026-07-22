@@ -7,7 +7,8 @@ export default async function InventoryPage() {
   const dealerId = await getActiveDealerId();
   const [rows, allDealers, pendingTransfers] = await Promise.all([
     dealerId ? listInventoryForDealer(OWNER_TENANT_ID, dealerId) : Promise.resolve([]),
-    listDealerIds(),
+    // Transfer destination picker: hidden favour IDs must be selectable.
+    listDealerIds({ includeHidden: true }),
     dealerId ? listPendingInbound(OWNER_TENANT_ID, dealerId) : Promise.resolve([]),
   ]);
 

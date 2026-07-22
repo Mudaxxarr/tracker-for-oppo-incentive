@@ -353,7 +353,9 @@ export async function getModelHistoryAction(modelId: string): Promise<StockEvent
   if (!dealerId) return [];
   const tenantId = OWNER_TENANT_ID;
 
-  const dealers = await listDealerIds();
+  // Name lookup for movements already on screen: a transfer to a hidden ID should
+  // still read as its name rather than a raw id fragment.
+  const dealers = await listDealerIds({ includeHidden: true });
   const dealerName = (id: string) => dealers.find((d) => d.id === id)?.name ?? id.slice(0, 8);
 
   // Purchases (inbound)
