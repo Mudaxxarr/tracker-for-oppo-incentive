@@ -74,7 +74,7 @@ export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
     // --- Base %: no gate, always lost ---
     const baseAmount = round2(value * (baseIncentivePercent / 100));
     baseLost += baseAmount;
-    components.push({ kind: "base", policyId: null, gateMet: true, amount: baseAmount });
+    components.push({ crCaughtId: r.id, kind: "base", policyId: null, gateMet: true, amount: baseAmount });
 
     // --- Target bonus (the 1%): gated on the report's resolved eligibility ---
     const bonusAmount = targetBonus.eligible
@@ -82,6 +82,7 @@ export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
       : 0;
     bonusLost += bonusAmount;
     components.push({
+      crCaughtId: r.id,
       kind: "bonus",
       policyId: targetBonus.policyId,
       gateMet: targetBonus.eligible,
@@ -95,7 +96,7 @@ export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
       const gateMet = isActivationIncentiveGateMet(p, r.modelId, activations);
       const amount = gateMet ? round2(r.quantity * p.perUnitAmount) : 0;
       activationLost += amount;
-      components.push({ kind: "activationIncentive", policyId: p.id, gateMet, amount });
+      components.push({ crCaughtId: r.id, kind: "activationIncentive", policyId: p.id, gateMet, amount });
     }
 
     // --- Dealer incentive: null modelId means all models ---
@@ -105,6 +106,7 @@ export function computeCrCaughtLoss(input: CrLossInput): CrCaughtPotentialLoss {
       const amount = eligible ? round2(r.quantity * policy.perUnitAmount) : 0;
       dealerLost += amount;
       components.push({
+        crCaughtId: r.id,
         kind: "dealerIncentive",
         policyId: policy.id,
         gateMet: eligible,

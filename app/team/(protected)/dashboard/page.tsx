@@ -3,7 +3,6 @@ import { buildIncentiveReport, buildLastSixMonths } from "@/lib/incentive-engine
 import { countPendingCrossRegion, listInterIdTransfers } from "@/lib/db/queries/transfers";
 import { listStockForDealer } from "@/lib/db/queries/purchases";
 import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
-import { getConstants } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/feature/kpi-card";
 import { TrendCharts } from "@/components/feature/trend-charts";
@@ -51,7 +50,6 @@ export default async function TeamDashboardPage() {
   }
 
   const { startStr, endStr, label } = monthBounds();
-  const constants = await getConstants();
 
   const [report, sixMonths, pendingCount, stock, transfers, allDealers, initialSales, crLoss] =
     await Promise.all([
@@ -62,7 +60,7 @@ export default async function TeamDashboardPage() {
       listInterIdTransfers(OWNER_TENANT_ID, dealer.id),
       listDealerIds(),
       getModelSalesAction(startStr, endStr),
-      getCrCaughtLoss(OWNER_TENANT_ID, dealer.id, startStr, endStr, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealer.id, startStr, endStr),
     ]);
 
   const tb = report.targetBonus;
@@ -140,8 +138,8 @@ export default async function TeamDashboardPage() {
           icon={<Wallet className="size-4" />}
         />
         <KpiCard
-          label="CR Caught Loss (est.)"
-          value={crLoss.lostIncentive}
+          label="Potential incentive loss (est.)"
+          value={report.potentialLoss.total}
           format="currency"
           icon={<ShieldAlert className="size-4" />}
           highlightZero

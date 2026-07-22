@@ -72,7 +72,7 @@ describe("cr-loss: gating", () => {
     expect(r.bonusPercentLost).toBe(2_000);
     expect(r.total).toBe(12_500);
     expect(r.components).toContainEqual({
-      kind: "dealerIncentive", policyId: "dip1", gateMet: false, amount: 0,
+      crCaughtId: "cr1", kind: "dealerIncentive", policyId: "dip1", gateMet: false, amount: 0,
     });
   });
 
@@ -136,6 +136,28 @@ describe("cr-loss: empty input", () => {
       activationIncentiveLost: 0, dealerIncentiveLost: 0, total: 0,
     });
     expect(r.components).toEqual([]);
+  });
+});
+
+describe("cr-loss: per-row attribution", () => {
+  it("tags every component with its CR-caught row, and the per-row sums equal the total", () => {
+    const r = base({
+      crCaught: [
+        caught({ id: "crA", quantity: 5 }),
+        caught({ id: "crB", quantity: 2, modelId: MODEL_B }),
+      ],
+    });
+    const byRow = (id: string) =>
+      r.components.filter((c) => c.crCaughtId === id).reduce((s, c) => s + c.amount, 0);
+
+    // crA (MODEL_A, 5 units @ 40k): 8000 base + 2000 bonus + 2500 activation + 1500 dealer
+    expect(byRow("crA")).toBe(14_000);
+    // crB (MODEL_B, 2 units @ 40k): 3200 base + 800 bonus + 600 dealer.
+    // The activation incentive is scoped to MODEL_A, so it contributes nothing.
+    expect(byRow("crB")).toBe(4_600);
+    expect(byRow("crA") + byRow("crB")).toBe(r.total);
+    expect(r.total).toBe(18_600);
+    expect(r.components.every((c) => c.crCaughtId === "crA" || c.crCaughtId === "crB")).toBe(true);
   });
 });
 

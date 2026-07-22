@@ -3,7 +3,6 @@ import { listDealerIds, getActiveDealerId, OWNER_TENANT_ID } from "@/lib/dealer"
 import { getStaffSession } from "@/lib/staff-auth";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
 import { buildPolicyAchievements } from "@/lib/report-utils";
-import { getConstants } from "@/lib/settings";
 import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
 import { getCrShiftedValue } from "@/lib/db/queries/purchases";
 import { sumRebatesForPeriod, listRebatesForDealerInPeriod } from "@/lib/db/queries/rebates";
@@ -40,26 +39,27 @@ export default async function ReportsPage({
   const periodEnd = sp.periodEnd ?? end;
   const selectedIds = sp.dealerIds ? sp.dealerIds.split(",") : active ? [active] : [];
 
-  const constants = await getConstants();
-  const basePct = constants.basePercent;
 
   const reports = await Promise.all(
     selectedIds.map(async (id) => {
       const r = await buildIncentiveReport({ dealerId: id, periodStart, periodEnd });
       const [policies, crCaughtLoss, crShiftedValue, rebateTotal, rebateRows] = await Promise.all([
         buildPolicyAchievements(id, periodStart, periodEnd, r),
-        getCrCaughtLoss(OWNER_TENANT_ID, id, periodStart, periodEnd, basePct),
+        getCrCaughtLoss(OWNER_TENANT_ID, id, periodStart, periodEnd),
         getCrShiftedValue(OWNER_TENANT_ID, id, periodStart, periodEnd),
         sumRebatesForPeriod(OWNER_TENANT_ID, id, periodStart, periodEnd),
         listRebatesForDealerInPeriod(OWNER_TENANT_ID, id, periodStart, periodEnd),
       ]);
       const d = dealers.find((x) => x.id === id);
-      return { dealerId: id, dealerName: d?.name ?? id, report: r, policies, crCaughtLoss, crShiftedValue, rebateTotal, rebateRows } satisfies {
+      // The loss estimate comes from the engine report — it is the only place that
+      // knows which policy gates were actually met. The query supplies raw counts only.
+      const lossWithEstimate = { ...crCaughtLoss, potentialLoss: r.potentialLoss.total };
+      return { dealerId: id, dealerName: d?.name ?? id, report: r, policies, crCaughtLoss: lossWithEstimate, crShiftedValue, rebateTotal, rebateRows } satisfies {
         dealerId: string;
         dealerName: string;
         report: typeof r;
         policies: PolicyAchievementEntry[];
-        crCaughtLoss: typeof crCaughtLoss;
+        crCaughtLoss: typeof lossWithEstimate;
         crShiftedValue: typeof crShiftedValue;
         rebateTotal: typeof rebateTotal;
         rebateRows: typeof rebateRows;

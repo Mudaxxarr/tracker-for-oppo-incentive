@@ -53,13 +53,17 @@ export async function createCrCaught(input: {
   return id;
 }
 
+/**
+ * Raw CR-caught totals for a period. Deliberately contains no incentive math —
+ * the potential incentive loss is computed by the engine (`report.potentialLoss`),
+ * which is the only place that knows which policy gates were actually met.
+ */
 export async function getCrCaughtLoss(
   tenantId: string,
   dealerId: string,
   from: string,
-  to: string,
-  basePct: number
-): Promise<{ totalUnits: number; priceUnitSum: number; lostIncentive: number; totalFines: number }> {
+  to: string
+): Promise<{ totalUnits: number; priceUnitSum: number; totalFines: number }> {
   const rows = await db
     .select({ qty: schema.crCaught.quantity, price: schema.crCaught.dealerPriceSnapshot, fine: schema.crCaught.fineAmount })
     .from(schema.crCaught)
@@ -68,7 +72,8 @@ export async function getCrCaughtLoss(
         eq(schema.crCaught.tenantId, tenantId),
         eq(schema.crCaught.dealerId, dealerId),
         gte(schema.crCaught.caughtDate, from),
-        lte(schema.crCaught.caughtDate, to)
+        lte(schema.crCaught.caughtDate, to),
+        ne(schema.crCaught.status, "pending_owner_approval")
       )
     );
   let totalUnits = 0;
@@ -79,9 +84,7 @@ export async function getCrCaughtLoss(
     priceUnitSum += r.qty * r.price;
     totalFines += r.fine ?? 0;
   }
-  // lostIncentive kept for backward compat (informational only — not a ledger deduction)
-  const lostIncentive = Math.round(priceUnitSum * (basePct / 100) * 1.25);
-  return { totalUnits, priceUnitSum: Math.round(priceUnitSum), lostIncentive, totalFines: Math.round(totalFines) };
+  return { totalUnits, priceUnitSum: Math.round(priceUnitSum), totalFines: Math.round(totalFines) };
 }
 
 export async function getCrCaughtForStockCalc(tenantId: string, dealerId: string, modelId: string): Promise<number> {
@@ -133,6 +136,8 @@ export async function getCrCaughtBefore(tenantId: string, dealerId: string, mode
 }
 
 export interface CrCaughtExportRow {
+  /** Joins a row to its `report.potentialLoss.components` entries. */
+  id: string;
   modelName: string;
   quantity: number;
   caughtDate: string;
@@ -148,6 +153,7 @@ export async function listCrCaughtForPeriod(
 ): Promise<CrCaughtExportRow[]> {
   const rows = await db
     .select({
+      id: schema.crCaught.id,
       modelName: schema.models.name,
       quantity: schema.crCaught.quantity,
       caughtDate: schema.crCaught.caughtDate,

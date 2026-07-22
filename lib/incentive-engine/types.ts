@@ -225,6 +225,9 @@ export interface DealerIncentiveOutcome {
 
 /** One line of the potential-loss audit trail. `amount` is 0 whenever `gateMet` is false. */
 export interface CrLossComponent {
+  /** The CR-caught row this line belongs to, so consumers can show a per-row split
+   *  that always sums back to `total` instead of recomputing a formula of their own. */
+  crCaughtId: string;
   kind: "base" | "bonus" | "activationIncentive" | "dealerIncentive";
   /** null for `base`, which has no backing policy. */
   policyId: string | null;

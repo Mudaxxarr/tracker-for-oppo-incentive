@@ -8,7 +8,6 @@ import { buildDetailedPDF } from "@/lib/export/report-pdf-detailed";
 import { buildLedgerPDF } from "@/lib/export/report-pdf-ledger";
 import { NAVAL, ARCTIC } from "@/lib/export/pdf-themes";
 import { buildPolicyAchievements } from "@/lib/report-utils";
-import { getConstants } from "@/lib/settings";
 import { listRebatesForDealerInPeriod, sumRebatesForPeriod } from "@/lib/db/queries/rebates";
 import { listStockForDealer } from "@/lib/db/queries/purchases";
 import { getCrCaughtLoss, listCrCaughtForPeriod } from "@/lib/db/queries/cr-caught";
@@ -48,15 +47,14 @@ export async function GET(req: Request) {
   const report = await buildIncentiveReport({ dealerId, periodStart, periodEnd });
 
   if (fmt === "analytics-pdf") {
-    const constants = await getConstants();
     const [policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal] = await Promise.all([
       buildPolicyAchievements(dealerId, periodStart, periodEnd, report),
       listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       listCrCaughtForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
-      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
     ]);
-    const buffer = await buildAnalyticsPDF(report, dealer.name, { policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal }, pdfTheme);
+    const buffer = await buildAnalyticsPDF(report, dealer.name, { policies, rebateRows, crCaughtRows, crCaughtLoss: { ...crCaughtLoss, potentialLoss: report.potentialLoss.total }, rebateTotal }, pdfTheme);
     const baseName = `OPPO_Analytics_${dealer.name.replace(/\s+/g, "_")}_${periodStart}_${periodEnd}`;
     await logAudit({
       action: "report.export",
@@ -74,14 +72,13 @@ export async function GET(req: Request) {
   }
 
   if (fmt === "brief-pdf") {
-    const constants = await getConstants();
     const [policies, rebateRows, crCaughtLoss, rebateTotal] = await Promise.all([
       buildPolicyAchievements(dealerId, periodStart, periodEnd, report),
       listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
-      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
     ]);
-    const buffer = await buildBriefPDF(report, dealer.name, { policies, rebateRows, crCaughtLoss, rebateTotal }, pdfTheme);
+    const buffer = await buildBriefPDF(report, dealer.name, { policies, rebateRows, crCaughtLoss: { ...crCaughtLoss, potentialLoss: report.potentialLoss.total }, rebateTotal }, pdfTheme);
     const baseName = `OPPO_Statement_${dealer.name.replace(/\s+/g, "_")}_${periodStart}_${periodEnd}`;
     await logAudit({ action: "report.export", entityType: "report", summary: `Exported Dealer Statement for ${dealer.name} (${periodStart}→${periodEnd})`, payload: { format: "brief-pdf", periodStart, periodEnd }, dealerId });
     return new NextResponse(new Uint8Array(buffer), {
@@ -90,16 +87,15 @@ export async function GET(req: Request) {
   }
 
   if (fmt === "detailed-pdf") {
-    const constants = await getConstants();
     const [policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal, inventory] = await Promise.all([
       buildPolicyAchievements(dealerId, periodStart, periodEnd, report),
       listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       listCrCaughtForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
-      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       listStockForDealer(OWNER_TENANT_ID, dealerId),
     ]);
-    const buffer = await buildDetailedPDF(report, dealer.name, policies, pdfTheme, { rebateRows, crCaughtRows, crCaughtLoss, rebateTotal, inventory });
+    const buffer = await buildDetailedPDF(report, dealer.name, policies, pdfTheme, { rebateRows, crCaughtRows, crCaughtLoss: { ...crCaughtLoss, potentialLoss: report.potentialLoss.total }, rebateTotal, inventory });
     const baseName = `OPPO_Detailed_Breakup_${dealer.name.replace(/\s+/g, "_")}_${periodStart}_${periodEnd}`;
     await logAudit({
       action: "report.export",
@@ -117,16 +113,15 @@ export async function GET(req: Request) {
   }
 
   if (fmt === "pdf") {
-    const constants = await getConstants();
     const [policies, rebateRows, crCaughtLoss, rebateTotal] = await Promise.all([
       buildPolicyAchievements(dealerId, periodStart, periodEnd, report),
       listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
-      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
     ]);
     const suffix = skipNoIncentive ? "_incentive-models" : "";
     const baseName = `OPPO_Report_${dealer.name.replace(/\s+/g, "_")}_${periodStart}_${periodEnd}${suffix}`;
-    const buffer = await buildPDF(report, dealer.name, { skipNoIncentive, policies, rebateRows, crCaughtLoss, rebateTotal }, pdfTheme);
+    const buffer = await buildPDF(report, dealer.name, { skipNoIncentive, policies, rebateRows, crCaughtLoss: { ...crCaughtLoss, potentialLoss: report.potentialLoss.total }, rebateTotal }, pdfTheme);
     await logAudit({
       action: "report.export",
       entityType: "report",
@@ -143,12 +138,11 @@ export async function GET(req: Request) {
   }
 
   if (fmt === "ledger-pdf") {
-    const constants = await getConstants();
     const [policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal] = await Promise.all([
       buildPolicyAchievements(dealerId, periodStart, periodEnd, report),
       listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       listCrCaughtForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
-      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, periodStart, periodEnd),
     ]);
     const buffer = await buildLedgerPDF(report, dealer.name, policies, rebateRows, crCaughtRows, crCaughtLoss, rebateTotal, pdfTheme);

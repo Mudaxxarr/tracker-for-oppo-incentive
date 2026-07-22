@@ -76,7 +76,7 @@ interface Props {
   initialTo: string;
   initialReport: IncentiveReport;
   initialModelSales: ModelSaleRow[];
-  initialCrLoss: { lostIncentive: number; totalUnits: number; totalFines: number; priceUnitSum: number };
+  initialCrLoss: { potentialLoss: number; totalUnits: number; totalFines: number; priceUnitSum: number };
   initialRebateTotal: number;
   initialRebateRows: RebateDetailRow[];
   stockOldestDate: Record<string, string>;
@@ -585,8 +585,8 @@ export function DashboardClient({
         helper={rebateTotal > 0 ? "Price-drop rebates" : "No rebates this period"}
       />
       <KpiCard
-        label="CR Caught Loss"
-        value={crLoss.lostIncentive}
+        label="Potential incentive loss (est.)"
+        value={crLoss.potentialLoss}
         format="currency"
         icon={<ShieldAlert className="size-4" />}
         highlightZero
@@ -1191,7 +1191,7 @@ export function DashboardClient({
           { label: "Stock-In", value: report.totals.stockInEarned, currency: true },
           { label: "Total", value: report.totals.grandTotal, currency: true },
           { label: "Rebates", value: rebateTotal, currency: true },
-          { label: "CR Loss", value: crLoss.lostIncentive, currency: true },
+          { label: "Potential loss (est.)", value: crLoss.potentialLoss, currency: true },
         ].map((k) => (
           <Card key={k.label} className="p-3">
             <div className="text-[10px] text-muted-foreground truncate">{k.label}</div>
@@ -1225,7 +1225,7 @@ export function DashboardClient({
                   ["Dealer Incentive", formatPKR(report.totals.dealerIncentiveEarned), false],
                   ["Total from OPPO", formatPKR(report.totals.grandTotal), false],
                   ["Price-Drop Rebates", formatPKR(rebateTotal), true],
-                  ["CR Caught Loss", formatPKR(crLoss.lostIncentive), false],
+                  ["Potential incentive loss (est.)", formatPKR(crLoss.potentialLoss), false],
                 ] as [string, string, boolean][]
               ).map(([k, v, highlight]) => (
                 <div key={k} className="flex justify-between px-4 py-2.5">
@@ -1260,10 +1260,10 @@ export function DashboardClient({
             </p>
             {crLoss.totalUnits > 0 && (
               <div className="rounded-lg bg-muted/50 p-3 text-center">
-                <div className="text-xs text-muted-foreground">CR Caught Loss</div>
+                <div className="text-xs text-muted-foreground">Potential incentive loss (est.)</div>
                 <div className="text-lg font-semibold">{crLoss.totalUnits} units</div>
                 <div className="text-xs text-muted-foreground">
-                  {formatPKR(crLoss.lostIncentive)} est. loss
+                  {formatPKR(crLoss.potentialLoss)} estimated
                 </div>
               </div>
             )}
@@ -1321,8 +1321,8 @@ export function DashboardClient({
           helper={rebateTotal > 0 ? "Price-drop rebates" : "No rebates"}
         />
         <KpiCard
-          label="CR Loss"
-          value={crLoss.lostIncentive}
+          label="Potential incentive loss (est.)"
+          value={crLoss.potentialLoss}
           format="currency"
           icon={<ShieldAlert className="size-4" />}
           highlightZero

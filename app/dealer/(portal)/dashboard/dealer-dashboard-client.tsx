@@ -84,7 +84,7 @@ export interface DashboardData {
       stockInEarned: number;
     }>;
   } | null;
-  crLoss: { lostIncentive: number; totalUnits: number } | null;
+  crLoss: { potentialLoss: number; totalUnits: number } | null;
   initialSales: Array<{ modelId: string; modelName: string; qty: number }>;
   modelsWithIncentiveIds: string[];
   totalReceivable: number;

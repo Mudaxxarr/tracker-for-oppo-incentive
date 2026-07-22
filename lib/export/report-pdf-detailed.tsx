@@ -476,7 +476,7 @@ function RebatesSection({ rows, total }: { rows: RebateRow[]; total: number }) {
 }
 
 // ─── Fines (Step 5) ───────────────────────────────────────────────────────────
-function FinesSection({ rows, loss }: { rows: CrCaughtExportRow[]; loss: { totalUnits: number; lostIncentive: number; totalFines: number } }) {
+function FinesSection({ rows, loss }: { rows: CrCaughtExportRow[]; loss: { totalUnits: number; potentialLoss: number; totalFines: number } }) {
   return (
     <View style={S.tbl}>
       <View style={S.tHead}>
@@ -585,7 +585,7 @@ export async function buildDetailedPDF(
     rebateRows?: RebateRow[];
     rebateTotal?: number;
     crCaughtRows?: CrCaughtExportRow[];
-    crCaughtLoss?: { totalUnits: number; lostIncentive: number; totalFines: number };
+    crCaughtLoss?: { totalUnits: number; potentialLoss: number; totalFines: number };
     /** Live remaining stock of this ID (purchases − activations − transfers out − CR caught). */
     inventory?: StockRow[];
   }
@@ -718,9 +718,9 @@ export async function buildDetailedPDF(
           <>
             <StepHead n={next()} title="Money taken away — cross-region fines" hint="Phones caught being sold outside your region carry a cash penalty. These amounts are subtracted from your payout." />
             <FinesSection rows={crCaughtRows} loss={crCaughtLoss!} />
-            {crCaughtLoss!.lostIncentive > 0 && (
+            {crCaughtLoss!.potentialLoss > 0 && (
               <Text style={[S.stepHint, { marginTop: 5 }]}>
-                Note: on top of the fines, about {fmtPKR(crCaughtLoss!.lostIncentive)} of incentive was lost because these phones do not earn stock-in rewards.
+                Note: on top of the fines, about {fmtPKR(crCaughtLoss!.potentialLoss)} of incentive was likely lost because these phones were not activated on your ID. Stock-in is not included — it stays with whoever purchased from the company.
               </Text>
             )}
           </>

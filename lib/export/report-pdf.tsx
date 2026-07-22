@@ -333,7 +333,7 @@ export async function buildPDF(
     rebateRows?: RebateRow[];
     rebateTotal?: number;
     crCaughtRows?: CrCaughtExportRow[];
-    crCaughtLoss?: { totalUnits: number; lostIncentive: number; totalFines: number };
+    crCaughtLoss?: { totalUnits: number; potentialLoss: number; totalFines: number };
   },
   theme: PdfTheme = NAVAL
 ): Promise<Buffer> {
@@ -535,8 +535,8 @@ export async function buildPDF(
                 </View>
               )}
               <View>
-                <Text style={[S.targetSub, { color: C.red }]}>Est. Lost Incentive</Text>
-                <Text style={[S.targetLabel, { color: C.red }]}>{fmtPKR(crCaughtLoss!.lostIncentive)}</Text>
+                <Text style={[S.targetSub, { color: C.red }]}>Potential incentive loss (est.)</Text>
+                <Text style={[S.targetLabel, { color: C.red }]}>{fmtPKR(crCaughtLoss!.potentialLoss)}</Text>
               </View>
             </View>
           )}
@@ -637,7 +637,7 @@ export async function buildAnalyticsPDF(
     policies?: PolicyAchievementEntry[];
     rebateRows?: RebateRow[];
     crCaughtRows?: CrCaughtExportRow[];
-    crCaughtLoss?: { totalUnits: number; lostIncentive: number; totalFines: number };
+    crCaughtLoss?: { totalUnits: number; potentialLoss: number; totalFines: number };
     rebateTotal?: number;
   },
   theme: PdfTheme = NAVAL
@@ -783,7 +783,7 @@ export async function buildAnalyticsPDF(
             <Text style={[S.targetLabel, { color: C.red }]}>CR Caught:</Text>
             <Text style={[S.targetSub, { color: C.red }]}>{crCaughtLoss.totalUnits} units</Text>
             {crCaughtLoss.totalFines > 0 && <Text style={[S.targetSub, { color: C.red }]}>· Cash Fines: {fmtPKR(crCaughtLoss.totalFines)}</Text>}
-            <Text style={[S.targetSub, { color: C.red }]}>· Est. Lost Incentive: {fmtPKR(crCaughtLoss.lostIncentive)}</Text>
+            <Text style={[S.targetSub, { color: C.red }]}>· Potential incentive loss (est.): {fmtPKR(crCaughtLoss.potentialLoss)}</Text>
           </View>
         )}
         <Footer page={1} total={tp} />
@@ -898,10 +898,14 @@ export async function buildAnalyticsPDF(
                   <Text style={[S.tHCell, { width: "8%",  textAlign: "right" }]}>Qty</Text>
                   <Text style={[S.tHCell, { width: "21%", textAlign: "right" }]}>Price Snapshot</Text>
                   <Text style={[S.tHCell, { width: "14%", textAlign: "right" }]}>Cash Fine</Text>
-                  <Text style={[S.tHCell, { width: "13%", textAlign: "right" }]}>Est. Lost Inc.</Text>
+                  <Text style={[S.tHCell, { width: "13%", textAlign: "right" }]}>Potential loss</Text>
                 </View>
                 {crCaughtRows.map((r, i) => {
-                  const est = r.quantity > 0 ? Math.round(r.quantity * r.dealerPriceSnapshot * (report.baseIncentivePercent / 100) * 1.25) : 0;
+                  // Summed from the engine's own per-row components, so this column always
+                  // adds up to the reported total and respects which policy gates were met.
+                  const est = report.potentialLoss.components
+                    .filter((c) => c.crCaughtId === r.id)
+                    .reduce((s, c) => s + c.amount, 0);
                   return (
                     <View key={i} style={i % 2 === 1 ? S.tAltRow : S.tRow}>
                       <Text style={[S.tCell, { width: "14%", fontSize: 7, color: C.textMuted }]}>{r.caughtDate}</Text>
@@ -1156,7 +1160,7 @@ export async function buildBriefPDF(
     policies?: PolicyAchievementEntry[];
     rebateRows?: RebateRow[];
     rebateTotal?: number;
-    crCaughtLoss?: { totalUnits: number; lostIncentive: number; totalFines: number };
+    crCaughtLoss?: { totalUnits: number; potentialLoss: number; totalFines: number };
   },
   theme: PdfTheme = NAVAL
 ): Promise<Buffer> {

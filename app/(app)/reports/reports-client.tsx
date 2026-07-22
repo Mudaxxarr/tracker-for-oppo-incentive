@@ -61,7 +61,7 @@ interface DealerOpt {
 
 interface CrCaughtLoss {
   totalUnits: number;
-  lostIncentive: number;
+  potentialLoss: number;
   totalFines: number;
   priceUnitSum: number;
 }
@@ -474,7 +474,7 @@ function ReportSection({
             ) : (
               <div className="text-[11px] text-muted-foreground">
                 {crCaughtLoss.totalUnits > 0
-                  ? `${crCaughtLoss.totalUnits} unit${crCaughtLoss.totalUnits !== 1 ? "s" : ""} caught · est. lost ${formatPKR(crCaughtLoss.lostIncentive)}`
+                  ? `${crCaughtLoss.totalUnits} unit${crCaughtLoss.totalUnits !== 1 ? "s" : ""} caught · potential loss ${formatPKR(crCaughtLoss.potentialLoss)}`
                   : "Total incentive"}
               </div>
             )}
@@ -727,9 +727,9 @@ function ReportSection({
                 <div className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{crCaughtLoss.totalUnits}</div>
               </div>
               <div className="bg-card px-4 py-3">
-                <div className="text-[10px] text-muted-foreground">Est. Lost Incentive</div>
-                <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{formatPKR(crCaughtLoss.lostIncentive)}</div>
-                <div className="text-[10px] text-muted-foreground">base% × 1.25 on caught units</div>
+                <div className="text-[10px] text-muted-foreground">Potential incentive loss (est.)</div>
+                <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400">{formatPKR(crCaughtLoss.potentialLoss)}</div>
+                <div className="text-[10px] text-muted-foreground">base % + bonus + incentives earned by met policies</div>
               </div>
               {crCaughtLoss.totalFines > 0 && (
                 <div className="bg-card px-4 py-3">
