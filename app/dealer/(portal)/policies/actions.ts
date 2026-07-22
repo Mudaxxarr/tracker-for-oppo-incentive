@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDealerSession } from "@/lib/dealer-auth";
+import { isAuthenticated } from "@/lib/auth";
 import { getActiveDealerIdForTenant } from "@/lib/dealer-tenant";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { getModelById } from "@/lib/db/queries/models";
@@ -205,6 +206,14 @@ export async function setPolicyReliefAction(
 ): Promise<{ error?: string; ok?: boolean }> {
   const c = await ctx();
   if (!c) return { error: "Not authenticated" };
+  // OWNER-ONLY, even inside the dealer portal. Relief forces a policy's gate — the
+  // very check that verifies the dealer earned the payout. Letting a dealer flip it
+  // would be self-approval: they could pay themselves without hitting any target.
+  // Relief is the company's concession to grant, so it requires an owner session
+  // (i.e. the owner viewing this dealer's portal in preview).
+  if (!(await isAuthenticated())) {
+    return { error: "Only the owner can mark a policy achieved." };
+  }
   if (!Q.isReliefPolicyKind(kind)) return { error: "Unknown policy type" };
 
   const ok = await Q.setPolicyRelief(kind, id, c.tenantId, c.dealerId, granted);
