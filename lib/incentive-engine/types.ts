@@ -33,6 +33,13 @@ export interface EngineTargetBonusPolicy {
   periodEnd: ISODate;
   targetActivationsQty: number;
   bonusPercent: number;
+  /**
+   * Caps how many activated phones earn the bonus once the purchase gate is met.
+   * Counted chronologically across the POLICY window (not the report window) — a
+   * report-window cap would hand out a fresh N every month of a longer policy.
+   * Null = uncapped (every activation earns it).
+   */
+  bonusCapQty?: number | null;
 }
 
 export interface EngineStockInPolicy {
@@ -211,6 +218,13 @@ export interface TargetBonusOutcome {
   targetQty: number | null;
   actualQty: number;
   bonusPercent: number;
+  /** The policy's cap, or null when uncapped. */
+  bonusCapQty: number | null;
+  /** How many of the policy window's activations fall inside the cap. Equals the
+   *  activation count when uncapped. Lets the UI show "500 of 700 earned the 1%". */
+  bonusEligibleQty: number;
+  /** Activations in the policy window, capped or not — the denominator for the above. */
+  policyWindowActivations: number;
 }
 
 export interface DealerIncentiveOutcome {

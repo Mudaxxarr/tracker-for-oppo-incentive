@@ -171,6 +171,9 @@ export const targetBonusPolicies = pgTable(
     periodEnd: isoDate("period_end").notNull(),
     targetActivationsQty: integer("target_activations_qty").notNull(),
     bonusPercent: real("bonus_percent").notNull().default(1),
+    /** Caps how many activated phones earn the bonus, counted chronologically across
+     *  this policy's window. Null = uncapped (every activation earns it). */
+    bonusCapQty: integer("bonus_cap_qty"),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({

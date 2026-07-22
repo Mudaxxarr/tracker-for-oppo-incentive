@@ -29,10 +29,17 @@ const Period = {
   end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 };
 
+/** Blank means "no cap" — an empty form field must become null, not 0. */
+const OptionalCap = z.preprocess(
+  (v) => (v === "" || v == null ? null : v),
+  z.coerce.number().int().positive().nullable()
+);
+
 const TargetBonusSchema = z.object({
   periodStart: Period.start, periodEnd: Period.end,
   targetActivationsQty: z.coerce.number().int().positive(),
   bonusPercent: z.coerce.number().nonnegative(),
+  bonusCapQty: OptionalCap,
 });
 const StockInSchema = z.object({
   modelId: z.string().min(1), periodStart: Period.start, periodEnd: Period.end,

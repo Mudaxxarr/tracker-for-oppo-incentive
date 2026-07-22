@@ -59,6 +59,7 @@ interface TargetBonusRow {
   periodEnd: string;
   targetActivationsQty: number;
   bonusPercent: number;
+  bonusCapQty: number | null;
 }
 
 interface Props {
@@ -201,7 +202,14 @@ export function DealerPoliciesClient(props: Props) {
                       <TableRow key={p.id}>
                         <TableCell>{formatDate(p.periodStart)} → {formatDate(p.periodEnd)}</TableCell>
                         <TableCell label="Target qty" className="text-right tabular-nums">{p.targetActivationsQty}</TableCell>
-                        <TableCell label="Bonus %" className="text-right tabular-nums">{p.bonusPercent}%</TableCell>
+                        <TableCell label="Bonus %" className="text-right tabular-nums">
+                          {p.bonusPercent}%
+                          {p.bonusCapQty != null && (
+                            <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                              (first {p.bonusCapQty})
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell label="Purchased">
                           <MiniProgress current={count} target={p.targetActivationsQty} />
                         </TableCell>
@@ -581,6 +589,13 @@ function TargetBonusForm({ onSuccess }: { onSuccess?: () => void }) {
           <label className="text-xs text-muted-foreground">Bonus %</label>
           <Input name="bonusPercent" type="number" step="any" min={0} defaultValue={1} placeholder="1" required />
         </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Bonus cap (phones)</label>
+          <Input name="bonusCapQty" type="number" min={1} placeholder="Leave blank = no cap" />
+          <p className="text-[10px] text-muted-foreground">
+            Once the purchase target is met, only the first N phones activated in this period earn the bonus.
+          </p>
+        </div>
         <Button type="submit" className="sm:col-span-4" disabled={pending}>
           {pending ? "Saving…" : "Add Target Bonus"}
         </Button>
@@ -649,6 +664,7 @@ function EditTargetBonusRow({ policy, onDone, onCancel }: {
   const [periodEnd, setPeriodEnd] = useState(policy.periodEnd);
   const [targetQty, setTargetQty] = useState(String(policy.targetActivationsQty));
   const [bonusPct, setBonusPct] = useState(String(policy.bonusPercent));
+  const [bonusCapQty, setBonusCapQty] = useState(policy.bonusCapQty == null ? "" : String(policy.bonusCapQty));
   useEffect(() => {
     if (state.ok) { toast.success("Updated"); onDone(); }
     else if (state.error) toast.error(state.error);
@@ -667,6 +683,10 @@ function EditTargetBonusRow({ policy, onDone, onCancel }: {
           <div className="space-y-0.5">
             <label className="text-[10px] text-muted-foreground">Bonus %</label>
             <Input name="bonusPercent" type="number" step="any" min={0} value={bonusPct} onChange={(e) => setBonusPct(e.target.value)} required className="w-24" />
+          </div>
+          <div className="space-y-0.5">
+            <label className="text-[10px] text-muted-foreground">Bonus cap</label>
+            <Input name="bonusCapQty" type="number" min={1} value={bonusCapQty} onChange={(e) => setBonusCapQty(e.target.value)} placeholder="no cap" className="w-24" />
           </div>
           <Button type="submit" size="sm" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>

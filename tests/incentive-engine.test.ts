@@ -537,3 +537,114 @@ describe("incentive-engine: CR-caught potential loss", () => {
     expect(result.potentialLoss.total).toBe(8_000);   // but contributes nothing to the loss
   });
 });
+
+describe("incentive-engine: target-bonus activation cap (#6)", () => {
+  // Gate is on purchases; the cap is on activations. They are independent.
+  const gateMetPurchase = {
+    id: "p1", modelId: MODEL_A.id, quantity: 600, unitDealerPrice: 100_000,
+    purchaseDate: "2026-05-02", source: "REGULAR" as const,
+  };
+  const acts = (n: number, startDay = 1) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `a${startDay}-${i}`,
+      modelId: MODEL_A.id,
+      // spread across the month so chronological order is well defined
+      activationDate: `2026-05-${String(Math.min(28, startDay + Math.floor(i / 40))).padStart(2, "0")}`,
+      dealerPriceSnapshot: 100_000,
+      isCrossRegion: false,
+    }));
+
+  it("pays the bonus on every activation when no cap is set (unchanged behaviour)", () => {
+    const r = calculateIncentives(
+      baseInput({
+        purchases: [gateMetPurchase],
+        activations: acts(700),
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 600, bonusPercent: 1 },
+        ],
+      })
+    );
+    expect(r.targetBonus.eligible).toBe(true);
+    expect(r.targetBonus.bonusCapQty).toBeNull();
+    expect(r.targetBonus.bonusEligibleQty).toBe(700);
+    // 1% of 100k = 1,000 per phone
+    expect(r.totals.bonusPercentEarned).toBe(700_000);
+  });
+
+  it("pays the bonus on only the first N activations when capped", () => {
+    const r = calculateIncentives(
+      baseInput({
+        purchases: [gateMetPurchase],
+        activations: acts(700),
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 600, bonusPercent: 1, bonusCapQty: 500 },
+        ],
+      })
+    );
+    expect(r.targetBonus.bonusCapQty).toBe(500);
+    expect(r.targetBonus.bonusEligibleQty).toBe(500);
+    expect(r.targetBonus.policyWindowActivations).toBe(700);
+    expect(r.totals.bonusPercentEarned).toBe(500_000);
+    // base % is untouched by the cap — all 700 still earn it
+    expect(r.totals.basePercentEarned).toBe(700 * 100_000 * 0.04);
+  });
+
+  it("leaves the bonus alone when the cap exceeds the activation count", () => {
+    const r = calculateIncentives(
+      baseInput({
+        purchases: [gateMetPurchase],
+        activations: acts(100),
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 600, bonusPercent: 1, bonusCapQty: 500 },
+        ],
+      })
+    );
+    expect(r.targetBonus.bonusEligibleQty).toBe(100);
+    expect(r.totals.bonusPercentEarned).toBe(100_000);
+  });
+
+  it("counts the cap across the POLICY window, not the report window", () => {
+    // Policy runs May-June with a cap of 5. Ten phones activate in May, five in June.
+    // Reporting on June alone must show ZERO bonus: May already used the whole cap.
+    const may = Array.from({ length: 10 }, (_, i) => ({
+      id: `may${i}`, modelId: MODEL_A.id, activationDate: "2026-05-10",
+      dealerPriceSnapshot: 100_000, isCrossRegion: false,
+    }));
+    const june = Array.from({ length: 5 }, (_, i) => ({
+      id: `jun${i}`, modelId: MODEL_A.id, activationDate: "2026-06-10",
+      dealerPriceSnapshot: 100_000, isCrossRegion: false,
+    }));
+    const r = calculateIncentives(
+      baseInput({
+        periodStart: "2026-06-01",
+        periodEnd: "2026-06-30",
+        purchases: [{ ...gateMetPurchase, quantity: 20 }],
+        activations: [...may, ...june],
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-06-30", targetActivationsQty: 20, bonusPercent: 1, bonusCapQty: 5 },
+        ],
+      })
+    );
+    expect(r.targetBonus.eligible).toBe(true);
+    expect(r.targetBonus.bonusEligibleQty).toBe(5);
+    expect(r.totals.bonusPercentEarned).toBe(0); // all 5 capped slots were used in May
+    // June's five phones still earn their base %
+    expect(r.totals.basePercentEarned).toBe(5 * 100_000 * 0.04);
+  });
+
+  it("reflects the cap in the price sub-period bonus subtotals", () => {
+    const r = calculateIncentives(
+      baseInput({
+        purchases: [gateMetPurchase],
+        activations: acts(700),
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 600, bonusPercent: 1, bonusCapQty: 500 },
+        ],
+      })
+    );
+    const row = r.rows.find((x) => x.modelId === MODEL_A.id)!;
+    const bonusFromSubperiods = row.priceSubperiods.reduce((s, p) => s + p.bonusPercentSubtotal, 0);
+    expect(bonusFromSubperiods).toBe(row.bonusPercentEarned);
+    expect(bonusFromSubperiods).toBe(500_000);
+  });
+});
