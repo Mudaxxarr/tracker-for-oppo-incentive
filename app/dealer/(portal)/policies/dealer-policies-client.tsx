@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ReliefToggle } from "@/components/feature/relief-toggle";
+import { BulkDealerIncentiveForm } from "@/components/feature/bulk-dealer-incentive-form";
 import { formatDate, formatPKR } from "@/lib/format";
 import {
   createActivationIncentiveAction,
@@ -36,6 +37,7 @@ import {
   updateDealerIncentiveAction,
   type PolicyFormState,
   setPolicyReliefAction,
+  bulkCreateDealerIncentivesAction,
 } from "./actions";
 import { Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -119,6 +121,7 @@ export function DealerPoliciesClient(props: Props) {
   const [, startTransition] = useTransition();
   const [editId, setEditId] = useState<string | null>(null);
   const [showCombinedForm, setShowCombinedForm] = useState(false);
+  const [showCombinedDI, setShowCombinedDI] = useState(false);
 
   const onDelete = (
     type: "target-bonus" | "stock-in" | "combined-stock-in" | "activation-incentive" | "dealer-incentive",
@@ -464,6 +467,30 @@ export function DealerPoliciesClient(props: Props) {
           <PolicyCard title="Add Dealer Incentive">
             <DealerIncentiveForm models={props.models} onSuccess={() => { toast.success("Dealer incentive added"); router.refresh(); }} />
           </PolicyCard>
+          <Card>
+            <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+              <div>
+                <CardTitle className="text-base">Combined Dealer Incentive</CardTitle>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  One activation target counted across all models together; each model paid at its own rate.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowCombinedDI((v) => !v)}>
+                {showCombinedDI ? "Close" : "+ Combined policy"}
+              </Button>
+            </CardHeader>
+            {showCombinedDI && (
+              <CardContent>
+                <BulkDealerIncentiveForm
+                  models={props.models}
+                  action={bulkCreateDealerIncentivesAction}
+                  defaultStart={MonthDefaults().start}
+                  defaultEnd={MonthDefaults().end}
+                  onSuccess={() => { setShowCombinedDI(false); toast.success("Dealer incentives saved"); router.refresh(); }}
+                />
+              </CardContent>
+            )}
+          </Card>
           <Card>
             <CardContent className="p-0">
               <Table>

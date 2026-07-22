@@ -222,3 +222,63 @@ export async function setPolicyReliefAction(
   revalidate();
   return { ok: true };
 }
+
+/**
+ * Combined dealer incentive (audit finding #8) — one period and one shared
+ * activation target across models, with a per-model rate.
+ *
+ * The engine already models this: `targetTotalActivations` is a global threshold
+ * counting every activation, while a policy's `modelId` restricts which activations
+ * earn its rate. So a "combined" policy is simply N per-model rows sharing one
+ * target — no new tables and no new engine pass. This mirrors the owner-side
+ * bulkCreateDealerIncentivesAction so both portals behave identically.
+ */
+const BulkDealerIncentiveSchema = z.object({
+  periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  targetTotalActivations: z.coerce.number().int().min(1, "Target must be ≥ 1"),
+  rows: z.array(z.object({
+    modelId: z.string().min(1, "Model required"),
+    perUnitAmount: z.coerce.number().min(0, "Rate must be ≥ 0"),
+  })).min(1, "Add at least one model"),
+});
+
+export async function bulkCreateDealerIncentivesAction(
+  input: z.infer<typeof BulkDealerIncentiveSchema>
+): Promise<PolicyFormState> {
+  const c = await ctx();
+  if (!c) return { error: "Not authenticated" };
+  const parsed = BulkDealerIncentiveSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { periodStart, periodEnd, targetTotalActivations, rows } = parsed.data;
+  if (periodEnd < periodStart) return { error: "End date must be on/after start date" };
+
+  // Reject duplicate models up front: two rows for the same model would both earn,
+  // silently paying that model twice for the same activation.
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (seen.has(row.modelId)) return { error: "Each model can appear only once" };
+    seen.add(row.modelId);
+  }
+
+  for (const row of rows) {
+    const id = await Q.createDealerIncentivePolicy({
+      tenantId: c.tenantId,
+      dealerId: c.dealerId,
+      modelId: row.modelId,
+      periodStart,
+      periodEnd,
+      targetTotalActivations,
+      perUnitAmount: row.perUnitAmount,
+    });
+    await logAudit({
+      action: "policy.dealer_incentive.create",
+      entityType: "dealer_incentive_policy",
+      entityId: id,
+      summary: `Dealer Incentive (${row.modelId}): ${formatPKR(row.perUnitAmount)}/unit if ${targetTotalActivations} total (${periodStart} → ${periodEnd})`,
+      payload: { ...row, periodStart, periodEnd, targetTotalActivations },
+    });
+  }
+  revalidate();
+  return { ok: true };
+}
