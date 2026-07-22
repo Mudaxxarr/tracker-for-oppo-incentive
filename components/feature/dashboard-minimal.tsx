@@ -27,7 +27,7 @@ export interface DashboardMinimalViewProps {
   rebateTotal: number;
   totalActualFines: number;
   lostMargin: number;
-  crLoss: { lostIncentive: number; totalUnits: number; totalFines: number; priceUnitSum: number };
+  crLoss: { potentialLoss: number; totalUnits: number; totalFines: number; priceUnitSum: number };
   pendingCount: number;
   stock: StockItem[];
   modelSales: ModelSaleRow[];

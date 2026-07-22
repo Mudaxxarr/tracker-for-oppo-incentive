@@ -7,7 +7,6 @@ import { isAnyAuthenticated } from "@/lib/auth";
 import { buildIncentiveReport } from "@/lib/incentive-engine/loader";
 import { getCrCaughtLoss, listCrCaughtForPeriod } from "@/lib/db/queries/cr-caught";
 import { sumRebatesForPeriod, listRebatesForDealerInPeriod } from "@/lib/db/queries/rebates";
-import { getConstants } from "@/lib/settings";
 import type { IncentiveReport } from "@/lib/incentive-engine/types";
 
 export interface ModelSaleRow {
@@ -64,7 +63,7 @@ export interface CrCaughtExportRow {
 export interface DashboardPeriodResult {
   report: IncentiveReport;
   modelSales: ModelSaleRow[];
-  crLoss: { lostIncentive: number; totalUnits: number; totalFines: number; priceUnitSum: number };
+  crLoss: { potentialLoss: number; totalUnits: number; totalFines: number; priceUnitSum: number };
   rebateTotal: number;
   rebateRows: RebateDetailRow[];
   crCaughtRows: CrCaughtExportRow[];
@@ -77,11 +76,10 @@ export async function getDashboardPeriodAction(
   if (!(await isAnyAuthenticated())) return null;
   const dealerId = await getActiveDealerId();
   if (!dealerId) return null;
-  const constants = await getConstants();
   const [report, modelSales, crLoss, rebateTotal, rebateRowsFull, crCaughtRows] = await Promise.all([
     buildIncentiveReport({ dealerId, periodStart: from, periodEnd: to }),
     getModelSalesAction(from, to),
-    getCrCaughtLoss(OWNER_TENANT_ID, dealerId, from, to, constants.basePercent),
+    getCrCaughtLoss(OWNER_TENANT_ID, dealerId, from, to),
     sumRebatesForPeriod(OWNER_TENANT_ID, dealerId, from, to),
     listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealerId, from, to),
     listCrCaughtForPeriod(OWNER_TENANT_ID, dealerId, from, to),
@@ -91,5 +89,12 @@ export async function getDashboardPeriodAction(
     eligibleQty: r.eligibleQty,
     rebatePerUnit: r.rebatePerUnit,
   }));
-  return { report, modelSales, crLoss, rebateTotal, rebateRows, crCaughtRows };
+  return {
+    report,
+    modelSales,
+    crLoss: { ...crLoss, potentialLoss: report.potentialLoss.total },
+    rebateTotal,
+    rebateRows,
+    crCaughtRows,
+  };
 }

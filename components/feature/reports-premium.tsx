@@ -21,7 +21,7 @@ import type { RebateRow } from "@/lib/db/queries/rebates";
 
 interface CrCaughtLoss {
   totalUnits: number;
-  lostIncentive: number;
+  potentialLoss: number;
   totalFines: number;
   priceUnitSum: number;
 }
@@ -555,9 +555,9 @@ export function ReportSectionPremium({
                 <p className="text-3xl font-black tabular-nums text-[#9F2F2D]">{crCaughtLoss.totalUnits}</p>
               </div>
               <div className="px-5 py-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#787774] mb-2">Est. Lost Incentive</p>
-                <p className="text-2xl font-black tabular-nums text-[#9F2F2D]">{formatPKR(crCaughtLoss.lostIncentive)}</p>
-                <p className="text-[10px] text-[#787774] mt-1">base% × 1.25 on caught units</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#787774] mb-2">Potential incentive loss (est.)</p>
+                <p className="text-2xl font-black tabular-nums text-[#9F2F2D]">{formatPKR(crCaughtLoss.potentialLoss)}</p>
+                <p className="text-[10px] text-[#787774] mt-1">base % + bonus + incentives earned by met policies</p>
               </div>
               {crCaughtLoss.totalFines > 0 && (
                 <div className="px-5 py-4">

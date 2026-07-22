@@ -470,3 +470,70 @@ describe("incentive-engine: transfer stock-in rules (purchaser keeps stock-in)",
     expect(b).toBe(7_500); // identical — the transfer out changed nothing
   });
 });
+
+describe("incentive-engine: CR-caught potential loss", () => {
+  it("reports zero loss when no CR-caught rows are supplied", () => {
+    const result = calculateIncentives(baseInput());
+    expect(result.potentialLoss.total).toBe(0);
+    expect(result.potentialLoss.totalUnits).toBe(0);
+  });
+
+  it("uses the report's own resolved gates, not a re-derivation", () => {
+    // 50 REGULAR purchases meet the 1% target-bonus gate of 50.
+    const result = calculateIncentives(
+      baseInput({
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 50, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
+        ],
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 50, bonusPercent: 1 },
+        ],
+        crCaught: [
+          { id: "cr1", modelId: MODEL_A.id, quantity: 2, caughtDate: "2026-05-20", dealerPriceSnapshot: 100_000 },
+        ],
+      })
+    );
+    expect(result.targetBonus.eligible).toBe(true);
+    // base 4% on 2 * 100k = 8,000; bonus 1% = 2,000
+    expect(result.potentialLoss.basePercentLost).toBe(8_000);
+    expect(result.potentialLoss.bonusPercentLost).toBe(2_000);
+    expect(result.potentialLoss.total).toBe(10_000);
+  });
+
+  it("drops the bonus from the loss when the report's bonus gate was missed", () => {
+    const result = calculateIncentives(
+      baseInput({
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 10, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
+        ],
+        targetBonusPolicies: [
+          { id: "tbp1", periodStart: "2026-05-01", periodEnd: "2026-05-31", targetActivationsQty: 50, bonusPercent: 1 },
+        ],
+        crCaught: [
+          { id: "cr1", modelId: MODEL_A.id, quantity: 2, caughtDate: "2026-05-20", dealerPriceSnapshot: 100_000 },
+        ],
+      })
+    );
+    expect(result.targetBonus.eligible).toBe(false);
+    expect(result.potentialLoss.bonusPercentLost).toBe(0);
+    expect(result.potentialLoss.total).toBe(8_000);
+  });
+
+  it("never lets a met stock-in policy leak into the loss", () => {
+    const result = calculateIncentives(
+      baseInput({
+        purchases: [
+          { id: "p1", modelId: MODEL_A.id, quantity: 20, unitDealerPrice: 100_000, purchaseDate: "2026-05-02", source: "REGULAR" },
+        ],
+        stockInPolicies: [
+          { id: "sip1", modelId: MODEL_A.id, periodStart: "2026-05-01", periodEnd: "2026-05-31", perUnitAmount: 1_000, minQty: 5 },
+        ],
+        crCaught: [
+          { id: "cr1", modelId: MODEL_A.id, quantity: 2, caughtDate: "2026-05-20", dealerPriceSnapshot: 100_000 },
+        ],
+      })
+    );
+    expect(result.totals.stockInEarned).toBe(20_000); // stock-in did pay
+    expect(result.potentialLoss.total).toBe(8_000);   // but contributes nothing to the loss
+  });
+});

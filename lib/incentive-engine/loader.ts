@@ -117,7 +117,7 @@ export async function buildIncentiveReport(input: {
   for (const p of dealerIncentivePolicies) apply(p.periodStart, p.periodEnd);
   for (const p of combinedStockInPolicies) apply(p.periodStart, p.periodEnd);
 
-  const [activations, purchases, interIdOut] = await Promise.all([
+  const [activations, purchases, interIdOut, crCaught] = await Promise.all([
     db
       .select()
       .from(schema.activations)
@@ -151,6 +151,21 @@ export async function buildIncentiveReport(input: {
           gte(schema.interIdTransfers.transferDate, minStart),
           lte(schema.interIdTransfers.transferDate, maxEnd),
           eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED)
+        ) as SQL
+      ),
+    // Bounded by the REPORT window, not the widened policy-gate window: the loss is
+    // reported for the period on screen. Pending rows are excluded — an SO's CR transfer
+    // does not move stock until the owner approves it.
+    db
+      .select()
+      .from(schema.crCaught)
+      .where(
+        and(
+          eq(schema.crCaught.tenantId, dataTenantId),
+          eq(schema.crCaught.dealerId, dealerId),
+          gte(schema.crCaught.caughtDate, periodStart),
+          lte(schema.crCaught.caughtDate, periodEnd),
+          ne(schema.crCaught.status, "pending_owner_approval")
         ) as SQL
       ),
   ]);
@@ -200,6 +215,13 @@ export async function buildIncentiveReport(input: {
       modelId: t.modelId,
       quantity: t.quantity,
       transferDate: t.transferDate,
+    })),
+    crCaught: crCaught.map((c) => ({
+      id: c.id,
+      modelId: c.modelId,
+      quantity: c.quantity,
+      caughtDate: c.caughtDate,
+      dealerPriceSnapshot: c.dealerPriceSnapshot,
     })),
   };
 

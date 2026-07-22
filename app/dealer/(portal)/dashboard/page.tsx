@@ -11,7 +11,6 @@ import { differenceInCalendarDays, parseISO } from "date-fns";
 import { buildIncentiveReport, buildMonthlyEarnings } from "@/lib/incentive-engine/loader";
 import { getCrCaughtLoss } from "@/lib/db/queries/cr-caught";
 import { sumRebatesForPeriod } from "@/lib/db/queries/rebates";
-import { getConstants } from "@/lib/settings";
 import { db, schema } from "@/lib/db/client";
 import { PURCHASE_REVIEW_STATUS } from "@/lib/constants";
 import { and, eq, gte, lte, ne, sql } from "drizzle-orm";
@@ -59,10 +58,9 @@ export default async function DealerDashboardPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  const [stats, session, constants, sp] = await Promise.all([
+  const [stats, session, sp] = await Promise.all([
     getDealerDashboardStats(),
     getDealerSession(),
-    getConstants(),
     searchParams,
   ]);
 
@@ -103,7 +101,7 @@ export default async function DealerDashboardPage({
 
   const [report, crLoss, initialSales, rebateEarned, sixMonthEarnings, periodPurchaseQtyRows, stockOldestRaw, prevReport, prevRebateEarned, last7Activations] = await Promise.all([
     buildIncentiveReport({ dealerId, periodStart: startStr, periodEnd: endStr, dataTenantId: stats.tenantId }),
-    getCrCaughtLoss(stats.tenantId, dealerId, startStr, endStr, constants.basePercent),
+    getCrCaughtLoss(stats.tenantId, dealerId, startStr, endStr),
     dealerGetModelSalesAction(startStr, endStr),
     sumRebatesForPeriod(stats.tenantId, dealerId, startStr, endStr),
     buildMonthlyEarnings(dealerId, sixMonths, stats.tenantId)
@@ -186,8 +184,8 @@ export default async function DealerDashboardPage({
   }));
 
   const crFines = crLoss?.totalFines ?? 0;
-  const lostIncentive = crLoss?.lostIncentive ?? 0;
-  const riskExposure = lostIncentive + crFines;
+  const potentialLoss = report.potentialLoss.total;
+  const riskExposure = potentialLoss + crFines;
   const periodPurchaseUnits = Number(periodPurchaseQtyRows[0]?.qty ?? 0);
 
   const cutoff = new Date();
@@ -267,7 +265,7 @@ export default async function DealerDashboardPage({
         stockInEarned: r.stockInEarned,
       })),
     },
-    crLoss,
+    crLoss: { ...crLoss, potentialLoss },
     initialSales,
     modelsWithIncentiveIds: [...modelsWithIncentive],
     totalReceivable,

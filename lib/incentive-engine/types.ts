@@ -87,6 +87,15 @@ export interface EngineInterIdOut {
   transferDate: ISODate;
 }
 
+/** A cross-region-caught record: stock that left this ID and was caught. */
+export interface EngineCrCaught {
+  id: string;
+  modelId: string;
+  quantity: number;
+  caughtDate: ISODate;
+  dealerPriceSnapshot: number;
+}
+
 export interface EngineModel {
   id: string;
   name: string;
@@ -112,6 +121,8 @@ export interface EngineInput {
   combinedStockInPolicies?: EngineCombinedStockInPolicy[];
   /** Phones that left this dealer ID via inter-ID transfer; subtracted from stock-in qty. */
   interIdOut?: EngineInterIdOut[];
+  /** CR-caught rows in the report window. Drives `potentialLoss`. Omit to skip the calculation. */
+  crCaught?: EngineCrCaught[];
 }
 
 // ---------- Report types ----------
@@ -180,9 +191,10 @@ export interface IncentiveReportRow {
 
   stockInRegularQty: number;
   stockInCrossRegionQty: number;
-  /** Phones that left via inter-ID transfer in the report period (subtracted from stock-in qty). */
+  /** Phones that left via inter-ID transfer in the report period. Informational only —
+   *  outbound transfers never reduce stock-in (the purchaser keeps it). */
   interIdOutQty: number;
-  /** Effective qty used for stock-in calculation: max(0, regular − interIdOut). */
+  /** Qty used for stock-in calculation: REGULAR (direct company) purchases only. */
   effectiveStockInQty: number;
   stockInEarned: number;
   /** Per-policy breakdown; one entry per overlapping stock-in policy. */
@@ -211,6 +223,36 @@ export interface DealerIncentiveOutcome {
   earned: number;
 }
 
+/** One line of the potential-loss audit trail. `amount` is 0 whenever `gateMet` is false. */
+export interface CrLossComponent {
+  /** The CR-caught row this line belongs to, so consumers can show a per-row split
+   *  that always sums back to `total` instead of recomputing a formula of their own. */
+  crCaughtId: string;
+  kind: "base" | "bonus" | "activationIncentive" | "dealerIncentive";
+  /** null for `base`, which has no backing policy. */
+  policyId: string | null;
+  gateMet: boolean;
+  amount: number;
+}
+
+/**
+ * What the CR-caught units would have earned had they stayed and been activated.
+ *
+ * An estimate, not a ledger entry: it is never deducted from any total. Stock-in is
+ * deliberately absent — stock-in belongs to whoever purchased from the company and is
+ * never reversed when the stock leaves.
+ */
+export interface CrCaughtPotentialLoss {
+  totalUnits: number;
+  basePercentLost: number;
+  bonusPercentLost: number;
+  activationIncentiveLost: number;
+  dealerIncentiveLost: number;
+  total: number;
+  /** Every component considered, including the zeroed ones — so the UI can explain a zero. */
+  components: CrLossComponent[];
+}
+
 export interface IncentiveReport {
   dealerId: string;
   periodStart: ISODate;
@@ -227,6 +269,8 @@ export interface IncentiveReport {
   /** Grouped stock-in policies evaluated this period. Earnings are also folded
    *  into each model row's `stockInEarned` + totals; this is the detail view. */
   combinedStockInLedger: CombinedStockInLedger[];
+  /** Estimated incentive lost to CR-caught units. Informational — not part of `totals`. */
+  potentialLoss: CrCaughtPotentialLoss;
 
   rows: IncentiveReportRow[];
 

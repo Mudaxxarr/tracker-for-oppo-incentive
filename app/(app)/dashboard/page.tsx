@@ -6,7 +6,6 @@ import { getCrCaughtLoss, listCrCaughtForPeriod } from "@/lib/db/queries/cr-caug
 import { sumRebatesForPeriod, listRebatesForDealerInPeriod } from "@/lib/db/queries/rebates";
 import { db, schema } from "@/lib/db/client";
 import { and, eq, sql } from "drizzle-orm";
-import { getConstants } from "@/lib/settings";
 import { isAuthenticated } from "@/lib/auth";
 import { TEST_SANDBOX_TENANT_ID } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +45,6 @@ export default async function DashboardPage() {
   }
 
   const { startStr, endStr } = monthBounds();
-  const constants = await getConstants();
 
   const [report, sixMonths, pendingCount, stock, transfers, allDealers, initialSales, crLoss, crStock, initialRebateTotal, initialRebateRowsFull, stockOldestRaw, initialCrFineTotal, initialCrCaughtRows] =
     await Promise.all([
@@ -57,7 +55,7 @@ export default async function DashboardPage() {
       listInterIdTransfers(OWNER_TENANT_ID, dealer.id),
       listDealerIds(),
       getModelSalesAction(startStr, endStr),
-      getCrCaughtLoss(OWNER_TENANT_ID, dealer.id, startStr, endStr, constants.basePercent),
+      getCrCaughtLoss(OWNER_TENANT_ID, dealer.id, startStr, endStr),
       getCrStockSummary(OWNER_TENANT_ID, dealer.id),
       sumRebatesForPeriod(OWNER_TENANT_ID, dealer.id, startStr, endStr),
       listRebatesForDealerInPeriod(OWNER_TENANT_ID, dealer.id, startStr, endStr),
@@ -135,7 +133,7 @@ export default async function DashboardPage() {
         initialTo={endStr}
         initialReport={report}
         initialModelSales={initialSales}
-        initialCrLoss={crLoss}
+        initialCrLoss={{ ...crLoss, potentialLoss: report.potentialLoss.total }}
         initialRebateTotal={initialRebateTotal}
         initialRebateRows={initialRebateRows}
         stockOldestDate={stockOldestDate}
