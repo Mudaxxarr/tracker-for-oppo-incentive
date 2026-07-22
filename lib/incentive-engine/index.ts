@@ -12,6 +12,7 @@ import type {
   ISODate,
 } from "./types";
 import { inRange, round2, buildActivationIncentiveLedger } from "./shared";
+import { computeCrCaughtLoss } from "./cr-loss";
 
 export type * from "./types";
 
@@ -73,6 +74,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
     dealerIncentivePolicies,
     combinedStockInPolicies = [],
     interIdOut = [],
+    crCaught = [],
   } = input;
 
   if (periodEnd < periodStart) {
@@ -381,6 +383,17 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
   const totalActivations = reportActivations.length;
   const totalActivationsCross = reportActivations.filter((a) => a.isCrossRegion).length;
 
+  // Estimated incentive lost to CR-caught units. Computed last, so it reads the gate
+  // outcomes this report already resolved rather than deriving its own.
+  const potentialLoss = computeCrCaughtLoss({
+    crCaught: crCaught.filter((c) => inRange(c.caughtDate, periodStart, periodEnd)),
+    baseIncentivePercent,
+    targetBonus,
+    dealerIncentives: dipStatuses.map((ds) => ({ policy: ds.policy, eligible: ds.eligible })),
+    activationIncentivePolicies,
+    activations,
+  });
+
   return {
     dealerId,
     periodStart,
@@ -401,6 +414,7 @@ export function calculateIncentives(input: EngineInput): IncentiveReport {
       earned: round2(ds.earned),
     })),
     combinedStockInLedger,
+    potentialLoss,
     rows,
     totals: {
       basePercentEarned: round2(totalsBase),
