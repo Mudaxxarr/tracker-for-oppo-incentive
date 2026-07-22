@@ -176,6 +176,9 @@ export const targetBonusPolicies = pgTable(
     /** Caps how many activated phones earn the bonus, counted chronologically across
      *  this policy's window. Null = uncapped (every activation earns it). */
     bonusCapQty: integer("bonus_cap_qty"),
+    /** Company relief: owner marks the policy achieved even though the target was
+     *  not met. Forces the gate; the reward still computes on actual activity. */
+    reliefGranted: boolean("relief_granted").notNull().default(false),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -201,6 +204,9 @@ export const stockInPolicies = pgTable(
     periodEnd: isoDate("period_end").notNull(),
     perUnitAmount: real("per_unit_amount").notNull(),
     minQty: integer("min_qty"),
+    /** Company relief: owner marks the policy achieved even though the target was
+     *  not met. Forces the gate; the reward still computes on actual activity. */
+    reliefGranted: boolean("relief_granted").notNull().default(false),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -226,6 +232,9 @@ export const combinedStockInPolicies = pgTable(
     periodStart: isoDate("period_start").notNull(),
     periodEnd: isoDate("period_end").notNull(),
     targetQty: integer("target_qty").notNull(),
+    /** Company relief: owner marks the policy achieved even though the target was
+     *  not met. Forces the gate; the reward still computes on actual activity. */
+    reliefGranted: boolean("relief_granted").notNull().default(false),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -269,6 +278,9 @@ export const activationIncentivePolicies = pgTable(
     periodEnd: isoDate("period_end").notNull(),
     perUnitAmount: real("per_unit_amount").notNull(),
     targetQty: integer("target_qty"),
+    /** Company relief: owner marks the policy achieved even though the target was
+     *  not met. Forces the gate; the reward still computes on actual activity. */
+    reliefGranted: boolean("relief_granted").notNull().default(false),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({
@@ -296,6 +308,9 @@ export const dealerIncentivePolicies = pgTable(
     targetTotalActivations: integer("target_total_activations").notNull(),
     perUnitAmount: real("per_unit_amount").notNull(),
     planId: text("plan_id"),
+    /** Company relief: owner marks the policy achieved even though the target was
+     *  not met. Forces the gate; the reward still computes on actual activity. */
+    reliefGranted: boolean("relief_granted").notNull().default(false),
     createdAt: isoDateTime("created_at").notNull(),
   },
   (t) => ({

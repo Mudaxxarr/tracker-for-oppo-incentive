@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ReliefToggle } from "@/components/feature/relief-toggle";
 import { formatDate, formatPKR } from "@/lib/format";
 import {
   createActivationIncentiveAction,
@@ -34,6 +35,7 @@ import {
   updateActivationIncentiveAction,
   updateDealerIncentiveAction,
   type PolicyFormState,
+  setPolicyReliefAction,
 } from "./actions";
 import { Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -60,6 +62,7 @@ interface TargetBonusRow {
   targetActivationsQty: number;
   bonusPercent: number;
   bonusCapQty: number | null;
+  reliefGranted: boolean;
 }
 
 interface Props {
@@ -217,6 +220,9 @@ export function DealerPoliciesClient(props: Props) {
                           {isLive(p.periodStart, p.periodEnd)
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
+                          <div className="mt-1">
+                            <ReliefToggle kind="target_bonus" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -284,6 +290,9 @@ export function DealerPoliciesClient(props: Props) {
                           {isLive(p.periodStart, p.periodEnd)
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
+                          <div className="mt-1">
+                            <ReliefToggle kind="stock_in" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -362,6 +371,9 @@ export function DealerPoliciesClient(props: Props) {
                             {isLive(p.periodStart, p.periodEnd)
                               ? <Badge>Live</Badge>
                               : <Badge variant="secondary">Expired</Badge>}
+                            <div className="mt-1">
+                              <ReliefToggle kind="combined_stock_in" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Button variant="ghost" size="icon" onClick={() => onDelete("combined-stock-in", p.id, "combined stock-in policy")}>
@@ -424,6 +436,9 @@ export function DealerPoliciesClient(props: Props) {
                           {isLive(p.periodStart, p.periodEnd)
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
+                          <div className="mt-1">
+                            <ReliefToggle kind="activation_incentive" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -490,6 +505,9 @@ export function DealerPoliciesClient(props: Props) {
                           {isLive(p.periodStart, p.periodEnd)
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
+                          <div className="mt-1">
+                            <ReliefToggle kind="dealer_incentive" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
