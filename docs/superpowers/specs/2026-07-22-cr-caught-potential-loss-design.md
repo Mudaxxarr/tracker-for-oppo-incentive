@@ -34,6 +34,12 @@ const lostIncentive = Math.round(priceUnitSum * (basePct / 100) * 1.25);
   Money the dealer was never going to earn was not lost. Base % has no gate, so it always counts.
 - **Stock-in is never part of the loss.** Per the Phase 1 locked rule, stock-in belongs to
   whoever purchased from the company and is never reversed when stock leaves.
+- **Pending CR rows do not count.** `getCrCaughtLoss` is the only one of the five CR-caught
+  queries missing the `ne(status, "pending_owner_approval")` filter that the other four apply
+  (lines 96, 112, 129, 165), so unapproved rows currently inflate both the loss and `totalFines`.
+  This contradicts the locked decision that an SO's CR transfer does not move stock until the
+  owner approves it. The filter is added, correcting **both** numbers. Dealers holding pending
+  CR rows will see their displayed loss and fines drop — that is the correction, not a regression.
 
 ## Architecture
 
