@@ -180,9 +180,10 @@ export interface IncentiveReportRow {
 
   stockInRegularQty: number;
   stockInCrossRegionQty: number;
-  /** Phones that left via inter-ID transfer in the report period (subtracted from stock-in qty). */
+  /** Phones that left via inter-ID transfer in the report period. Informational only —
+   *  outbound transfers never reduce stock-in (the purchaser keeps it). */
   interIdOutQty: number;
-  /** Effective qty used for stock-in calculation: max(0, regular − interIdOut). */
+  /** Qty used for stock-in calculation: REGULAR (direct company) purchases only. */
   effectiveStockInQty: number;
   stockInEarned: number;
   /** Per-policy breakdown; one entry per overlapping stock-in policy. */

@@ -1,6 +1,5 @@
 import type {
   EngineActivation,
-  EngineActivationIncentivePolicy,
   EngineDealerIncentivePolicy,
   EngineInput,
   EngineTargetBonusPolicy,
@@ -9,19 +8,12 @@ import type {
   PriceSubperiod,
   StockInPolicyLedger,
   CombinedStockInLedger,
-  ActivationIncentivePolicyLedger,
   TargetBonusOutcome,
   ISODate,
 } from "./types";
+import { inRange, round2, buildActivationIncentiveLedger } from "./shared";
 
 export type * from "./types";
-
-/** Inclusive ISO-date interval check. ISO `YYYY-MM-DD` sorts lexically. */
-const inRange = (d: ISODate, start: ISODate, end: ISODate): boolean =>
-  d >= start && d <= end;
-
-/** Round to 2 decimals (PKR is whole-rupee in practice; this avoids float fuzz). */
-const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
  * Find the most-recent target-bonus policy whose window covers the report period.
@@ -51,47 +43,6 @@ function pickTargetBonusPolicy(
   );
   if (overlapping.length === 0) return null;
   return overlapping.sort((a, b) => (a.periodStart < b.periodStart ? 1 : -1))[0];
-}
-
-
-/**
- * Builds a per-policy activation-incentive ledger for one model.
- * Each overlapping policy is evaluated independently — their earned amounts accumulate (+=).
- * Threshold check uses ALL dealer activations in the policy window (not just the report slice).
- * Earning qty is the intersection of the policy window and the report window.
- */
-function buildActivationIncentiveLedger(
-  policies: EngineActivationIncentivePolicy[],
-  modelId: string,
-  periodStart: ISODate,
-  periodEnd: ISODate,
-  reportWindowActivations: EngineActivation[], // already filtered to report window
-  allActivations: EngineActivation[],           // full input, for threshold gate
-): ActivationIncentivePolicyLedger[] {
-  const overlapping = policies.filter(
-    (p) => p.modelId === modelId && p.periodStart <= periodEnd && p.periodEnd >= periodStart
-  );
-  return overlapping.map((p) => {
-    // Threshold: total activations in the policy's own window (may extend outside report window)
-    const thresholdQty = allActivations.filter(
-      (a) => a.modelId === modelId && inRange(a.activationDate, p.periodStart, p.periodEnd)
-    ).length;
-    const met = p.targetQty == null ? thresholdQty > 0 : thresholdQty >= p.targetQty;
-    // Earning: activations in the intersection of policy window and report window
-    const eligibleQty = reportWindowActivations.filter(
-      (a) => inRange(a.activationDate, p.periodStart, p.periodEnd)
-    ).length;
-    return {
-      policyId: p.id,
-      periodStart: p.periodStart,
-      periodEnd: p.periodEnd,
-      perUnitAmount: p.perUnitAmount,
-      targetQty: p.targetQty,
-      eligibleQty,
-      earned: met ? round2(eligibleQty * p.perUnitAmount) : 0,
-      met,
-    };
-  });
 }
 
 
