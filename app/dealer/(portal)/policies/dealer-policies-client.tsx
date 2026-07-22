@@ -75,6 +75,8 @@ interface Props {
   activationIncentive: ActivationIncentivePolicyRow[];
   dealerIncentive: DealerIncentivePolicyRow[];
   achievements: PolicyAchievements;
+  /** Relief is owner-only; dealers must not be able to force their own gates. */
+  canGrantRelief: boolean;
   hasDealer: boolean;
 }
 
@@ -224,7 +226,7 @@ export function DealerPoliciesClient(props: Props) {
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
                           <div className="mt-1">
-                            <ReliefToggle kind="target_bonus" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                            {props.canGrantRelief && <ReliefToggle kind="target_bonus" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -294,7 +296,7 @@ export function DealerPoliciesClient(props: Props) {
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
                           <div className="mt-1">
-                            <ReliefToggle kind="stock_in" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                            {props.canGrantRelief && <ReliefToggle kind="stock_in" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -375,7 +377,7 @@ export function DealerPoliciesClient(props: Props) {
                               ? <Badge>Live</Badge>
                               : <Badge variant="secondary">Expired</Badge>}
                             <div className="mt-1">
-                              <ReliefToggle kind="combined_stock_in" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                              {props.canGrantRelief && <ReliefToggle kind="combined_stock_in" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -440,7 +442,7 @@ export function DealerPoliciesClient(props: Props) {
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
                           <div className="mt-1">
-                            <ReliefToggle kind="activation_incentive" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                            {props.canGrantRelief && <ReliefToggle kind="activation_incentive" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -533,7 +535,7 @@ export function DealerPoliciesClient(props: Props) {
                             ? <Badge>Live</Badge>
                             : <Badge variant="secondary">Expired</Badge>}
                           <div className="mt-1">
-                            <ReliefToggle kind="dealer_incentive" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />
+                            {props.canGrantRelief && <ReliefToggle kind="dealer_incentive" id={p.id} granted={p.reliefGranted} action={setPolicyReliefAction} />}
                           </div>
                         </TableCell>
                         <TableCell>

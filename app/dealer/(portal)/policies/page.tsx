@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getDealerSession } from "@/lib/dealer-auth";
+import { isAuthenticated } from "@/lib/auth";
 import { getTenantFeaturesById } from "@/lib/admin/dealers";
 import { isFeatureEnabled } from "@/lib/dealer-features";
 import { FeatureDisabled } from "@/components/dealer/feature-disabled";
@@ -100,6 +101,7 @@ export default async function DealerPoliciesPage() {
         dealerIncentive={[]}
         achievements={{ targetBonus: {}, stockIn: {}, combinedStockIn: {}, activationIncentive: {}, dealerIncentive: {} }}
         hasDealer={false}
+        canGrantRelief={false}
       />
     );
   }
@@ -125,6 +127,7 @@ export default async function DealerPoliciesPage() {
       dealerIncentive={di}
       achievements={achievements}
       hasDealer
+      canGrantRelief={await isAuthenticated()}
     />
   );
 }
