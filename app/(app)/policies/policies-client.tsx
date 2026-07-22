@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ReliefToggle } from "@/components/feature/relief-toggle";
+import { BulkDealerIncentiveForm } from "@/components/feature/bulk-dealer-incentive-form";
 import { formatDate, formatPKR } from "@/lib/format";
 import {
   createActivationIncentiveAction,
@@ -467,7 +468,13 @@ export function PoliciesClient(props: Props) {
             <strong>How it works:</strong> Set ONE overall activation target for the month. Once total activations across all models hit that number, every model activated in the period earns its own per-unit rate.
           </div>
           <PolicyCard title="Set Monthly Dealer Incentives">
-            <BulkDealerIncentiveForm models={props.models} onSuccess={() => { toast.success("Dealer incentives saved"); router.refresh(); }} />
+            <BulkDealerIncentiveForm
+              models={props.models}
+              action={bulkCreateDealerIncentivesAction}
+              defaultStart={MonthDefaults().start}
+              defaultEnd={MonthDefaults().end}
+              onSuccess={() => { toast.success("Dealer incentives saved"); router.refresh(); }}
+            />
           </PolicyCard>
           <Card>
             <CardContent className="p-0">
@@ -814,78 +821,6 @@ function EditDealerIncentiveRow({ policy, onDone, onCancel }: {
         </form>
       </TableCell>
     </TableRow>
-  );
-}
-
-function BulkDealerIncentiveForm({ models, onSuccess }: { models: ModelWithCurrentPrice[]; onSuccess?: () => void }) {
-  const { start, end } = MonthDefaults();
-  const [periodStart, setPeriodStart] = useState(start);
-  const [periodEnd, setPeriodEnd] = useState(end);
-  const [target, setTarget] = useState("");
-  const [rates, setRates] = useState<Record<string, string>>({});
-  const [pending, setPending] = useState(false);
-  const [, startTransition] = useTransition();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const rows = models
-      .filter((m) => rates[m.id] && Number(rates[m.id]) > 0)
-      .map((m) => ({ modelId: m.id, perUnitAmount: Number(rates[m.id]) }));
-    if (!rows.length) { toast.error("Enter at least one model rate"); return; }
-    if (!target || Number(target) < 1) { toast.error("Enter a valid overall target"); return; }
-    setPending(true);
-    startTransition(async () => {
-      const res = await bulkCreateDealerIncentivesAction({
-        periodStart,
-        periodEnd,
-        targetTotalActivations: Number(target),
-        rows,
-      });
-      setPending(false);
-      if (res.ok) { setRates({}); setTarget(""); onSuccess?.(); }
-      else toast.error(res.error ?? "Failed");
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Period start</label>
-          <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} required />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Period end</label>
-          <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required />
-        </div>
-      </div>
-      <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2.5 dark:border-amber-800/50 dark:bg-amber-950/20">
-        <label className="text-xs font-medium text-amber-700 dark:text-amber-400">Overall Activation Target</label>
-        <p className="mb-1.5 mt-0.5 text-xs text-muted-foreground">
-          Once total activations across all models reach this number, every model below earns its rate.
-        </p>
-        <Input type="number" min={1} placeholder="e.g. 100" value={target} onChange={(e) => setTarget(e.target.value)} className="max-w-[140px]" required />
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Per-model rate — leave blank to skip a model</p>
-        <div className="rounded-lg border divide-y">
-          {models.map((m) => (
-            <div key={m.id} className="flex items-center gap-3 px-3 py-2">
-              <span className="flex-1 text-sm font-medium">{m.name}</span>
-              <Input
-                type="number" step="any" min={0} placeholder="₨ per unit"
-                value={rates[m.id] ?? ""}
-                onChange={(e) => setRates((r) => ({ ...r, [m.id]: e.target.value }))}
-                className="w-32 text-right"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Saving…" : "Save Dealer Incentives"}
-      </Button>
-    </form>
   );
 }
 
