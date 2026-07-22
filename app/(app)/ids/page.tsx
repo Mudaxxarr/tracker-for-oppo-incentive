@@ -7,7 +7,8 @@ import { and, eq } from "drizzle-orm";
 import { IdsClient } from "./ids-client";
 
 export default async function IdsPage() {
-  const dealers = await listDealerIds();
+  // The management page must show hidden IDs — otherwise one could never be un-hidden.
+  const dealers = await listDealerIds({ includeHidden: true });
   const models = await listModelsWithCurrentPrice(OWNER_TENANT_ID);
 
   // Per-ID stats: phone-count = activations count, total-this-month = sum of dealer_price_snapshot * 0.04 for current month

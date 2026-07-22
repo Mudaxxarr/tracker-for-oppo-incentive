@@ -48,6 +48,7 @@ interface DealerSummary {
   shopName: string | null;
   note: string | null;
   basePercentOverride: number | null;
+  isHidden: boolean;
 }
 
 interface PerIdStat {
@@ -206,6 +207,11 @@ export function DealerIdsClient({ dealers, models, stats, transfers, stockByDeal
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <span className="font-medium">{d.name}</span>
+                          {d.isHidden ? (
+                            <Badge variant="outline" className="px-1 py-0 text-[10px] font-normal">
+                              Hidden
+                            </Badge>
+                          ) : null}
                           {d.basePercentOverride != null ? (
                             <Badge variant="secondary" className="px-1 py-0 text-[10px] font-normal">
                               {d.basePercentOverride}% base
@@ -461,6 +467,7 @@ function EditDealerIdSheet({ dealer, onClose }: { dealer: DealerSummary; onClose
   const [basePct, setBasePct] = useState(
     dealer.basePercentOverride == null ? "" : String(dealer.basePercentOverride),
   );
+  const [isHidden, setIsHidden] = useState(dealer.isHidden);
   const [pending, start] = useTransition();
 
   const save = () => {
@@ -471,6 +478,7 @@ function EditDealerIdSheet({ dealer, onClose }: { dealer: DealerSummary; onClose
       fd.set("shopName", shopName);
       fd.set("note", note);
       fd.set("basePercentOverride", basePct);
+      fd.set("isHidden", isHidden ? "on" : "");
       const res = await updateDealerTenantIdAction({}, fd);
       if (res.error) { toast.error(res.error); return; }
       toast.success("Dealer ID updated");
@@ -512,6 +520,22 @@ function EditDealerIdSheet({ dealer, onClose }: { dealer: DealerSummary; onClose
               also re-computes past reports for this ID.
             </p>
           </div>
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-dashed px-3 py-2.5">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={isHidden}
+              onChange={(e) => setIsHidden(e.target.checked)}
+            />
+            <span className="space-y-0.5">
+              <span className="block text-xs font-medium">Hidden &quot;favour&quot; ID</span>
+              <span className="block text-[10px] text-muted-foreground">
+                Hides this ID from the ID switcher, dashboards and reports. It stays a valid
+                inter-ID transfer destination and source, and stays on this page so you can
+                un-hide it later.
+              </span>
+            </span>
+          </label>
           <Button className="w-full" disabled={pending || !name.trim()} onClick={save}>
             {pending ? "Saving…" : "Save changes"}
           </Button>
