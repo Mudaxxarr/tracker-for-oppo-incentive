@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateIncentives } from "@/lib/incentive-engine";
+import { resolveBaseIncentivePercent } from "@/lib/incentive-engine/shared";
 import type { EngineInput } from "@/lib/incentive-engine/types";
 
 const MODEL_A = { id: "model-a", name: "OPPO Reno 12 Pro 12+512" };
@@ -646,5 +647,28 @@ describe("incentive-engine: target-bonus activation cap (#6)", () => {
     const bonusFromSubperiods = row.priceSubperiods.reduce((s, p) => s + p.bonusPercentSubtotal, 0);
     expect(bonusFromSubperiods).toBe(row.bonusPercentEarned);
     expect(bonusFromSubperiods).toBe(500_000);
+  });
+});
+
+describe("resolveBaseIncentivePercent (#4)", () => {
+  it("prefers an explicit caller value over everything", () => {
+    expect(resolveBaseIncentivePercent(5, 3, 4)).toBe(5);
+  });
+
+  it("falls back to the dealer ID's own rate when no explicit value is given", () => {
+    expect(resolveBaseIncentivePercent(undefined, 3, 4)).toBe(3);
+    expect(resolveBaseIncentivePercent(null, 3, 4)).toBe(3);
+  });
+
+  it("falls back to the global constant when the ID has no override", () => {
+    expect(resolveBaseIncentivePercent(undefined, null, 4)).toBe(4);
+    expect(resolveBaseIncentivePercent(undefined, undefined, 4)).toBe(4);
+  });
+
+  it("respects a zero override instead of treating it as unset", () => {
+    // A 0% ID earns no base incentive. Truthiness checks (`override || global`)
+    // would silently pay 4% here.
+    expect(resolveBaseIncentivePercent(undefined, 0, 4)).toBe(0);
+    expect(resolveBaseIncentivePercent(0, 3, 4)).toBe(0);
   });
 });

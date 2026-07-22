@@ -4,6 +4,7 @@ import { db, schema } from "@/lib/db/client";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { and, eq, gte, lte, ne, or, type SQL } from "drizzle-orm";
 import { calculateIncentives, type EngineInput, type IncentiveReport } from "./index";
+import { resolveBaseIncentivePercent } from "./shared";
 import { getConstants } from "@/lib/settings";
 import { INTER_ID_STATUS, PURCHASE_REVIEW_STATUS } from "@/lib/constants";
 
@@ -72,6 +73,19 @@ const getCachedDealerPolicyContext = unstable_cache(
 );
 
 /**
+ * The dealer ID's own base incentive %, or null when it uses the global constant.
+ * Deliberately uncached: this multiplies every payout, so a stale read mis-pays.
+ */
+async function getBasePercentOverride(dealerId: string): Promise<number | null> {
+  const [row] = await db
+    .select({ pct: schema.dealerIds.basePercentOverride })
+    .from(schema.dealerIds)
+    .where(eq(schema.dealerIds.id, dealerId))
+    .limit(1);
+  return row?.pct ?? null;
+}
+
+/**
  * Loads everything the engine needs for a (dealerId, period) and produces a report.
  *
  * The engine needs activations and purchases that fall in the union of:
@@ -90,8 +104,10 @@ export async function buildIncentiveReport(input: {
   dataTenantId?: string;
 }): Promise<IncentiveReport> {
   const { dealerId, periodStart, periodEnd } = input;
-  const constants = await getConstants();
-  const basePct = input.baseIncentivePercent ?? constants.basePercent;
+  // The per-ID base % is financial data, so it is read fresh rather than served from
+  // the cached policy context — a stale percentage would silently mis-pay every row.
+  const [constants, idRow] = await Promise.all([getConstants(), getBasePercentOverride(dealerId)]);
+  const basePct = resolveBaseIncentivePercent(input.baseIncentivePercent, idRow, constants.basePercent);
 
   const dataTenantId = input.dataTenantId ?? OWNER_TENANT_ID;
 
@@ -283,7 +299,12 @@ export async function buildMonthlyEarnings(
       dealerIncentivePolicies,
       combinedStockInPolicies,
     },
-  ] = await Promise.all([getConstants(), getCachedDealerPolicyContext(dealerId)]);
+    basePctOverride,
+  ] = await Promise.all([
+    getConstants(),
+    getCachedDealerPolicyContext(dealerId),
+    getBasePercentOverride(dealerId),
+  ]);
 
   // Extend window to cover all policy gates (so target/dealer-incentive counts are correct)
   let minStart = rangeStart;
@@ -313,7 +334,7 @@ export async function buildMonthlyEarnings(
 
   const engineBase = {
     dealerId,
-    baseIncentivePercent: constants.basePercent,
+    baseIncentivePercent: resolveBaseIncentivePercent(undefined, basePctOverride, constants.basePercent),
     models: models.map((m) => ({ id: m.id, name: m.name })),
     activations: activations.map((a) => ({
       id: a.id, modelId: a.modelId, activationDate: a.activationDate,

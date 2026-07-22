@@ -91,6 +91,11 @@ const UpdateDealerIdSchema = z.object({
   name: z.string().trim().min(1, "Name is required.").max(120),
   shopName: z.string().trim().max(120).optional().default(""),
   note: z.string().trim().max(500).optional().default(""),
+  /** Blank means "use the global base %" — an empty field must become null, not 0. */
+  basePercentOverride: z.preprocess(
+    (v) => (v === "" || v == null ? null : v),
+    z.coerce.number().min(0).max(100).nullable()
+  ),
 });
 
 /**
@@ -108,7 +113,7 @@ export async function updateDealerTenantIdAction(
 
   const parsed = UpdateDealerIdSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { id, name, shopName, note } = parsed.data;
+  const { id, name, shopName, note, basePercentOverride } = parsed.data;
 
   // The ID must belong to the previewed tenant — never trust the client's id blindly.
   const existing = await listDealerIdsForTenant(session.tenantId);
@@ -116,7 +121,7 @@ export async function updateDealerTenantIdAction(
 
   await db
     .update(schema.dealerIds)
-    .set({ name, shopName: shopName || null, note: note || null })
+    .set({ name, shopName: shopName || null, note: note || null, basePercentOverride })
     .where(and(eq(schema.dealerIds.id, id), eq(schema.dealerIds.tenantId, session.tenantId)));
 
   await logAudit({
