@@ -2,6 +2,7 @@ import "server-only";
 import { db, schema } from "../client";
 import { and, eq, gt, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { INTER_ID_STATUS, PURCHASE_REVIEW_STATUS } from "@/lib/constants";
+import { externalStockDeltaByModelAsOf } from "./external-transfers";
 
 export interface InventoryModelRow {
   modelId: string; modelName: string; dealerPrice: number | null;
@@ -74,11 +75,16 @@ export async function listInventoryForDealer(tenantId: string, dealerId: string,
     regularMap.set(r.modelId, Math.max(0, (regularMap.get(r.modelId) ?? 0) - Number(r.qty)));
   }
 
+  // External transfers move physical stock but are not a company/CR/inter-ID category —
+  // they fold straight into the net, not the breakdown.
+  const externalMap = await externalStockDeltaByModelAsOf(tenantId, dealerId, today);
+  for (const modelId of externalMap.keys()) allModelIds.add(modelId);
+
   const netStock = new Map<string, number>();
   for (const modelId of allModelIds) {
     const total = (regularMap.get(modelId) ?? 0) + (crossRegionMap.get(modelId) ?? 0) + (interIdMap.get(modelId) ?? 0);
     const used = (activatedMap.get(modelId) ?? 0) + (transferOutMap.get(modelId) ?? 0) + (crCaughtMap.get(modelId) ?? 0);
-    netStock.set(modelId, total - used);
+    netStock.set(modelId, total - used + (externalMap.get(modelId) ?? 0));
   }
 
   const positiveIds = [...netStock.entries()].filter(([, q]) => q > 0).map(([id]) => id);

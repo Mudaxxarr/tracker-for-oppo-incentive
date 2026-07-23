@@ -6,6 +6,7 @@ import { getDealerSession } from "@/lib/dealer-auth";
 import { getActiveDealerIdForTenant, getTenantById } from "@/lib/dealer-tenant";
 import { getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
+import { externalStockDeltaForModelAsOf } from "@/lib/db/queries/external-transfers";
 import { reEvaluateRebatesForDealer } from "@/lib/db/queries/rebates";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { INTER_ID_STATUS } from "@/lib/constants";
@@ -98,7 +99,8 @@ export async function createPosSaleAction(
             ne(schema.interIdTransfers.status, INTER_ID_STATUS.REJECTED),
           )),
       ]);
-      const txStock = Number(pq) - Number(aq) - Number(tq);
+      const extQty = await externalStockDeltaForModelAsOf(tenantId, dealerId, d.modelId, today, tx);
+      const txStock = Number(pq) - Number(aq) - Number(tq) + extQty;
       if (txStock < 1) throw new Error("No stock available for this model today.");
 
       const newId = randomUUID();

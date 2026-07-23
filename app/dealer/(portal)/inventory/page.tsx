@@ -7,6 +7,8 @@ import { FeatureDisabled } from "@/components/dealer/feature-disabled";
 import { getActiveDealerIdForTenant, listDealerIdsForTenant } from "@/lib/dealer-tenant";
 import { listInventoryForDealer } from "@/lib/db/queries/inventory";
 import { listPendingInbound } from "@/lib/db/queries/transfers";
+import { listExternalTransfers } from "@/lib/db/queries/external-transfers";
+import { listModelsWithCurrentPrice } from "@/lib/db/queries/models";
 import { OWNER_TENANT_ID } from "@/lib/dealer";
 import { DealerInventoryClient } from "./dealer-inventory-client";
 
@@ -19,7 +21,7 @@ export default async function DealerInventoryPage() {
 
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
 
-  const [rows, pending, allDealers] = await Promise.all([
+  const [rows, pending, allDealers, externalTransfers, models] = await Promise.all([
     dealerId
       ? listInventoryForDealer(session.tenantId, dealerId, OWNER_TENANT_ID)
       : Promise.resolve([]),
@@ -28,6 +30,8 @@ export default async function DealerInventoryPage() {
       : Promise.resolve([]),
     // Transfer destination picker: hidden favour IDs must be selectable.
     listDealerIdsForTenant(session.tenantId, { includeHidden: true }),
+    dealerId ? listExternalTransfers(session.tenantId, dealerId) : Promise.resolve([]),
+    listModelsWithCurrentPrice(OWNER_TENANT_ID),
   ]);
 
   const otherDealers = allDealers
@@ -41,6 +45,9 @@ export default async function DealerInventoryPage() {
       hasDealer={!!dealerId}
       pendingTransfers={pending}
       canReceipts={isFeatureKeyOn(features, "inv_receipts")}
+      externalTransfers={externalTransfers}
+      models={models.map((m) => ({ id: m.id, name: m.name }))}
+      isMainDealer={session.role === "admin"}
     />
   );
 }

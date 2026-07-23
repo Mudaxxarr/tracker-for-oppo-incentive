@@ -12,7 +12,7 @@ export const metadata = { title: "Low-Stock Alerts" };
 async function getDealerStockSummary() {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [purchaseRows, activationRows, transferOutRows] = await Promise.all([
+  const [purchaseRows, activationRows, transferOutRows, externalRows] = await Promise.all([
     db
       .select({
         tenantId: schema.purchases.tenantId,
@@ -43,6 +43,15 @@ async function getDealerStockSummary() {
       .from(schema.interIdTransfers)
       .where(eq(schema.interIdTransfers.status, INTER_ID_STATUS.ACCEPTED))
       .groupBy(schema.interIdTransfers.tenantId, schema.interIdTransfers.fromDealerId, schema.interIdTransfers.modelId),
+    db
+      .select({
+        tenantId: schema.externalTransfers.tenantId,
+        dealerId: schema.externalTransfers.dealerId,
+        modelId: schema.externalTransfers.modelId,
+        net: sql<number>`COALESCE(SUM(CASE WHEN ${schema.externalTransfers.direction} = 'IN' THEN ${schema.externalTransfers.quantity} WHEN ${schema.externalTransfers.direction} = 'OUT' THEN -${schema.externalTransfers.quantity} ELSE 0 END), 0)`,
+      })
+      .from(schema.externalTransfers)
+      .groupBy(schema.externalTransfers.tenantId, schema.externalTransfers.dealerId, schema.externalTransfers.modelId),
   ]);
 
   type StockKey = string;
@@ -58,12 +67,16 @@ async function getDealerStockSummary() {
   const transferMap = new Map<StockKey, number>();
   for (const r of transferOutRows) transferMap.set(`${r.tenantId}|${r.dealerId}|${r.modelId}`, Number(r.qty));
 
+  const externalMap = new Map<StockKey, number>();
+  for (const r of externalRows) externalMap.set(`${r.tenantId}|${r.dealerId}|${r.modelId}`, Number(r.net));
+
   const stock = new Map<StockKey, { dealerName: string; tenantId: string; dealerId: string; modelId: string; qty: number }>();
   for (const [key, p] of purchaseMap) {
     const [tenantId, dealerId, modelId] = key.split("|");
     const activated = activationMap.get(key) ?? 0;
     const transferred = transferMap.get(key) ?? 0;
-    stock.set(key, { dealerName: p.dealerName, tenantId, dealerId, modelId, qty: p.qty - activated - transferred });
+    const external = externalMap.get(key) ?? 0;
+    stock.set(key, { dealerName: p.dealerName, tenantId, dealerId, modelId, qty: p.qty - activated - transferred + external });
   }
 
   return stock;

@@ -5,6 +5,7 @@ import { INTER_ID_STATUS, PURCHASE_SOURCE, PURCHASE_REVIEW_STATUS } from "@/lib/
 import { randomUUID } from "node:crypto";
 import type { PurchaseSource } from "@/lib/constants";
 import { getCrCaughtForStockCalc, getCrCaughtAsOf, getCrCaughtBefore } from "./cr-caught";
+import { externalStockDeltaByModel, externalStockDeltaForModelAsOf, externalMovementsForModel } from "./external-transfers";
 import { formatBillNumber, groupIntoBills, aggregatePurchaseStats, computePreviousPeriod, percentChange, type PurchaseAggregateStats, type BillGroup } from "@/lib/purchases/purchase-stats";
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -20,7 +21,7 @@ export interface StockRow {
 export async function listStockForDealer(tenantId: string, dealerId: string, priceTenantId?: string): Promise<StockRow[]> {
   const today = new Date().toISOString().slice(0, 10);
 
-  const [purchaseQty, activatedQty, transferredOutQty, crCaughtQty] = await Promise.all([
+  const [purchaseQty, activatedQty, transferredOutQty, crCaughtQty, externalDelta] = await Promise.all([
     db
       .select({ modelId: schema.purchases.modelId, qty: sql<number>`COALESCE(SUM(${schema.purchases.quantity}), 0)` })
       .from(schema.purchases)
@@ -47,6 +48,7 @@ export async function listStockForDealer(tenantId: string, dealerId: string, pri
       .from(schema.crCaught)
       .where(and(eq(schema.crCaught.tenantId, tenantId), eq(schema.crCaught.dealerId, dealerId)))
       .groupBy(schema.crCaught.modelId),
+    externalStockDeltaByModel(tenantId, dealerId),
   ]);
 
   const byModel = new Map<string, number>();
@@ -54,6 +56,8 @@ export async function listStockForDealer(tenantId: string, dealerId: string, pri
   for (const r of activatedQty) byModel.set(r.modelId, (byModel.get(r.modelId) ?? 0) - Number(r.qty));
   for (const r of transferredOutQty) byModel.set(r.modelId, (byModel.get(r.modelId) ?? 0) - Number(r.qty));
   for (const r of crCaughtQty) byModel.set(r.modelId, (byModel.get(r.modelId) ?? 0) - Number(r.qty));
+  // External transfers: IN adds, OUT subtracts (net already signed by the query).
+  for (const [modelId, net] of externalDelta) byModel.set(modelId, (byModel.get(modelId) ?? 0) + net);
 
   const ids = [...byModel.entries()].filter(([, q]) => q > 0).map(([id]) => id);
   if (ids.length === 0) return [];
@@ -101,7 +105,8 @@ export async function getStockForModel(tenantId: string, dealerId: string, model
       )),
     getCrCaughtForStockCalc(tenantId, dealerId, modelId),
   ]);
-  return Number(pq) - Number(aq) - Number(tq) - crcQty;
+  const ext = await externalStockDeltaForModelAsOf(tenantId, dealerId, modelId, "9999-12-31", executor);
+  return Number(pq) - Number(aq) - Number(tq) - crcQty + ext;
 }
 
 export async function getStockForModelAsOf(tenantId: string, dealerId: string, modelId: string, asOf: string, executor: Executor = db): Promise<number> {
@@ -123,7 +128,8 @@ export async function getStockForModelAsOf(tenantId: string, dealerId: string, m
       )),
     getCrCaughtAsOf(tenantId, dealerId, modelId, asOf, executor),
   ]);
-  return Number(pq) - Number(aq) - Number(tq) - crcQty;
+  const ext = await externalStockDeltaForModelAsOf(tenantId, dealerId, modelId, asOf, executor);
+  return Number(pq) - Number(aq) - Number(tq) - crcQty + ext;
 }
 
 /**
@@ -168,6 +174,7 @@ export async function getMinForwardStock(
         ne(schema.crCaught.status, "pending_owner_approval")
       )),
   ]);
+  const externalMoves = await externalMovementsForModel(tenantId, dealerId, modelId, executor);
 
   // Net delta per date: purchases add, everything else consumes.
   const deltas = new Map<string, number>();
@@ -175,6 +182,8 @@ export async function getMinForwardStock(
   for (const a of activations) deltas.set(a.date, (deltas.get(a.date) ?? 0) - 1);
   for (const t of transfers) deltas.set(t.date, (deltas.get(t.date) ?? 0) - Number(t.qty));
   for (const c of crc) deltas.set(c.date, (deltas.get(c.date) ?? 0) - Number(c.qty));
+  // External IN adds on its date, OUT consumes on its date.
+  for (const e of externalMoves) deltas.set(e.date, (deltas.get(e.date) ?? 0) + (e.direction === "IN" ? Number(e.quantity) : -Number(e.quantity)));
 
   const dates = [...deltas.keys()].sort();
   // Running balance up to and including fromDate = stock as-of fromDate.
