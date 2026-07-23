@@ -24,6 +24,7 @@ import {
   createDealerIdAction,
   createInterIdTransferAction,
   deleteDealerIdAction,
+  updateDealerIdAction,
   acceptInterIdTransferAction,
   rejectInterIdTransferAction,
   updateInterIdTransferAction,
@@ -47,6 +48,8 @@ interface DealerSummary {
   id: string;
   name: string;
   note: string | null;
+  basePercentOverride: number | null;
+  isHidden: boolean;
 }
 
 interface PerIdStat {
@@ -81,6 +84,7 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
   const [to, setTo] = useState<string>(dealers[1]?.id ?? "");
   const [modelId, setModelId] = useState<string>("");
   const [transferEdit, setTransferEdit] = useState<InterIdRow | null>(null);
+  const [idEdit, setIdEdit] = useState<DealerSummary | null>(null);
 
   // Only show models that the source dealer actually has in stock
   const availableModels = from
@@ -203,7 +207,11 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
                 return (
                   <TableRow key={d.id}>
                     <TableCell>
-                      <div className="font-medium">{d.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">{d.name}</span>
+                        {d.isHidden ? <Badge variant="outline" className="px-1 py-0 text-[10px] font-normal">Hidden</Badge> : null}
+                        {d.basePercentOverride != null ? <Badge variant="secondary" className="px-1 py-0 text-[10px] font-normal">{d.basePercentOverride}% base</Badge> : null}
+                      </div>
                       {d.note ? <div className="text-xs text-muted-foreground">{d.note}</div> : null}
                     </TableCell>
                     <TableCell label="Phones (lifetime)" className="text-right tabular-nums">{s?.phoneCount ?? 0}</TableCell>
@@ -211,7 +219,16 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
                       {formatPKR(s?.thisMonthBase ?? 0)}
                     </TableCell>
                     <TableCell label="Last activity">{s?.lastActivity ? formatDate(s.lastActivity) : "—"}</TableCell>
-                    <TableCell>
+                    <TableCell className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        aria-label="Edit ID"
+                        onClick={() => setIdEdit(d)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -375,6 +392,9 @@ export function IdsClient({ dealers, models, stats, transfers, stockByDealer }: 
         </Card>
       ) : null}
 
+      {idEdit ? (
+        <EditDealerIdSheet dealer={idEdit} onClose={() => setIdEdit(null)} onSaved={() => { setIdEdit(null); router.refresh(); }} />
+      ) : null}
       {transferEdit ? (
         <EditTransferSheet
           transfer={transferEdit}
@@ -425,6 +445,73 @@ function EditTransferSheet({
             </div>
           </div>
           <Button className="w-full" disabled={pending || invalid} onClick={save}>
+            {pending ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function EditDealerIdSheet({
+  dealer, onClose, onSaved,
+}: { dealer: DealerSummary; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(dealer.name);
+  const [note, setNote] = useState(dealer.note ?? "");
+  const [basePct, setBasePct] = useState(dealer.basePercentOverride == null ? "" : String(dealer.basePercentOverride));
+  const [isHidden, setIsHidden] = useState(dealer.isHidden);
+  const [pending, start] = useTransition();
+
+  const save = () => {
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", dealer.id);
+      fd.set("name", name);
+      fd.set("note", note);
+      fd.set("basePercentOverride", basePct);
+      fd.set("isHidden", isHidden ? "on" : "");
+      const res = await updateDealerIdAction({}, fd);
+      if (res.error) { toast.error(res.error); return; }
+      toast.success("Dealer ID updated");
+      onSaved();
+    });
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader><SheetTitle>Edit Dealer ID</SheetTitle></SheetHeader>
+        <div className="space-y-4 p-4">
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Note (optional)</label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Base incentive % for this ID</label>
+            <Input type="number" step="any" min={0} max={100} value={basePct}
+              onChange={(e) => setBasePct(e.target.value)} placeholder="Leave blank = use the global rate" />
+            <p className="text-[10px] text-muted-foreground">
+              Retail IDs normally use the global rate; set 3 on wholesale IDs. Changing this also
+              re-computes past reports for this ID.
+            </p>
+          </div>
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-dashed px-3 py-2.5">
+            <input type="checkbox" className="mt-0.5" checked={isHidden}
+              onChange={(e) => setIsHidden(e.target.checked)} />
+            <span className="space-y-0.5">
+              <span className="block text-xs font-medium">Hidden &quot;favour&quot; ID</span>
+              <span className="block text-[10px] text-muted-foreground">
+                Hides this ID from the ID switcher, dashboards and reports. It stays a valid
+                inter-ID transfer destination and source, and stays on this page so you can
+                un-hide it later.
+              </span>
+            </span>
+          </label>
+          <Button className="w-full" disabled={pending || !name.trim()} onClick={save}>
             {pending ? "Saving…" : "Save changes"}
           </Button>
         </div>

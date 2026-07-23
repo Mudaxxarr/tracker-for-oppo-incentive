@@ -56,7 +56,7 @@ export default async function IdsPage() {
 
   return (
     <IdsClient
-      dealers={dealers.map((d) => ({ id: d.id, name: d.name, note: d.note }))}
+      dealers={dealers.map((d) => ({ id: d.id, name: d.name, note: d.note, basePercentOverride: d.basePercentOverride, isHidden: d.isHidden }))}
       models={models}
       stats={Object.fromEntries(stats.map((s) => [s.id, s]))}
       transfers={transfers}

@@ -11,11 +11,24 @@ import { getModelById } from "@/lib/db/queries/models";
 import { getStockForModelAsOf } from "@/lib/db/queries/purchases";
 import { logAudit } from "@/lib/audit";
 import { randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 const NewIdSchema = z.object({
   name: z.string().trim().min(1).max(120),
   note: z.string().max(500).optional().nullable(),
+});
+
+const UpdateIdSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required.").max(120),
+  note: z.string().trim().max(500).optional().default(""),
+  /** Blank means "use the global base %" — an empty field must become null, not 0. */
+  basePercentOverride: z.preprocess(
+    (v) => (v === "" || v == null ? null : v),
+    z.coerce.number().min(0).max(100).nullable()
+  ),
+  /** Checkbox posts "on" when ticked, "" when not. */
+  isHidden: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
 });
 
 const InterIdSchema = z.object({
@@ -51,6 +64,36 @@ export async function createDealerIdAction(
     entityId: id,
     summary: `Created Dealer ID "${parsed.data.name}" and switched to it`,
     payload: parsed.data,
+    dealerId: id,
+  });
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Edit an owner-tenant Dealer ID: name, note, per-ID base % (#4) and the hidden
+ * "favour" flag (Phase 8). Owner-only, scoped to OWNER_TENANT_ID so a forged id
+ * for another tenant cannot be touched.
+ */
+export async function updateDealerIdAction(_prev: IdFormState, fd: FormData): Promise<IdFormState> {
+  if (!(await isAuthenticated())) return { error: "Not authenticated" };
+  const parsed = UpdateIdSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { id, name, note, basePercentOverride, isHidden } = parsed.data;
+
+  const updated = await db
+    .update(schema.dealerIds)
+    .set({ name, note: note || null, basePercentOverride, isHidden })
+    .where(and(eq(schema.dealerIds.id, id), eq(schema.dealerIds.tenantId, OWNER_TENANT_ID)))
+    .returning({ id: schema.dealerIds.id });
+  if (updated.length === 0) return { error: "Dealer ID not found." };
+
+  await logAudit({
+    action: "dealer.update",
+    entityType: "dealer_id",
+    entityId: id,
+    summary: `Updated Dealer ID "${name}"${isHidden ? " (hidden favour ID)" : ""}${basePercentOverride != null ? ` base ${basePercentOverride}%` : ""}`,
+    payload: { id, name, basePercentOverride, isHidden },
     dealerId: id,
   });
   revalidatePath("/", "layout");
