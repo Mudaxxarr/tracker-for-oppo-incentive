@@ -32,7 +32,9 @@ import {
 import { formatPKR, formatDate } from "@/lib/format";
 import type { InventoryModelRow } from "@/lib/db/queries/inventory";
 import type { PendingTransferRow } from "@/lib/db/queries/transfers";
+import type { ExternalTransferRow } from "@/lib/db/queries/external-transfers";
 import { HelpTip } from "@/components/dealer/help-tip";
+import { ExternalTransferSection } from "./external-transfer-section";
 
 interface DealerOption { id: string; name: string }
 interface Props {
@@ -41,6 +43,9 @@ interface Props {
   hasDealer: boolean;
   pendingTransfers: PendingTransferRow[];
   canReceipts: boolean;
+  externalTransfers: ExternalTransferRow[];
+  models: { id: string; name: string }[];
+  isMainDealer: boolean;
 }
 type SortKey = "name" | "qty_desc" | "qty_asc" | "value_desc";
 type ViewMode = "grid" | "list";
@@ -647,7 +652,7 @@ function SummaryTile({ label, value, sub }: { label: ReactNode; value: number | 
   );
 }
 
-export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTransfers, canReceipts }: Props) {
+export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTransfers, canReceipts, externalTransfers, models, isMainDealer }: Props) {
   const [activateRow, setActivateRow] = useState<InventoryModelRow | null>(null);
   const [moveRow, setMoveRow] = useState<InventoryModelRow | null>(null);
   const [historyRow, setHistoryRow] = useState<InventoryModelRow | null>(null);
@@ -715,6 +720,10 @@ export function DealerInventoryClient({ rows, otherDealers, hasDealer, pendingTr
             {pendingTransfers.map((t) => <PendingRow key={t.id} transfer={t} />)}
           </AnimatePresence>
         </div>
+      )}
+
+      {isMainDealer && (
+        <ExternalTransferSection models={models} transfers={externalTransfers} />
       )}
 
       {rows.length > 0 && (

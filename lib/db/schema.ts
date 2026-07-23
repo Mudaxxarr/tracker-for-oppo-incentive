@@ -377,6 +377,38 @@ export const interIdTransfers = pgTable(
   })
 );
 
+// ---------- External Transfer (stock in/out to an out-of-system dealer) ----------
+// Pure physical-stock movement. The counterpart is a text label (name + city) — no FK,
+// no tenant, no login. Deliberately NOT a purchase: it never touches the incentive engine,
+// so a Transfer In earns no stock-in and a Transfer Out never reverses it.
+export const externalTransfers = pgTable(
+  "external_transfers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => dealerTenants.id),
+    dealerId: text("dealer_id")
+      .notNull()
+      .references(() => dealerIds.id, { onDelete: "cascade" }),
+    modelId: text("model_id")
+      .notNull()
+      .references(() => models.id, { onDelete: "restrict" }),
+    quantity: integer("quantity").notNull(),
+    /** 'IN' adds to our stock (received from external dealer); 'OUT' removes it (sent to them). */
+    direction: text("direction").notNull(),
+    transferDate: isoDate("transfer_date").notNull(),
+    counterpartName: text("counterpart_name").notNull(),
+    counterpartCity: text("counterpart_city"),
+    note: text("note"),
+    createdAt: isoDateTime("created_at").notNull(),
+  },
+  (t) => ({
+    byDealer: index("ext_by_dealer").on(t.tenantId, t.dealerId, t.transferDate),
+    byModel: index("ext_by_model").on(t.tenantId, t.dealerId, t.modelId),
+  })
+);
+
 // ---------- CR Caught ----------
 export const crCaught = pgTable(
   "cr_caught",

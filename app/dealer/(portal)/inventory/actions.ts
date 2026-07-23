@@ -13,6 +13,13 @@ import {
 } from "@/lib/db/queries/transfers";
 import { getModelById, getPriceOnDate } from "@/lib/db/queries/models";
 import { getStockForModelAsOf, getMinForwardStock } from "@/lib/db/queries/purchases";
+import {
+  createExternalTransfer,
+  updateExternalTransfer,
+  deleteExternalTransfer,
+  getExternalTransfer,
+  EXTERNAL_DIRECTION,
+} from "@/lib/db/queries/external-transfers";
 import { createCrCaught } from "@/lib/db/queries/cr-caught";
 import { logAudit } from "@/lib/audit";
 import { formatPKR } from "@/lib/format";
@@ -36,6 +43,147 @@ async function requireDealer() {
   const dealerId = await getActiveDealerIdForTenant(session.tenantId);
   if (!dealerId) throw new Error("No active Dealer ID");
   return { session, dealerId };
+}
+
+/** External Transfer is a main-dealer capability only — team members (exec) are excluded. */
+async function requireDealerAdmin() {
+  const { session, dealerId } = await requireDealer();
+  if (session.role !== "admin") {
+    throw new Error("Only the main dealer can record external transfers.");
+  }
+  return { session, dealerId };
+}
+
+const ExternalTransferSchema = z.object({
+  modelId: z.string().min(1, "Choose a model"),
+  direction: z.enum(["IN", "OUT"]),
+  quantity: z.coerce.number().int().positive("Quantity must be at least 1"),
+  transferDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  counterpartName: z.string().trim().min(1, "Dealer name is required").max(120),
+  counterpartCity: z.string().trim().max(80).optional().default(""),
+  note: z.string().trim().max(300).optional().default(""),
+});
+
+export async function dealerCreateExternalTransferAction(
+  _prev: InvActionState,
+  fd: FormData,
+): Promise<InvActionState> {
+  let session, dealerId;
+  try { ({ session, dealerId } = await requireDealerAdmin()); }
+  catch (e) { return { error: (e as Error).message }; }
+
+  const parsed = ExternalTransferSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { modelId, direction, quantity, transferDate, counterpartName, counterpartCity, note } = parsed.data;
+  const tenantId = session.tenantId;
+
+  try {
+    let stockError: string | null = null;
+    let id: string | undefined;
+    await db.transaction(async (tx) => {
+      // OUT reduces stock — never let it drive any day negative (external moves are already
+      // folded into getMinForwardStock, so this reflects real availability before this row).
+      if (direction === "OUT") {
+        const avail = await getMinForwardStock(tenantId, dealerId, modelId, transferDate, tx);
+        if (avail < quantity) {
+          stockError = `Only ${avail} unit(s) available from ${transferDate} onward`;
+          return;
+        }
+      }
+      id = await createExternalTransfer({
+        tenantId, dealerId, modelId, quantity,
+        direction: direction === "IN" ? EXTERNAL_DIRECTION.IN : EXTERNAL_DIRECTION.OUT,
+        transferDate, counterpartName, counterpartCity, note,
+      }, tx);
+    });
+    if (stockError) return { error: stockError };
+    if (!id) return { error: "Transfer failed" };
+
+    const m = await getModelById(modelId);
+    await logAudit({
+      action: "external_transfer.create",
+      dealerId,
+      entityType: "external_transfer",
+      entityId: id,
+      summary: `[Dealer] External ${direction}: ${quantity} × ${m?.name ?? "?"} ${direction === "IN" ? "from" : "to"} ${counterpartName}${counterpartCity ? `, ${counterpartCity}` : ""}`,
+      payload: parsed.data,
+    });
+    revalidatePath("/dealer/inventory");
+    revalidatePath("/dealer/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Transfer failed" };
+  }
+}
+
+export async function dealerUpdateExternalTransferAction(
+  _prev: InvActionState,
+  fd: FormData,
+): Promise<InvActionState> {
+  let session, dealerId;
+  try { ({ session, dealerId } = await requireDealerAdmin()); }
+  catch (e) { return { error: (e as Error).message }; }
+
+  const id = String(fd.get("id") ?? "");
+  const parsed = ExternalTransferSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { modelId, direction, quantity, transferDate, counterpartName, counterpartCity, note } = parsed.data;
+  const tenantId = session.tenantId;
+
+  const existing = await getExternalTransfer(id, tenantId, dealerId);
+  if (!existing) return { error: "External transfer not found." };
+
+  try {
+    let stockError: string | null = null;
+    await db.transaction(async (tx) => {
+      if (direction === "OUT") {
+        // Exclude this row's current effect from the availability check by adding back
+        // whatever it consumes today, so an edit isn't blocked by its own footprint.
+        const avail = await getMinForwardStock(tenantId, dealerId, modelId, transferDate, tx);
+        const selfAddBack = existing.direction === "OUT" && existing.modelId === modelId ? existing.quantity : 0;
+        if (avail + selfAddBack < quantity) {
+          stockError = `Only ${avail + selfAddBack} unit(s) available from ${transferDate} onward`;
+          return;
+        }
+      }
+      const ok = await updateExternalTransfer(id, tenantId, dealerId, {
+        modelId, quantity,
+        direction: direction === "IN" ? EXTERNAL_DIRECTION.IN : EXTERNAL_DIRECTION.OUT,
+        transferDate, counterpartName, counterpartCity, note,
+      }, tx);
+      if (!ok) stockError = "External transfer not found.";
+    });
+    if (stockError) return { error: stockError };
+
+    await logAudit({
+      action: "external_transfer.update", dealerId,
+      entityType: "external_transfer", entityId: id,
+      summary: `[Dealer] Edited external ${direction}: ${quantity} × ${counterpartName}`,
+      payload: parsed.data,
+    });
+    revalidatePath("/dealer/inventory");
+    revalidatePath("/dealer/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Update failed" };
+  }
+}
+
+export async function dealerDeleteExternalTransferAction(id: string): Promise<InvActionState> {
+  let session, dealerId;
+  try { ({ session, dealerId } = await requireDealerAdmin()); }
+  catch (e) { return { error: (e as Error).message }; }
+
+  const ok = await deleteExternalTransfer(id, session.tenantId, dealerId);
+  if (!ok) return { error: "External transfer not found." };
+  await logAudit({
+    action: "external_transfer.delete", dealerId,
+    entityType: "external_transfer", entityId: id,
+    summary: `[Dealer] Deleted external transfer`,
+  });
+  revalidatePath("/dealer/inventory");
+  revalidatePath("/dealer/dashboard");
+  return { ok: true };
 }
 
 const QuickActivateSchema = z.object({
